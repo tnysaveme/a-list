@@ -13,3 +13,9 @@ test('access fails closed for uninvited users and partial or lookalike addresses
  assert.equal(emailIsAllowed('friend@example.com',[undefined,' , ']),false);
  assert.equal(emailIsAllowed('friend@example.com',['owner@example.com',undefined]),false,'removing an invite also denies the next authenticated request');
 });
+test('explicitly enabled email signups let new people use the same form without pre-registration',()=>{
+ assert.equal(emailIsAllowed('new.person@example.com',['owner@example.com'],true),true);
+ assert.equal(emailIsAllowed('new.person@example.com',[undefined],true),true);
+ assert.equal(emailIsAllowed('new.person@example.com',['owner@example.com']),false);
+ for(const email of [null,undefined,'','no-domain','two@@example.com','someone@example.com\r\nBcc:other@example.com'])assert.equal(emailIsAllowed(email,[],true),false);
+});
