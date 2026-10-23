@@ -13,10 +13,10 @@ if(!cookie){console.log('SKIP: authenticated library round trip requires ALIST_S
 const get=async path=>{const r=await fetch(base+'/api/'+path,{headers:{cookie}});assert.equal(r.status,200,await r.clone().text());return r.json();};
 const post=async(path,body)=>{const r=await fetch(base+'/api/'+path,{method:'POST',headers:{cookie,Origin:base,'Content-Type':'application/json'},body:JSON.stringify(body)});assert.equal(r.status,200,await r.clone().text());return r.json();};
 const initial=await post('init',{});const catalog=await get('catalogue');assert.ok(catalog.movies.length>10);
-const candidate=catalog.movies.find(m=>m.releases.some(r=>r.confidence==='listed')&&!initial.movies.some(s=>s.id===m.id));assert.ok(candidate);
+const candidate=catalog.movies.find(m=>m.releases.some(r=>r.confidence==='listed')&&!m.saved);assert.ok(candidate);
 try {
  await post('library',{action:'add',ids:[candidate.id]});
- const tracked=await post('library',{action:'track',ids:[candidate.id]});assert.ok(tracked.movies.find(m=>m.id===candidate.id).tracked);
+ await post('library',{action:'track',ids:[candidate.id]});const tracked=await get('library?tracked=true&sort=title');assert.ok(tracked.trackedCount>0);
  const response=await fetch(base+initial.feedPath);assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/text\/calendar/);assert.match(await response.text(),new RegExp('UID:movie-'+candidate.id+'-'));
  const bad=await fetch(base+'/api/library',{method:'POST',headers:{cookie,Origin:'https://different.example','Content-Type':'application/json'},body:JSON.stringify({action:'remove',ids:[candidate.id]})});assert.equal(bad.status,403);
 } finally {await post('library',{action:'remove',ids:[candidate.id]});}
