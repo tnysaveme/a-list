@@ -4,7 +4,8 @@ import {adminDb} from './supabase/admin';
 import {checked} from './data';
 import {withLease,remember,metric,cache} from './infrastructure';
 import {mergeMovies,type Movie} from './model';
-import {fetchSource,parseListing,parseReports,parseDetail,parseReportDetail,normalized} from './sources';
+import {fetchSource,parseListing,parseReports,normalized} from './sources';
+import {refreshMovie} from './movie-refresh';
 import {drainDue} from './work-batches';
 const SIX_HOURS=6*3600_000;
 async function loadCatalogue(){
@@ -19,15 +20,6 @@ async function loadCatalogue(){
   if(!existing||existing.confidence==='rumored')movie.releases=[...movie.releases.filter(r=>r.kind!==report.release.kind),report.release];
  }
  return movies;
-}
-async function refreshMovie(movie:Movie){
- const url=new URL(movie.source);
- if(!/^\d{1,8}$/.test(movie.id)||url.hostname!=='www.dvdsreleasedates.com'||!url.pathname.startsWith(`/movies/${movie.id}/`))throw new Error('Invalid film source');
- const reports=movie.releases.filter(r=>r.sourceName==='When To Stream');
- const [detail,...refreshed]=await Promise.all([fetchSource(movie.source),...reports.map(async r=>parseReportDetail(await fetchSource(r.source),r))]);
- const result=parseDetail(detail as string,movie);result.releases=result.releases.filter(r=>r.sourceName!=='When To Stream');
- for(const report of refreshed)if(report&&typeof report!=='string'&&!result.releases.some(r=>r.kind===report.kind))result.releases.push(report);
- return result;
 }
 export async function refreshSources(){
  return withLease('ingestion',55,async()=>{

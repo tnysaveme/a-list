@@ -25,7 +25,7 @@ export function parseListing(html: string, digital: boolean, checkedAt = new Dat
    const source = BASE + path;
    const title = text(alt).replace(/\s*(?:\(\d{4}\))?\s*DVD Release Date.*$/i,'').trim();
    const poster = new URL(image.replace('/110/','/300/'),BASE).href;
-   const year = image.match(/-(20\d{2}|19\d{2})(?:-movie-poster)?\.jpg/i)?.[1] || '';
+   const year = image.match(/-(20\d{2}|19\d{2})(?:-movie-poster)?\.jpg/i)?.[1] || path.match(/\((18\d{2}|19\d{2}|20\d{2})\)/)?.[1] || '';
    const rating = part.match(/imdblink right['"]>([^<]+)/)?.[1];
    movies.push({id,title,year,poster,source,rating:rating?text(rating):undefined,checkedAt,theatrical:!digital&&date?date:undefined,releases:digital&&date?[{kind:'Digital',date,confidence:'listed',source,sourceName:'DVDs Release Dates',checkedAt}]:[]});
  }
@@ -37,10 +37,22 @@ export function parseDetail(html: string, movie: Movie, checkedAt = new Date().t
  const digital = heading.match(/Digital HD[\s\S]*?\bon\s+(.+)/i);
  const date = digital ? dateFromText(digital[1]) : null;
  // Only the Digital HD statement counts. DVD and theatrical dates are never substituted.
- const overview = text(html.match(/itemprop=['"]description['"]>([\s\S]*?)<\/span>/i)?.[1] || '');
+ const overview = parseSynopsis(html);
  const releases: Release[] = movie.releases.filter(r=>r.kind==='Subscription'||(!date&&r.sourceName==='When To Stream'));
  if (date) releases.push({kind:'Digital',date,confidence:'listed',source:movie.source,sourceName:'DVDs Release Dates',checkedAt});
- return {...movie,overview:overview||movie.overview,checkedAt,releases};
+ const imdbId=html.match(/imdb\.com\/title\/(tt\d{7,10})\b/i)?.[1]||movie.imdbId;
+ return {...movie,imdbId,overview:overview||movie.overview,overviewSource:overview?movie.source:movie.overviewSource,releaseCheckedAt:checkedAt,checkedAt,releases};
+}
+export function parseSynopsis(html:string):string|undefined{
+ const content=html.match(/<([a-z][\w:-]*)\b[^>]*\bitemprop=['"]description['"][^>]*>([\s\S]*?)<\/\1>/i)?.[2];
+ if(content){const overview=text(content);if(overview)return overview.slice(0,4000);}
+ for(const script of html.matchAll(/<script\b[^>]*type=['"]application\/ld\+json['"][^>]*>([\s\S]*?)<\/script>/gi)){
+  try{
+   const root=JSON.parse(script[1]);const items=Array.isArray(root)?root:root['@graph']||[root];
+   for(const item of items)if((item['@type']==='Movie'||Array.isArray(item['@type'])&&item['@type'].includes('Movie'))&&typeof item.description==='string')return text(item.description).slice(0,4000)||undefined;
+  }catch{}
+ }
+ return undefined;
 }
 export function parseReports(xml: string): {title:string;release:Release}[] {
  const result: {title:string;release:Release}[]=[];
@@ -69,7 +81,8 @@ export async function fetchSource(url: string, init?: RequestInit): Promise<stri
  const u = new URL(url);
  if (!['www.dvdsreleasedates.com','whentostream.com'].includes(u.hostname) || u.protocol!=='https:') throw new Error('Unsupported movie source');
  const cacheOptions=(!init?.method||init.method==='GET')?{next:{revalidate:21600}}:{};
- const response = await fetch(url,{...cacheOptions,...init,signal:AbortSignal.timeout(12000),headers:{'User-Agent':'A-List/1.0 (personal US movie release tracker)',...init?.headers}});
+ const signal=init?.signal?AbortSignal.any([init.signal,AbortSignal.timeout(12000)]):AbortSignal.timeout(12000);
+ const response = await fetch(url,{...cacheOptions,...init,signal,headers:{'User-Agent':'A-List/1.0 (personal US movie release tracker)',...init?.headers}});
  if (!response.ok) throw new Error(`Release source returned ${response.status}`);
  const body = await response.text();
  if (body.length<500 || body.length>2_000_000) throw new Error('Unexpected release source response');

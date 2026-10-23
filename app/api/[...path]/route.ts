@@ -5,6 +5,7 @@ import {feedResponse} from '../../../lib/feed-cache';
 import {throttle,clientAddress,metric} from '../../../lib/infrastructure';
 import {sameOrigin} from '../../../lib/request-origin';
 import {after} from 'next/server';
+import {validMovieId} from '../../../lib/model';
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
 export const maxDuration=60;
@@ -32,7 +33,7 @@ async function handle(request:Request){
    const query=(url.searchParams.get('q')||'').trim().slice(0,50);
    return json({movies:query.length<2?[]:await searchMovies(ctx,query)});
   }
-  if(request.method==='GET'&&/^movie\/\d+$/.test(path)){
+  if(request.method==='GET'&&path.startsWith('movie/')&&validMovieId(path.slice(6))){
    const movie=await getMovie(ctx,path.slice(6));return movie?json({movie}):json({error:'This film could not be found.'},404);
   }
   if(request.method!=='POST')return json({error:'Not found'},404);
@@ -48,7 +49,7 @@ async function handle(request:Request){
   if(path!=='library')return json({error:'Not found'},404);
   if(!['add','remove','track','untrack'].includes(body.action))return json({error:'Unknown library action'},400);
   if(!Array.isArray(body.ids)||body.ids.length>100)return json({error:'Choose up to 100 films at a time.'},400);
-  const ids=[...new Set(body.ids.filter((id:unknown)=>typeof id==='string'&&/^\d{1,8}$/.test(id)))] as string[];
+  const ids=[...new Set(body.ids.filter((id:unknown)=>typeof id==='string'&&validMovieId(id)))] as string[];
   if(!ids.length)return json({error:'Choose at least one film.'},400);
   await updateLibrary(ctx,body.action,ids,body.track===true);return json({ok:true});
  }catch(error){console.error('A-List request:',error instanceof Error?error.message:'Request failed');return json({error:'A-List could not refresh this request. Your saved films are safe. Please try again.'},503);}

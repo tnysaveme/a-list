@@ -3,13 +3,14 @@ import {getDb} from '../db';
 import type {AccountRow,LibraryRow} from '../db/schema';
 import snapshot from './catalogue.json';
 import type {Movie} from './model';
-import {fetchSource,parseListing} from './sources';
 import {adminDb} from './supabase/admin';
 import {cached,remember,privateKey,withLease,metric} from './infrastructure';
 import type {LibraryPage} from './pagination';
 import {makeCalendar} from './calendar';
 import {feedDocument,type FeedDocument} from './feed-cache';
 import {after} from 'next/server';
+import {searchProviders} from './movie-search';
+import {refreshMovie} from './movie-refresh';
 export type DataContext={db:SupabaseClient;userId:string};
 export async function context(userId:string):Promise<DataContext>{return {db:await getDb(),userId};}
 export function checked<T>({data,error}:{data:T;error:{message:string}|null}):T{if(error)throw new Error(error.message);return data;}
@@ -33,30 +34,49 @@ export async function getCatalogue(ctx:DataContext){
  return {movies:await membership(ctx,result.movies),stale:!result.checkedAt||Date.now()-Date.parse(result.checkedAt)>7*3600_000};
 }
 export async function searchMovies(ctx:DataContext,query:string):Promise<Movie[]>{
- const key=`search:${privateKey(query.trim().toLowerCase())}`;
+ const key=`search:v2:${privateKey(query.trim().toLowerCase())}`;
  let found=await cached<Movie[]>(key);
  if(!found){
   const loaded=await withLease(key,20,async()=>{
    const again=await cached<Movie[]>(key);if(again)return again;
-   const html=await fetchSource('https://www.dvdsreleasedates.com/search/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({searchStr:query}).toString()});
-   const movies=parseListing(html,false).slice(0,24);
-   if(movies.length)checked(await adminDb().from('a_list_movies').upsert(movies.map(movie=>({id:movie.id,movie,requested_at:new Date().toISOString()})),{onConflict:'id',ignoreDuplicates:true}));
-   await remember(key,movies,3600);return movies;
+   const {movies,metadata,degraded}=await searchProviders(query);
+   // Keep existing stable IDs when a previously linked film is returned only by metadata.
+   if(metadata.length){
+    const linked=checked(await ctx.db.from('a_list_movies').select('id,movie').in('movie->>imdbId',metadata.map(m=>m.id)))||[];
+    for(let i=0;i<movies.length;i++){
+     const existing=linked.find(r=>(r.movie as Movie).imdbId===movies[i].imdbId);
+     if(existing)movies[i]={...movies[i],...existing.movie,overview:existing.movie.overview||movies[i].overview,overviewSource:existing.movie.overview?existing.movie.overviewSource:movies[i].overviewSource};
+    }
+   }
+   const unique=[...new Map(movies.map(m=>[m.id,m])).values()];
+   if(unique.length)checked(await adminDb().from('a_list_movies').upsert(unique.map(movie=>({id:movie.id,movie,requested_at:new Date().toISOString()})),{onConflict:'id',ignoreDuplicates:true}));
+   await remember(key,unique,degraded?60:3600);return unique;
   });
   if(!loaded)throw new Error('Search is already refreshing; try again shortly');found=loaded;
  }
  if(!found.length)return [];
  const fresh=checked(await ctx.db.from('a_list_movies').select('id,movie').in('id',found.map(m=>m.id)))||[];
  const canonical=new Map(fresh.map(r=>[r.id,r.movie as Movie]));
- return membership(ctx,found.map(m=>canonical.get(m.id)||m));
+ return membership(ctx,found.map(m=>{const current=canonical.get(m.id);return current?{...m,...current,overview:current.overview||m.overview,overviewSource:current.overview?current.overviewSource:m.overviewSource,imdbId:current.imdbId||m.imdbId}:m;}));
 }
 export async function getMovie(ctx:DataContext,id:string):Promise<Movie|null>{
- const row=checked(await ctx.db.from('a_list_movies').select('movie,refresh_after,requested_at').eq('id',id).maybeSingle());
+ const row=checked(await ctx.db.from('a_list_movies').select('movie,refresh_after,requested_at,updated_at').eq('id',id).maybeSingle());
  if(!row)return null;
+ let movie=row.movie as Movie;
+ if((!movie.overview||movie.imdbId&&!movie.synopsisCheckedAt)&&(!movie.synopsisCheckedAt||Date.now()-Date.parse(movie.synopsisCheckedAt)>3600_000)){
+  try{
+   const refreshed=await withLease(`synopsis:${id}`,40,async()=>{
+    const value=await refreshMovie(movie,{discoverReleases:false});
+    const saved=checked(await adminDb().from('a_list_movies').update({movie:value,updated_at:new Date().toISOString()}).eq('id',id).eq('updated_at',row.updated_at).select('movie').maybeSingle());
+    return saved?.movie as Movie|undefined;
+   });
+   if(refreshed)movie=refreshed;
+  }catch{console.warn(JSON.stringify({event:'synopsis_refresh_failed'}));}
+ }
  if(!row.requested_at&&(!row.movie.overview||Date.parse(row.refresh_after)<Date.now())){
   checked(await adminDb().from('a_list_movies').update({requested_at:new Date().toISOString(),refresh_after:new Date().toISOString()}).eq('id',id).is('requested_at',null));
  }
- return (await membership(ctx,[row.movie as Movie]))[0];
+ return (await membership(ctx,[movie]))[0];
 }
 export async function account(ctx:DataContext):Promise<AccountRow>{
  checked(await ctx.db.from('a_list_accounts').upsert({id:ctx.userId},{onConflict:'id',ignoreDuplicates:true}));
