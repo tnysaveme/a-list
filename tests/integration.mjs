@@ -5,10 +5,10 @@ const login=await fetch(base+'/login');
 assert.equal(login.status,200);assert.match(await login.text(),/A-List/);
 const home=await fetch(base+'/',{redirect:'manual'});assert.equal(home.status,307);assert.match(home.headers.get('location'),/\/login$/);
 assert.equal((await fetch(base+'/api/catalogue')).status,401);
-const badOwner=await fetch(base+'/auth/login',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({email:'not-the-owner@example.com'})});assert.equal(badOwner.status,403);
+const uninvited=await fetch(base+'/auth/login',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({email:'not-the-owner@example.com'})});assert.equal(uninvited.status,403);
 const wrongOrigin=await fetch(base+'/auth/login',{method:'POST',headers:{Origin:'https://other.example','Content-Type':'application/json'},body:'{}'});assert.equal(wrongOrigin.status,403);
 const invalidFeed=await fetch(base+'/api/feed/'+'0'.repeat(68)+'.ics');assert.equal(invalidFeed.status,404);
-console.log('PASS: branded sign-in, protected library and API, owner email enforcement, cross-origin sign-in rejection, invalid public feed. No emails sent.');
+console.log('PASS: branded sign-in, protected library and API, invited email enforcement, cross-origin sign-in rejection, invalid public feed. No emails sent.');
 if(!cookie){console.log('SKIP: authenticated library round trip requires ALIST_SESSION_COOKIE.');process.exit(0);}
 const get=async path=>{const r=await fetch(base+'/api/'+path,{headers:{cookie}});assert.equal(r.status,200,await r.clone().text());return r.json();};
 const post=async(path,body)=>{const r=await fetch(base+'/api/'+path,{method:'POST',headers:{cookie,Origin:base,'Content-Type':'application/json'},body:JSON.stringify(body)});assert.equal(r.status,200,await r.clone().text());return r.json();};

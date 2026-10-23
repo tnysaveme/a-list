@@ -28,3 +28,27 @@ test('calendar content is escaped and UTF-8 lines are folded at 75 bytes',()=>{
  const long={...sample,title:'Cinema 🎬 '.repeat(30)+'\nBEGIN:VEVENT'};const calendar=makeCalendar([long]);assert.equal((calendar.match(/\r\nBEGIN:VEVENT/g)||[]).length,1);for(const line of calendar.split('\r\n'))assert.ok(Buffer.byteLength(line)<=75);assert.match(calendar,/\\nBEGIN:VEVENT/);
 });
 test('unknown films do not create fake events; next release chooses upcoming window',()=>{assert.doesNotMatch(makeCalendar([{...sample,releases:[]}]),/BEGIN:VEVENT/);assert.equal(nextRelease({...sample,releases:[...sample.releases,{...sample.releases[0],kind:'Subscription',date:'2026-12-01'}]},'2026-11-15')?.kind,'Subscription');});
+test('each dated release gets a display alert at 1pm GMT without changing its all-day date',()=>{
+ const film={...sample,releases:[...sample.releases,{...sample.releases[0],kind:'Subscription' as const,date:'2027-07-01'}]};
+ const calendar=makeCalendar([film]).replace(/\r\n /g,'');
+ const events=calendar.split('BEGIN:VEVENT').slice(1);
+ assert.equal(events.length,2);
+ for(const [index,event] of events.entries()){
+  const day=film.releases[index].date.replace(/-/g,'');
+  assert.match(event,new RegExp(`DTSTART;VALUE=DATE:${day}\\r\\n`));
+  assert.match(event,new RegExp(`BEGIN:VALARM\\r\\nACTION:DISPLAY\\r\\nTRIGGER;VALUE=DATE-TIME:${day}T130000Z\\r\\n`));
+  assert.equal((event.match(/BEGIN:VALARM/g)||[]).length,1);
+  assert.match(event,/DESCRIPTION:A film\\, with\\; punctuation/);
+ }
+});
+test('an alert follows a changed release date and excluded rumors do not leave orphan alerts',()=>{
+ const changed={...sample,releases:sample.releases.map(r=>({...r,date:'2027-01-01'}))};
+ const calendar=makeCalendar([changed]);
+ assert.match(calendar,/TRIGGER;VALUE=DATE-TIME:20270101T130000Z/);
+ assert.doesNotMatch(calendar,/20261103T130000Z/);
+ assert.match(calendar,/DTEND;VALUE=DATE:20270102/);
+ const rumor={...sample,releases:sample.releases.map(r=>({...r,confidence:'rumored' as const}))};
+ assert.doesNotMatch(makeCalendar([rumor]),/VALARM|TRIGGER/);
+ assert.match(makeCalendar([rumor],{includeRumors:true}),/BEGIN:VALARM/);
+ assert.doesNotMatch(makeCalendar([{...sample,releases:[{...sample.releases[0],date:'2026-02-31'}]}]),/VALARM|VEVENT/);
+});

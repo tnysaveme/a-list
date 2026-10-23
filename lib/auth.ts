@@ -1,8 +1,8 @@
 import 'server-only';
 import { createClient } from './supabase/server';
+import { emailIsAllowed } from './access';
 export function isAllowedEmail(email?: string | null) {
-  const owner = process.env.ALIST_ALLOWED_EMAIL?.trim().toLowerCase();
-  return !!owner && email?.trim().toLowerCase() === owner;
+  return emailIsAllowed(email,[process.env.ALIST_ALLOWED_EMAIL,process.env.ALIST_ALLOWED_EMAILS]);
 }
 export async function getUser() {
   const client = await createClient();
