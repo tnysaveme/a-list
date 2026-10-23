@@ -5,6 +5,22 @@ import {feedDocument,feedResponse} from '../lib/feed-cache';
 import {makeCalendar} from '../lib/calendar';
 import type {Movie} from '../lib/model';
 import {sameOrigin} from '../lib/request-origin';
+import {drainDue} from '../lib/work-batches';
+test('background work drains a backlog with bounded concurrency and item count',async()=>{
+ const pending=Array.from({length:70},(_,i)=>i);let running=0,peak=0;
+ const processed=await drainDue(async()=>pending.slice(0,8),async item=>{
+  running++;peak=Math.max(peak,running);await Promise.resolve();pending.splice(pending.indexOf(item),1);running--;
+ },{started:0,clock:()=>0});
+ assert.equal(processed,64);assert.equal(pending.length,6);assert.equal(peak,4);
+});
+test('background work stops at its time budget and settles writes before failing',async()=>{
+ let clock=0,processed=0;
+ await drainDue(async()=>[1,2,3,4,5,6,7,8],async()=>{processed++;clock+=9000;},{started:0,clock:()=>clock});
+ assert.equal(processed,4);
+ let settled=0;
+ await assert.rejects(drainDue(async()=>[1,2,3,4],async item=>{if(item===1)throw new Error('write failed');await Promise.resolve();settled++;},{started:0,clock:()=>0}));
+ assert.equal(settled,3);
+});
 test('origin checking accepts exact loopback hosts locally and exact canonical origin on Vercel',()=>{
  const local=new Request('http://localhost:3000/api/init',{headers:{origin:'http://127.0.0.1:3000',host:'127.0.0.1:3000'}});
  assert.equal(sameOrigin(local,{vercel:false,appUrl:undefined}),true);

@@ -5,6 +5,7 @@ import {checked} from './data';
 import {withLease,remember,metric,cache} from './infrastructure';
 import {mergeMovies,type Movie} from './model';
 import {fetchSource,parseListing,parseReports,parseDetail,parseReportDetail,normalized} from './sources';
+import {drainDue} from './work-batches';
 const SIX_HOURS=6*3600_000;
 async function loadCatalogue(){
  const now=new Date(),next=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()+1,1));
@@ -46,9 +47,8 @@ export async function refreshSources(){
     checked(await db.from('a_list_source_cache').delete().lt('updated_at',new Date(Date.now()-7*86400_000).toISOString()));
    }catch{failed++;console.error(JSON.stringify({event:'catalogue_refresh_failed'}));}
   }
-  const rows=checked(await db.rpc('a_list_refresh_candidates',{p_limit:8})) as {id:string;movie:Movie;refresh_failures:number}[];
-  for(let i=0;i<rows.length&&Date.now()-started<36_000;i+=4){
-   await Promise.all(rows.slice(i,i+4).map(async row=>{
+  type Candidate={id:string;movie:Movie;refresh_failures:number};
+  await drainDue<Candidate>(async()=>checked(await db.rpc('a_list_refresh_candidates',{p_limit:8})) as Candidate[],async row=>{
     try{
      const movie=await refreshMovie(row.movie);
      checked(await db.from('a_list_movies').update({movie,updated_at:new Date().toISOString(),refresh_after:new Date(Date.now()+SIX_HOURS).toISOString(),requested_at:null,refresh_failures:0}).eq('id',row.id));refreshed++;
@@ -56,8 +56,7 @@ export async function refreshSources(){
      failed++;checked(await db.from('a_list_movies').update({refresh_failures:row.refresh_failures+1,refresh_after:new Date(Date.now()+Math.min(SIX_HOURS,1800_000*2**Math.min(row.refresh_failures,4))).toISOString()}).eq('id',row.id));
      console.warn(JSON.stringify({event:'film_refresh_failed'}));
     }
-   }));
-  }
+   },{started});
   const finished=new Date().toISOString();
   checked(await db.from('a_list_source_status').update({
    ...(catalogueUpdated||refreshed?{version:randomUUID(),updated_at:finished}:{}),
