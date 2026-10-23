@@ -1,10 +1,10 @@
 'use client';
 import {useState, type FormEvent} from 'react';
 import {ArrowRight, Mail, LoaderCircle, Check} from 'lucide-react';
-export default function SignIn() {
+export default function SignIn({expired=false}:{expired?:boolean}) {
   const [email,setEmail]=useState('');
   const [state,setState]=useState<'idle'|'loading'|'sent'|'error'>('idle');
-  const [error,setError]=useState('');
+  const [error,setError]=useState(expired?'That sign-in link has expired or was opened in another browser. Request a new one below.':'');
   async function submit(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();setState('loading');setError('');
     try {

@@ -1,0 +1,8 @@
+project_id = "a-list"
+
+[auth]
+site_url = "https://a-list-nine.vercel.app"
+additional_redirect_urls = [
+  "https://a-list-nine.vercel.app/auth/callback",
+  "http://127.0.0.1:3000/auth/callback"
+]

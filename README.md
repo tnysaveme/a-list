@@ -1,6 +1,6 @@
 # A-List
 
-A personal movie library for sourced US digital and subscription release dates, with an updating Apple Calendar feed. Built with Next.js 16, React 19, Supabase Auth/Postgres, and Vercel.
+A personal movie library for sourced US digital and subscription release dates, with an updating Apple Calendar feed. Built with Next.js 16, React 19, Supabase Auth/Postgres, and Vercel. [Open A-List](https://a-list-nine.vercel.app).
 
 ## Local development
 
