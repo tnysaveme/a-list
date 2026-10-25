@@ -1,0 +1,36 @@
+/* Development-only eight-state preview, using the production component tokens. */
+.film-preview {
+  max-width: 960px;
+  margin: auto;
+  padding: var(--space-lg);
+}
+.film-preview h1 {
+  font: 500 var(--text-xl)/1.2 var(--font-display);
+}
+.film-preview-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  margin-block: var(--space-lg);
+}
+.film-preview-tools label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-sm);
+}
+.film-preview-states {
+  display: grid;
+  gap: var(--space-md);
+}
+.film-preview-states > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+.film-preview-states > div > span {
+  width: 80px;
+  font-size: var(--text-sm);
+}

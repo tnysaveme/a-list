@@ -3,7 +3,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
-  if (request.nextUrl.pathname.startsWith('/api/feed/') || request.nextUrl.pathname.startsWith('/api/jobs/')) return response;
+  if (
+    request.nextUrl.pathname.startsWith('/api/feed/') ||
+    request.nextUrl.pathname.startsWith('/api/jobs/')
+  )
+    return response;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return response;
@@ -11,9 +15,9 @@ export async function proxy(request: NextRequest) {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll(values) {
-        for (const {name, value} of values) request.cookies.set(name, value);
-        response = NextResponse.next({request});
-        for (const {name, value, options} of values) response.cookies.set(name, value, options);
+        for (const { name, value } of values) request.cookies.set(name, value);
+        response = NextResponse.next({ request });
+        for (const { name, value, options } of values) response.cookies.set(name, value, options);
       },
     },
   });
@@ -21,4 +25,8 @@ export async function proxy(request: NextRequest) {
   response.headers.set('Cache-Control', 'private, no-store');
   return response;
 }
-export const config = { matcher: ['/((?!_next/static|_next/image|favicon.svg|.*\\.(?:png|jpg|jpeg|gif|webp|css|woff|woff2)$).*)'] };
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.svg|.*\\.(?:png|jpg|jpeg|gif|webp|css|woff|woff2)$).*)',
+  ],
+};

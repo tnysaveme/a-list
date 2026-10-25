@@ -1,0 +1,26 @@
+# Build from current source, without stale local build and preview output.
+.git/
+node_modules/
+.next/
+dist/
+out/
+outputs/
+work/
+coverage/
+*.tsbuildinfo
+.vinext/
+.wrangler/
+.sites-runtime/
+.hallmark/
+
+# Local credentials, project links and tool state stay on this machine.
+.env*
+.dev.vars*
+*.pem
+*.key
+.vercel/
+.agents/
+.codex/
+.aws/
+supabase/.temp/
+supabase/.branches/

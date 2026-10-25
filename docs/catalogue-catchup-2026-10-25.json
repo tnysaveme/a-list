@@ -1,0 +1,2807 @@
+{
+  "finishedAt": "2026-10-25T17:30:26.599Z",
+  "summary": {
+    "checked": 373,
+    "sourceSearchErrors": 0,
+    "withReports": 220,
+    "alreadyCovered": 114,
+    "passedIdentity": 68,
+    "updatedFilms": 67,
+    "additionalWindows": 67,
+    "newlyDated": 2,
+    "addedOrUpdatedKinds": {
+      "PVOD": 2,
+      "Subscription": 65
+    },
+    "unresolved": 38,
+    "primaryListedWindowsPreserved": 309,
+    "libraryCount": 5,
+    "libraryUnchanged": true,
+    "feedTokensAndSettingsUnchanged": true,
+    "feedCheckpointUnchanged": true,
+    "calendarEventsBefore": 5,
+    "calendarEventsAfter": 5,
+    "existingCalendarUidsPreserved": true,
+    "calendarAlarms": 5
+  },
+  "changes": [
+    {
+      "id": "11346",
+      "title": "Spider-Man: Brand New Day",
+      "year": "2026",
+      "imdbId": "tt22084616",
+      "before": [
+        {
+          "date": "2026-10-06",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11346/spider-man-brand-new-day",
+          "checkedAt": "2026-10-25T15:40:03.767Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-10-06",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11346/spider-man-brand-new-day",
+          "checkedAt": "2026-10-25T17:26:59.503Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-10-06",
+          "kind": "PVOD",
+          "source": "https://whentostream.com/sony-confirms-pvod-date-for-spider-man-brand-new-day-sets-4k-blu-ray-dvd-launch/",
+          "checkedAt": "2026-10-25T17:26:58.393Z",
+          "confidence": "listed",
+          "filmImdbId": "tt22084616",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/spider-man-brand-new-day-2026/"
+        }
+      ]
+    },
+    {
+      "id": "11405",
+      "title": "Tron: Ares",
+      "year": "2025",
+      "imdbId": "tt6604188",
+      "before": [
+        {
+          "date": "2025-12-02",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11405/tron-ares",
+          "checkedAt": "2026-10-25T15:40:03.759Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-12-02",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11405/tron-ares",
+          "checkedAt": "2026-10-25T17:26:59.808Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-01-07",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/tron-ares-gets-disney-streaming-premiere-date/",
+          "platform": "Disney+",
+          "checkedAt": "2026-10-25T17:26:58.226Z",
+          "confidence": "listed",
+          "filmImdbId": "tt6604188",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/tron-ares-2025/"
+        }
+      ]
+    },
+    {
+      "id": "11703",
+      "title": "Moana",
+      "year": "2026",
+      "imdbId": "tt27419466",
+      "before": [
+        {
+          "date": "2026-09-08",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11703/moana",
+          "checkedAt": "2026-10-25T15:40:03.766Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-09-08",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11703/moana",
+          "checkedAt": "2026-10-25T17:27:02.090Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-10-21",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/live-action-moana-gets-disney-streaming-release-date/",
+          "platform": "Disney+",
+          "checkedAt": "2026-10-25T17:27:01.469Z",
+          "confidence": "listed",
+          "filmImdbId": "tt27419466",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/moana-2026/"
+        }
+      ]
+    },
+    {
+      "id": "11764",
+      "title": "Supergirl",
+      "year": "2026",
+      "imdbId": "tt8814476",
+      "before": [
+        {
+          "date": "2026-07-28",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11764/supergirl",
+          "checkedAt": "2026-10-25T15:40:03.764Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-07-28",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11764/supergirl",
+          "checkedAt": "2026-10-25T17:27:04.493Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-09-10",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/supergirl-sets-hbo-max-streaming-release-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:27:03.869Z",
+          "confidence": "listed",
+          "filmImdbId": "tt8814476",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/supergirl-2026/"
+        }
+      ]
+    },
+    {
+      "id": "11891",
+      "title": "One Battle After Another",
+      "year": "2025",
+      "imdbId": "tt30144839",
+      "before": [
+        {
+          "date": "2025-11-14",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11891/one-battle-after-another",
+          "checkedAt": "2026-10-25T15:40:03.756Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-11-14",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11891/one-battle-after-another",
+          "checkedAt": "2026-10-25T17:27:02.242Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2025-12-19",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/one-battle-after-another-gets-hbo-max-streaming-premiere-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:27:01.619Z",
+          "confidence": "listed",
+          "filmImdbId": "tt30144839",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/one-battle-after-another-2025/"
+        }
+      ]
+    },
+    {
+      "id": "11897",
+      "title": "The Bride",
+      "year": "2026",
+      "imdbId": "tt30851137",
+      "before": [
+        {
+          "date": "2026-04-07",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11897/the-bride",
+          "checkedAt": "2026-10-25T15:40:03.762Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-04-07",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11897/the-bride",
+          "checkedAt": "2026-10-25T17:27:04.222Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-05-22",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/the-bride-sets-hbo-max-streaming-premiere-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:27:03.452Z",
+          "confidence": "listed",
+          "filmImdbId": "tt30851137",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/the-bride-2026/"
+        }
+      ]
+    },
+    {
+      "id": "11903",
+      "title": "How to Make a Killing",
+      "year": "2026",
+      "imdbId": "tt4357198",
+      "before": [
+        {
+          "date": "2026-03-24",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11903/how-to-make-a-killing",
+          "checkedAt": "2026-10-25T15:40:03.761Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-03-24",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11903/how-to-make-a-killing",
+          "checkedAt": "2026-10-25T17:27:08.298Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-06-19",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/a24s-how-to-make-a-killing-sets-hbo-max-streaming-premiere-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:27:07.680Z",
+          "confidence": "listed",
+          "filmImdbId": "tt4357198",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/how-to-make-a-killing-2026/"
+        }
+      ]
+    },
+    {
+      "id": "11909",
+      "title": "Project Hail Mary",
+      "year": "2026",
+      "imdbId": "tt12042730",
+      "before": [
+        {
+          "date": "2026-05-12",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11909/project-hail-mary",
+          "checkedAt": "2026-10-25T15:40:03.763Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-05-12",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11909/project-hail-mary",
+          "checkedAt": "2026-10-25T17:27:06.140Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-06-18",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/project-hail-mary-gets-mgm-streaming-premiere-date/",
+          "platform": "MGM+",
+          "checkedAt": "2026-10-25T17:27:05.489Z",
+          "confidence": "listed",
+          "filmImdbId": "tt12042730",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/project-hail-mary-2026/"
+        }
+      ]
+    },
+    {
+      "id": "11913",
+      "title": "The Sheep Detectives",
+      "year": "2026",
+      "imdbId": "tt32565993",
+      "before": [
+        {
+          "date": "2026-08-26",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11913/the-sheep-detectives",
+          "checkedAt": "2026-10-25T15:40:03.765Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-08-26",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11913/the-sheep-detectives",
+          "checkedAt": "2026-10-25T17:27:07.149Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-06-24",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/the-sheep-detectives-gets-prime-video-streaming-premiere-date/",
+          "platform": "Prime Video",
+          "checkedAt": "2026-10-25T17:27:06.070Z",
+          "confidence": "listed",
+          "filmImdbId": "tt32565993",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/the-sheep-detectives-2026/"
+        }
+      ]
+    },
+    {
+      "id": "11918",
+      "title": "Bugonia",
+      "year": "2025",
+      "imdbId": "tt12300742",
+      "before": [
+        {
+          "date": "2025-11-25",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11918/bugonia",
+          "checkedAt": "2026-10-25T15:40:03.756Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-11-25",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11918/bugonia",
+          "checkedAt": "2026-10-25T17:27:09.254Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2025-12-26",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/yorgos-lanthimos-bugonia-gets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:27:08.638Z",
+          "confidence": "listed",
+          "filmImdbId": "tt12300742",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/bugonia-2025/"
+        }
+      ]
+    },
+    {
+      "id": "11943",
+      "title": "Toy Story 5",
+      "year": "2026",
+      "imdbId": "tt29355505",
+      "before": [
+        {
+          "date": "2026-08-18",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11943/toy-story-5",
+          "checkedAt": "2026-10-25T15:40:03.765Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-08-18",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11943/toy-story-5",
+          "checkedAt": "2026-10-25T17:27:11.352Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-09-23",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/toy-story-5-sets-disney-streaming-premiere-date/",
+          "platform": "Disney+",
+          "checkedAt": "2026-10-25T17:27:10.746Z",
+          "confidence": "listed",
+          "filmImdbId": "tt29355505",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/toy-story-5-2026/"
+        }
+      ]
+    },
+    {
+      "id": "11987",
+      "title": "Zootopia 2",
+      "year": "2025",
+      "imdbId": "tt26443597",
+      "before": [
+        {
+          "date": "2026-01-27",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11987/zootopia-2",
+          "checkedAt": "2026-10-25T15:40:03.760Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-01-27",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/11987/zootopia-2",
+          "checkedAt": "2026-10-25T17:27:10.434Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-03-11",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/zootopia-2-sets-disney-streaming-premiere-date/",
+          "platform": "Disney+",
+          "checkedAt": "2026-10-25T17:27:09.811Z",
+          "confidence": "listed",
+          "filmImdbId": "tt26443597",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/zootopia-2-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12012",
+      "title": "Mercy",
+      "year": "2026",
+      "imdbId": "tt31050594",
+      "before": [
+        {
+          "date": "2026-02-17",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12012/mercy",
+          "checkedAt": "2026-10-25T15:40:03.760Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-02-17",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12012/mercy",
+          "checkedAt": "2026-10-25T17:27:13.461Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-03-22",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/sci-fi-thriller-mercy-gets-prime-video-streaming-premiere-date/",
+          "platform": "Prime Video",
+          "checkedAt": "2026-10-25T17:27:12.826Z",
+          "confidence": "listed",
+          "filmImdbId": "tt31050594",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/mercy-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12148",
+      "title": "Wicked: For Good",
+      "year": "2025",
+      "imdbId": "tt19847976",
+      "before": [
+        {
+          "date": "2025-12-30",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12148/wicked-for-good",
+          "checkedAt": "2026-10-25T15:40:03.759Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-12-30",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12148/wicked-for-good",
+          "checkedAt": "2026-10-25T17:27:12.533Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-03-20",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/wicked-for-good-gets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:27:11.931Z",
+          "confidence": "listed",
+          "filmImdbId": "tt19847976",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/wicked-for-good-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12150",
+      "title": "Predator: Badlands",
+      "year": "2025",
+      "imdbId": "tt31227572",
+      "before": [
+        {
+          "date": "2026-01-06",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12150/predator-badlands",
+          "checkedAt": "2026-10-25T15:40:03.760Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-01-06",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12150/predator-badlands",
+          "checkedAt": "2026-10-25T17:27:14.750Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-02-12",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/predator-badlands-sets-hulu-streaming-premiere-date/",
+          "platform": "Hulu",
+          "checkedAt": "2026-10-25T17:27:14.107Z",
+          "confidence": "listed",
+          "filmImdbId": "tt31227572",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/predator-badlands-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12152",
+      "title": "Marty Supreme",
+      "year": "2025",
+      "imdbId": "tt32916440",
+      "before": [
+        {
+          "date": "2026-02-10",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12152/marty-supreme",
+          "checkedAt": "2026-10-25T15:40:03.760Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-02-10",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12152/marty-supreme",
+          "checkedAt": "2026-10-25T17:27:15.536Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-04-24",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/marty-supreme-gets-hbo-max-streaming-premiere-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:27:14.930Z",
+          "confidence": "listed",
+          "filmImdbId": "tt32916440",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/marty-supreme-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12153",
+      "title": "Five Nights at Freddy's 2",
+      "year": "2025",
+      "imdbId": "tt30274401",
+      "before": [
+        {
+          "date": "2025-12-23",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12153/five-nights-at-freddys-2",
+          "checkedAt": "2026-10-25T15:40:03.759Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-12-23",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12153/five-nights-at-freddys-2",
+          "checkedAt": "2026-10-25T17:27:17.103Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-04-03",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/five-nights-at-freddys-2-gets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:27:16.250Z",
+          "confidence": "listed",
+          "filmImdbId": "tt30274401",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/five-nights-at-freddys-2-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12154",
+      "title": "The Drama",
+      "year": "2026",
+      "imdbId": "tt33071426",
+      "before": [
+        {
+          "date": "2026-05-05",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12154/the-drama",
+          "checkedAt": "2026-10-25T15:40:03.763Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-05-05",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12154/the-drama",
+          "checkedAt": "2026-10-25T17:27:17.670Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-07-31",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/the-drama-gets-hbo-max-streaming-release-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:27:17.038Z",
+          "confidence": "listed",
+          "filmImdbId": "tt33071426",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/the-drama-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12155",
+      "title": "Black Phone 2",
+      "year": "2025",
+      "imdbId": "tt29644189",
+      "before": [
+        {
+          "date": "2025-11-04",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12155/black-phone-2",
+          "checkedAt": "2026-10-25T15:40:03.756Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-11-04",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12155/black-phone-2",
+          "checkedAt": "2026-10-25T17:27:19.035Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-01-16",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/black-phone-2-gets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:27:18.368Z",
+          "confidence": "listed",
+          "filmImdbId": "tt29644189",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/black-phone-2-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12306",
+      "title": "Scream 7",
+      "year": "2026",
+      "imdbId": "tt27047903",
+      "before": [
+        {
+          "date": "2026-03-31",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12306/scream-7",
+          "checkedAt": "2026-10-25T15:40:03.761Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-03-31",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12306/scream-7",
+          "checkedAt": "2026-10-25T17:27:19.748Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-05-28",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/scream-7-gets-paramount-streaming-premiere-date/",
+          "platform": "Paramount+",
+          "checkedAt": "2026-10-25T17:27:19.148Z",
+          "confidence": "listed",
+          "filmImdbId": "tt27047903",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/scream-7-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12310",
+      "title": "Anaconda",
+      "year": "2025",
+      "imdbId": "tt33244668",
+      "before": [
+        {
+          "date": "2026-01-27",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12310/anaconda",
+          "checkedAt": "2026-10-25T15:40:03.760Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-01-27",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12310/anaconda",
+          "checkedAt": "2026-10-25T17:27:21.138Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-03-25",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/anaconda-gets-netflix-streaming-premiere-date/",
+          "platform": "Netflix",
+          "checkedAt": "2026-10-25T17:27:20.507Z",
+          "confidence": "listed",
+          "filmImdbId": "tt33244668",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/anaconda-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12314",
+      "title": "Greenland 2: Migration",
+      "year": "2026",
+      "imdbId": "tt14850054",
+      "before": [
+        {
+          "date": "2026-01-27",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12314/greenland-2-migration",
+          "checkedAt": "2026-10-25T15:40:03.760Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-01-27",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12314/greenland-2-migration",
+          "checkedAt": "2026-10-25T17:27:21.881Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-05-08",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/greenland-2-migration-gets-hbo-max-streaming-premiere-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:27:21.251Z",
+          "confidence": "listed",
+          "filmImdbId": "tt14850054",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/greenland-2-migration-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12409",
+      "title": "The Devil Wears Prada 2",
+      "year": "2026",
+      "imdbId": "tt33612209",
+      "before": [
+        {
+          "date": "2026-06-30",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12409/the-devil-wears-prada-2",
+          "checkedAt": "2026-10-25T15:40:03.763Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-06-30",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12409/the-devil-wears-prada-2",
+          "checkedAt": "2026-10-25T17:27:23.058Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-06-30",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/the-devil-wears-prada-2-gets-digital-hulu-streaming-release-dates/",
+          "platform": "Hulu",
+          "checkedAt": "2026-10-25T17:27:22.450Z",
+          "confidence": "listed",
+          "filmImdbId": "tt33612209",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/the-devil-wears-prada-2-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12410",
+      "title": "The Super Mario Galaxy Movie",
+      "year": "2026",
+      "imdbId": "tt28650488",
+      "before": [
+        {
+          "date": "2026-05-19",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12410/the-super-mario-galaxy-movie",
+          "checkedAt": "2026-10-25T15:40:03.763Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-05-19",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12410/the-super-mario-galaxy-movie",
+          "checkedAt": "2026-10-25T17:27:23.971Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-07-30",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/the-super-mario-galaxy-movie-sets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:27:23.354Z",
+          "confidence": "listed",
+          "filmImdbId": "tt28650488",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/the-super-mario-galaxy-movie-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12414",
+      "title": "The Breadwinner",
+      "year": "2026",
+      "imdbId": "tt34459219",
+      "before": [
+        {
+          "date": "2026-07-14",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12414/the-breadwinner",
+          "checkedAt": "2026-10-25T15:40:03.764Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-07-14",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12414/the-breadwinner",
+          "checkedAt": "2026-10-25T17:27:25.160Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-09-26",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/nate-bargatzes-the-breadwinner-sets-netflix-streaming-premiere-date/",
+          "platform": "Netflix",
+          "checkedAt": "2026-10-25T17:27:24.543Z",
+          "confidence": "listed",
+          "filmImdbId": "tt34459219",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/the-breadwinner-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12426",
+      "title": "Send Help",
+      "year": "2026",
+      "imdbId": "tt8036976",
+      "before": [
+        {
+          "date": "2026-03-24",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12426/send-help",
+          "checkedAt": "2026-10-25T15:40:03.761Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-03-24",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12426/send-help",
+          "checkedAt": "2026-10-25T17:27:26.056Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-05-07",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/send-help-gets-hulu-streaming-premiere-date/",
+          "platform": "Hulu",
+          "checkedAt": "2026-10-25T17:27:25.447Z",
+          "confidence": "listed",
+          "filmImdbId": "tt8036976",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/send-help-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12427",
+      "title": "Madden",
+      "year": "2026",
+      "imdbId": "tt24818230",
+      "before": [],
+      "after": [
+        {
+          "date": "2026-11-18",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/david-o-russells-madden-gets-official-trailer-poster/",
+          "platform": "Prime Video",
+          "checkedAt": "2026-10-25T17:29:27.310Z",
+          "confidence": "listed",
+          "filmImdbId": "tt24818230",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/madden-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12488",
+      "title": "Minions & Monsters",
+      "year": "2026",
+      "imdbId": "tt32890033",
+      "before": [
+        {
+          "date": "2026-08-11",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12488/minions-and-monsters",
+          "checkedAt": "2026-10-25T15:40:03.765Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-08-11",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12488/minions-and-monsters",
+          "checkedAt": "2026-10-25T17:27:27.154Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-10-28",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/minions-monsters-sets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:27:26.552Z",
+          "confidence": "listed",
+          "filmImdbId": "tt32890033",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/minions-monsters-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12490",
+      "title": "Hoppers",
+      "year": "2026",
+      "imdbId": "tt26443616",
+      "before": [
+        {
+          "date": "2026-04-28",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12490/hoppers",
+          "checkedAt": "2026-10-25T15:40:03.762Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-04-28",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12490/hoppers",
+          "checkedAt": "2026-10-25T17:27:29.256Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-06-03",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/pixars-hoppers-sets-disney-streaming-premiere-date/",
+          "platform": "Disney+",
+          "checkedAt": "2026-10-25T17:27:28.643Z",
+          "confidence": "listed",
+          "filmImdbId": "tt26443616",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/hoppers-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12524",
+      "title": "GOAT",
+      "year": "2026",
+      "imdbId": "tt27613895",
+      "before": [
+        {
+          "date": "2026-03-24",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12524/goat",
+          "checkedAt": "2026-10-25T15:40:03.761Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-03-24",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12524/goat",
+          "checkedAt": "2026-10-25T17:27:30.494Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-05-14",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/goat-sets-netflix-streaming-premiere-date/",
+          "platform": "Netflix",
+          "checkedAt": "2026-10-25T17:27:29.880Z",
+          "confidence": "listed",
+          "filmImdbId": "tt27613895",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/goat-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12528",
+      "title": "Regretting You",
+      "year": "2025",
+      "imdbId": "tt33088452",
+      "before": [
+        {
+          "date": "2025-11-25",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12528/regretting-you",
+          "checkedAt": "2026-10-25T15:40:03.756Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-11-25",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12528/regretting-you",
+          "checkedAt": "2026-10-25T17:27:31.432Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2025-12-23",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/regretting-you-sets-paramount-streaming-premiere-date/",
+          "platform": "Paramount+",
+          "checkedAt": "2026-10-25T17:27:30.754Z",
+          "confidence": "listed",
+          "filmImdbId": "tt33088452",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/regretting-you-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12545",
+      "title": "Song Sung Blue",
+      "year": "2025",
+      "imdbId": "tt30343021",
+      "before": [
+        {
+          "date": "2026-01-13",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12545/song-sung-blue",
+          "checkedAt": "2026-10-25T15:40:03.760Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-01-13",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12545/song-sung-blue",
+          "checkedAt": "2026-10-25T17:27:33.490Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-02-13",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/song-sung-blue-gets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:27:32.898Z",
+          "confidence": "listed",
+          "filmImdbId": "tt30343021",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/song-sung-blue-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12546",
+      "title": "Eternity",
+      "year": "2025",
+      "imdbId": "tt24950660",
+      "before": [
+        {
+          "date": "2025-12-23",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12546/eternity",
+          "checkedAt": "2026-10-25T15:40:03.759Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-12-23",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12546/eternity",
+          "checkedAt": "2026-10-25T17:27:32.401Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-02-13",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/a24s-eternity-gets-apple-tv-streaming-premiere-date/",
+          "platform": "Apple TV",
+          "checkedAt": "2026-10-25T17:27:31.791Z",
+          "confidence": "listed",
+          "filmImdbId": "tt24950660",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/eternity-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12586",
+      "title": "Nuremberg",
+      "year": "2025",
+      "imdbId": "tt29567915",
+      "before": [
+        {
+          "date": "2025-12-23",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12586/nuremberg",
+          "checkedAt": "2026-10-25T15:40:03.759Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-12-23",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12586/nuremberg",
+          "checkedAt": "2026-10-25T17:27:34.458Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-03-07",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/nuremberg-gets-netflix-streaming-premiere-date/",
+          "platform": "Netflix",
+          "checkedAt": "2026-10-25T17:27:33.857Z",
+          "confidence": "listed",
+          "filmImdbId": "tt29567915",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/nuremberg-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12587",
+      "title": "Christy",
+      "year": "2025",
+      "imdbId": "tt32323252",
+      "before": [
+        {
+          "date": "2025-12-09",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12587/christy",
+          "checkedAt": "2026-10-25T15:40:03.759Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-12-09",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12587/christy",
+          "checkedAt": "2026-10-25T17:27:35.605Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-04-10",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/sydney-sweeneys-christy-gets-hbo-max-streaming-premiere-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:27:34.986Z",
+          "confidence": "listed",
+          "filmImdbId": "tt32323252",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/christy-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12596",
+      "title": "Deep Water",
+      "year": "2026",
+      "imdbId": "tt29516222",
+      "before": [
+        {
+          "date": "2026-06-16",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12596/deep-water",
+          "checkedAt": "2026-10-25T15:40:03.763Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-06-16",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12596/deep-water",
+          "checkedAt": "2026-10-25T17:27:36.551Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-08-16",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/renny-harlins-deep-water-gets-mgm-streaming-premiere-date/",
+          "platform": "MGM+",
+          "checkedAt": "2026-10-25T17:27:35.940Z",
+          "confidence": "listed",
+          "filmImdbId": "tt29516222",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/deep-water-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12604",
+      "title": "They Will Kill You",
+      "year": "2026",
+      "imdbId": "tt31728330",
+      "before": [
+        {
+          "date": "2026-04-28",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12604/they-will-kill-you",
+          "checkedAt": "2026-10-25T15:40:03.762Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-04-28",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12604/they-will-kill-you",
+          "checkedAt": "2026-10-25T17:27:37.671Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-06-12",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/they-will-kill-you-sets-hbo-max-streaming-premiere-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:27:37.067Z",
+          "confidence": "listed",
+          "filmImdbId": "tt31728330",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/they-will-kill-you-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12611",
+      "title": "Trap House",
+      "year": "2025",
+      "imdbId": "tt10799690",
+      "before": [
+        {
+          "date": "2025-12-02",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12611/trap-house",
+          "checkedAt": "2026-10-25T15:40:03.759Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-12-02",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12611/trap-house",
+          "checkedAt": "2026-10-25T17:27:38.435Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-02-27",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/crime-thriller-trap-house-gets-netflix-streaming-premiere-date/",
+          "platform": "Netflix",
+          "checkedAt": "2026-10-25T17:27:37.833Z",
+          "confidence": "listed",
+          "filmImdbId": "tt10799690",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/trap-house-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12618",
+      "title": "Rental Family",
+      "year": "2025",
+      "imdbId": "tt14142060",
+      "before": [
+        {
+          "date": "2026-01-13",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12618/rental-family",
+          "checkedAt": "2026-10-25T15:40:03.760Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-01-13",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12618/rental-family",
+          "checkedAt": "2026-10-25T17:27:39.760Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-02-18",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/brendan-frasers-rental-family-sets-hulu-streaming-premiere-date/",
+          "platform": "Hulu",
+          "checkedAt": "2026-10-25T17:27:39.150Z",
+          "confidence": "listed",
+          "filmImdbId": "tt14142060",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/rental-family-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12619",
+      "title": "Blue Moon",
+      "year": "2025",
+      "imdbId": "tt32536315",
+      "before": [
+        {
+          "date": "2025-11-25",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12619/blue-moon",
+          "checkedAt": "2026-10-25T15:40:03.756Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-11-25",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12619/blue-moon",
+          "checkedAt": "2026-10-25T17:27:40.510Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-02-14",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/oscar-nominee-blue-moon-gets-netflix-streaming-premiere-date/",
+          "platform": "Netflix",
+          "checkedAt": "2026-10-25T17:27:39.908Z",
+          "confidence": "listed",
+          "filmImdbId": "tt32536315",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/blue-moon-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12621",
+      "title": "Truth & Treason",
+      "year": "2025",
+      "imdbId": "tt21825416",
+      "before": [
+        {
+          "date": "2025-12-02",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12621/truth-and-treason",
+          "checkedAt": "2026-10-25T15:40:03.759Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-12-02",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12621/truth-and-treason",
+          "checkedAt": "2026-10-25T17:27:41.834Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2025-12-02",
+          "kind": "PVOD",
+          "source": "https://whentostream.com/world-war-ii-drama-truth-treason-digital-streaming-release-date-revealed/",
+          "checkedAt": "2026-10-25T17:27:41.232Z",
+          "confidence": "listed",
+          "filmImdbId": "tt21825416",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/truth-treason-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12626",
+      "title": "Hamnet",
+      "year": "2025",
+      "imdbId": "tt14905854",
+      "before": [
+        {
+          "date": "2026-02-03",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12626/hamnet",
+          "checkedAt": "2026-10-25T15:40:03.760Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-02-03",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12626/hamnet",
+          "checkedAt": "2026-10-25T17:27:42.587Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-03-06",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/hamnet-gets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:27:41.989Z",
+          "confidence": "listed",
+          "filmImdbId": "tt14905854",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/hamnet-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12630",
+      "title": "Dust Bunny",
+      "year": "2025",
+      "imdbId": "tt23172090",
+      "before": [
+        {
+          "date": "2026-01-13",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12630/dust-bunny",
+          "checkedAt": "2026-10-25T15:40:03.760Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-01-13",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12630/dust-bunny",
+          "checkedAt": "2026-10-25T17:27:44.847Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-04-17",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/bryan-fullers-dust-bunny-sets-hbo-max-streaming-premiere-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:27:44.236Z",
+          "confidence": "listed",
+          "filmImdbId": "tt23172090",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/dust-bunny-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12635",
+      "title": "Disclosure Day",
+      "year": "2026",
+      "imdbId": "tt15047880",
+      "before": [
+        {
+          "date": "2026-07-21",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12635/disclosure-day",
+          "checkedAt": "2026-10-25T15:40:03.764Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-07-21",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12635/disclosure-day",
+          "checkedAt": "2026-10-25T17:27:43.932Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-10-09",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/steven-spielbergs-disclosure-day-sets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:27:43.322Z",
+          "confidence": "listed",
+          "filmImdbId": "tt15047880",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/disclosure-day-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12641",
+      "title": "Fackham Hall",
+      "year": "2025",
+      "imdbId": "tt29008225",
+      "before": [
+        {
+          "date": "2025-12-26",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12641/fackham-hall",
+          "checkedAt": "2026-10-25T15:40:03.759Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-12-26",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12641/fackham-hall",
+          "checkedAt": "2026-10-25T17:27:46.938Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-03-06",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/period-spoof-fackham-hall-gets-hbo-max-streaming-premiere-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:27:46.332Z",
+          "confidence": "listed",
+          "filmImdbId": "tt29008225",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/fackham-hall-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12649",
+      "title": "Apex",
+      "year": "2026",
+      "imdbId": "tt16431404",
+      "before": [],
+      "after": [
+        {
+          "date": "2026-04-24",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/charlize-theron-thriller-apex-gets-teaser-trailer-netflix-streaming-premiere-date/",
+          "platform": "Netflix",
+          "checkedAt": "2026-10-25T17:27:46.902Z",
+          "confidence": "listed",
+          "filmImdbId": "tt16431404",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/apex-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12664",
+      "title": "Not Without Hope",
+      "year": "2025",
+      "imdbId": "tt3331548",
+      "before": [
+        {
+          "date": "2026-01-06",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12664/not-without-hope",
+          "checkedAt": "2026-10-25T15:40:03.760Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-01-06",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12664/not-without-hope",
+          "checkedAt": "2026-10-25T17:27:49.048Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-03-13",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/survival-thriller-not-without-hope-sets-paramount-streaming-premiere-date/",
+          "platform": "Paramount+",
+          "checkedAt": "2026-10-25T17:27:48.451Z",
+          "confidence": "listed",
+          "filmImdbId": "tt3331548",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/not-without-hope-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12671",
+      "title": "Sentimental Value",
+      "year": "2025",
+      "imdbId": "tt27714581",
+      "before": [
+        {
+          "date": "2025-12-23",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12671/sentimental-value",
+          "checkedAt": "2026-10-25T15:40:03.759Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-12-23",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12671/sentimental-value",
+          "checkedAt": "2026-10-25T17:27:49.694Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-03-23",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/oscar-nominee-sentimental-value-gets-hulu-streaming-premiere-date/",
+          "platform": "Hulu",
+          "checkedAt": "2026-10-25T17:27:49.064Z",
+          "confidence": "listed",
+          "filmImdbId": "tt27714581",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/sentimental-value-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12676",
+      "title": "Hallow Road",
+      "year": "2025",
+      "imdbId": "tt19403516",
+      "before": [
+        {
+          "date": "2026-01-06",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12676/hallow-road",
+          "checkedAt": "2026-10-25T15:40:03.760Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-01-06",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12676/hallow-road",
+          "checkedAt": "2026-10-25T17:27:51.170Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-05-02",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/thriller-hallow-road-gets-hulu-streaming-premiere-date/",
+          "platform": "Hulu",
+          "checkedAt": "2026-10-25T17:27:50.551Z",
+          "confidence": "listed",
+          "filmImdbId": "tt19403516",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/hallow-road-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12682",
+      "title": "Cold Storage",
+      "year": "2026",
+      "imdbId": "tt8879928",
+      "before": [
+        {
+          "date": "2026-03-06",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12682/cold-storage",
+          "checkedAt": "2026-10-25T15:40:03.761Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-03-06",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12682/cold-storage",
+          "checkedAt": "2026-10-25T17:27:51.802Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-07-15",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/cold-storage-gets-mgm-streaming-premiere-date/",
+          "platform": "MGM+",
+          "checkedAt": "2026-10-25T17:27:51.200Z",
+          "confidence": "listed",
+          "filmImdbId": "tt8879928",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/cold-storage-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12685",
+      "title": "Lee Cronin's The Mummy",
+      "year": "2026",
+      "imdbId": "tt32612507",
+      "before": [
+        {
+          "date": "2026-05-19",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12685/lee-cronins-the-mummy",
+          "checkedAt": "2026-10-25T15:40:03.763Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-05-19",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12685/lee-cronins-the-mummy",
+          "checkedAt": "2026-10-25T17:27:53.378Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-07-03",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/lee-cronins-the-mummy-gets-hbo-max-streaming-premiere-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:27:52.641Z",
+          "confidence": "listed",
+          "filmImdbId": "tt32612507",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/lee-cronins-the-mummy-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12692",
+      "title": "Nirvanna the Band the Show the Movie",
+      "year": "2025",
+      "imdbId": "tt35522483",
+      "before": [
+        {
+          "date": "2026-03-24",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12692/nirvanna-the-band-the-show-the-movie",
+          "checkedAt": "2026-10-25T15:40:03.761Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-03-24",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12692/nirvanna-the-band-the-show-the-movie",
+          "checkedAt": "2026-10-25T17:27:53.903Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-07-24",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/nirvanna-the-band-the-show-the-movie-gets-hulu-streaming-premiere-date/",
+          "platform": "Hulu",
+          "checkedAt": "2026-10-25T17:27:53.284Z",
+          "confidence": "listed",
+          "filmImdbId": "tt35522483",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/nirvanna-the-band-the-show-the-movie-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12697",
+      "title": "Psycho Killer",
+      "year": "2026",
+      "imdbId": "tt1764551",
+      "before": [
+        {
+          "date": "2026-04-07",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12697/psycho-killer",
+          "checkedAt": "2026-10-25T15:40:03.762Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-04-07",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12697/psycho-killer",
+          "checkedAt": "2026-10-25T17:27:55.246Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-05-29",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/psycho-killer-sets-hulu-streaming-premiere-date/",
+          "platform": "Hulu",
+          "checkedAt": "2026-10-25T17:27:54.624Z",
+          "confidence": "listed",
+          "filmImdbId": "tt1764551",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/psycho-killer-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12701",
+      "title": "Reminders of Him",
+      "year": "2026",
+      "imdbId": "tt33714084",
+      "before": [
+        {
+          "date": "2026-04-14",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12701/reminders-of-him",
+          "checkedAt": "2026-10-25T15:40:03.762Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-04-14",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12701/reminders-of-him",
+          "checkedAt": "2026-10-25T17:28:09.309Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-07-10",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/reminders-of-him-sets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:28:08.691Z",
+          "confidence": "listed",
+          "filmImdbId": "tt33714084",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/reminders-of-him-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12715",
+      "title": "Forbidden Fruits",
+      "year": "2026",
+      "imdbId": "tt30691214",
+      "before": [
+        {
+          "date": "2026-04-28",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12715/forbidden-fruits",
+          "checkedAt": "2026-10-25T15:40:03.762Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-04-28",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12715/forbidden-fruits",
+          "checkedAt": "2026-10-25T17:27:56.496Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-06-26",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/forbidden-fruits-sets-shudder-streaming-premiere-date/",
+          "platform": "Shudder",
+          "checkedAt": "2026-10-25T17:27:55.406Z",
+          "confidence": "rumored",
+          "filmImdbId": "tt30691214",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/forbidden-fruit-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12733",
+      "title": "Faces of Death",
+      "year": "2026",
+      "imdbId": "tt14619456",
+      "before": [
+        {
+          "date": "2026-05-12",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12733/faces-of-death",
+          "checkedAt": "2026-10-25T15:40:03.763Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-05-12",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12733/faces-of-death",
+          "checkedAt": "2026-10-25T17:27:57.829Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-07-10",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/faces-of-death-sets-shudder-streaming-premiere-date/",
+          "platform": "Shudder",
+          "checkedAt": "2026-10-25T17:27:57.213Z",
+          "confidence": "listed",
+          "filmImdbId": "tt14619456",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/faces-of-death-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12747",
+      "title": "Hokum",
+      "year": "2026",
+      "imdbId": "tt35672862",
+      "before": [
+        {
+          "date": "2026-06-02",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12747/hokum",
+          "checkedAt": "2026-10-25T15:40:03.763Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-06-02",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12747/hokum",
+          "checkedAt": "2026-10-25T17:27:58.603Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-10-10",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/hokum-sets-hulu-streaming-premiere-date/",
+          "platform": "Hulu",
+          "checkedAt": "2026-10-25T17:27:58.003Z",
+          "confidence": "listed",
+          "filmImdbId": "tt35672862",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/hokum-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12751",
+      "title": "Runner",
+      "year": "2026",
+      "imdbId": "tt31349844",
+      "before": [
+        {
+          "date": "2026-10-13",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12751/runner",
+          "checkedAt": "2026-10-25T15:40:03.767Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-10-13",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12751/runner",
+          "checkedAt": "2026-10-25T17:27:59.695Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-11-27",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/action-comedy-runner-gets-hulu-streaming-premiere-date/",
+          "platform": "Hulu",
+          "checkedAt": "2026-10-25T17:27:59.091Z",
+          "confidence": "listed",
+          "filmImdbId": "tt31349844",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/runner-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12769",
+      "title": "Pressure",
+      "year": "2026",
+      "imdbId": "tt32547691",
+      "before": [
+        {
+          "date": "2026-06-16",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12769/pressure",
+          "checkedAt": "2026-10-25T15:40:03.763Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-06-16",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12769/pressure",
+          "checkedAt": "2026-10-25T17:28:00.717Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-07-24",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/world-war-ii-drama-pressure-sets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:28:00.095Z",
+          "confidence": "listed",
+          "filmImdbId": "tt32547691",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/pressure-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12770",
+      "title": "Evil Dead Burn",
+      "year": "2026",
+      "imdbId": "tt31170389",
+      "before": [
+        {
+          "date": "2026-08-04",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12770/evil-dead-burn",
+          "checkedAt": "2026-10-25T15:40:03.765Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-08-04",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12770/evil-dead-burn",
+          "checkedAt": "2026-10-25T17:28:01.772Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-10-02",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/evil-dead-burn-sets-hbo-max-streaming-release-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:28:01.172Z",
+          "confidence": "listed",
+          "filmImdbId": "tt31170389",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/evil-dead-burn-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12773",
+      "title": "Is God Is",
+      "year": "2026",
+      "imdbId": "tt34379307",
+      "before": [
+        {
+          "date": "2026-06-02",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12773/is-god-is",
+          "checkedAt": "2026-10-25T15:40:03.763Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-06-02",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12773/is-god-is",
+          "checkedAt": "2026-10-25T17:28:02.837Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-07-14",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/revenge-thriller-is-god-is-gets-mgm-streaming-premiere-date/",
+          "platform": "MGM+",
+          "checkedAt": "2026-10-25T17:28:02.232Z",
+          "confidence": "listed",
+          "filmImdbId": "tt34379307",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/is-god-is-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12784",
+      "title": "Backrooms",
+      "year": "2026",
+      "imdbId": "tt26657236",
+      "before": [
+        {
+          "date": "2026-07-14",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12784/backrooms",
+          "checkedAt": "2026-10-25T15:40:03.764Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-07-14",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12784/backrooms",
+          "checkedAt": "2026-10-25T17:28:10.178Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-09-25",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/kane-parsons-backrooms-sets-hbo-max-streaming-premiere-date/",
+          "platform": "HBO Max",
+          "checkedAt": "2026-10-25T17:28:09.781Z",
+          "confidence": "listed",
+          "filmImdbId": "tt26657236",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/backrooms-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12807",
+      "title": "Girls Like Girls",
+      "year": "2026",
+      "imdbId": "tt32432654",
+      "before": [
+        {
+          "date": "2026-07-07",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12807/girls-like-girls",
+          "checkedAt": "2026-10-25T15:40:03.764Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-07-07",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12807/girls-like-girls",
+          "checkedAt": "2026-10-25T17:28:04.973Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-08-14",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/coming-of-age-romance-girls-like-girls-gets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:28:04.341Z",
+          "confidence": "listed",
+          "filmImdbId": "tt32432654",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/girls-like-girls-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12808",
+      "title": "Jackass: Best and Last",
+      "year": "2026",
+      "imdbId": "tt39316472",
+      "before": [
+        {
+          "date": "2026-08-11",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12808/jackass-best-and-last",
+          "checkedAt": "2026-10-25T15:40:03.765Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-08-11",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12808/jackass-best-and-last",
+          "checkedAt": "2026-10-25T17:28:03.889Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-09-24",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/jackass-best-and-last-sets-paramount-streaming-premiere-date/",
+          "platform": "Paramount+",
+          "checkedAt": "2026-10-25T17:28:03.277Z",
+          "confidence": "listed",
+          "filmImdbId": "tt39316472",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/jackass-5-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12820",
+      "title": "Kiss of the Spider Woman",
+      "year": "2025",
+      "imdbId": "tt30400277",
+      "before": [
+        {
+          "date": "2025-11-25",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12820/kiss-of-the-spider-woman",
+          "checkedAt": "2026-10-25T15:40:03.756Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2025-11-25",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12820/kiss-of-the-spider-woman",
+          "checkedAt": "2026-10-25T17:28:06.055Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-02-27",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/kiss-of-the-spider-woman-gets-hulu-streaming-premiere-date/",
+          "platform": "Hulu",
+          "checkedAt": "2026-10-25T17:28:05.416Z",
+          "confidence": "listed",
+          "filmImdbId": "tt30400277",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/kiss-of-the-spider-woman-2025/"
+        }
+      ]
+    },
+    {
+      "id": "12842",
+      "title": "Hot Spot",
+      "year": "2026",
+      "imdbId": "tt14119302",
+      "before": [
+        {
+          "date": "2026-09-08",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12842/hot-spot",
+          "checkedAt": "2026-10-25T15:40:03.766Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-09-08",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12842/hot-spot",
+          "checkedAt": "2026-10-25T17:28:07.159Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-10-16",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/sci-fi-thriller-hot-spot-sets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:28:06.523Z",
+          "confidence": "listed",
+          "filmImdbId": "tt14119302",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/hot-spot-2026/"
+        }
+      ]
+    },
+    {
+      "id": "12890",
+      "title": "Finding Emily",
+      "year": "2026",
+      "imdbId": "tt32499466",
+      "before": [
+        {
+          "date": "2026-09-15",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12890/finding-emily",
+          "checkedAt": "2026-10-25T15:40:03.766Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        }
+      ],
+      "after": [
+        {
+          "date": "2026-09-15",
+          "kind": "Digital",
+          "source": "https://www.dvdsreleasedates.com/movies/12890/finding-emily",
+          "checkedAt": "2026-10-25T17:28:08.263Z",
+          "confidence": "listed",
+          "sourceName": "DVDs Release Dates"
+        },
+        {
+          "date": "2026-10-23",
+          "kind": "Subscription",
+          "source": "https://whentostream.com/romantic-comedy-finding-emily-sets-peacock-streaming-premiere-date/",
+          "platform": "Peacock",
+          "checkedAt": "2026-10-25T17:28:07.660Z",
+          "confidence": "listed",
+          "filmImdbId": "tt32499466",
+          "sourceName": "When To Stream",
+          "filmIdentityMethod": "corroborated",
+          "filmIdentitySource": "https://whentostream.com/finding-emily-2026/"
+        }
+      ]
+    }
+  ],
+  "unresolved": [
+    {
+      "id": "11911",
+      "title": "Star Wars: The Mandalorian and Grogu",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12377",
+      "title": "The Housemaid",
+      "reasons": [
+        "existing_catalogue_alias"
+      ]
+    },
+    {
+      "id": "12521",
+      "title": "Springsteen: Deliver Me from Nowhere",
+      "reasons": [
+        "existing_catalogue_alias"
+      ]
+    },
+    {
+      "id": "12530",
+      "title": "Ready or Not 2: Here I Come",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12646",
+      "title": "Insidious: Out of the Further",
+      "reasons": [
+        "existing_catalogue_alias"
+      ]
+    },
+    {
+      "id": "12670",
+      "title": "The Death of Robin Hood",
+      "reasons": [
+        "existing_catalogue_alias"
+      ]
+    },
+    {
+      "id": "12677",
+      "title": "Merrily We Roll Along",
+      "reasons": [
+        "unresolved_native_reference"
+      ]
+    },
+    {
+      "id": "12691",
+      "title": "The Choral",
+      "reasons": [
+        "conflicting_source_profile"
+      ]
+    },
+    {
+      "id": "12708",
+      "title": "Protector",
+      "reasons": [
+        "conflicting_source_profile"
+      ]
+    },
+    {
+      "id": "12707",
+      "title": "The Yeti",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12736",
+      "title": "The Napa Boys",
+      "reasons": [
+        "conflicting_source_profile"
+      ]
+    },
+    {
+      "id": "12742",
+      "title": "Fuze",
+      "reasons": [
+        "conflicting_source_profile"
+      ]
+    },
+    {
+      "id": "12768",
+      "title": "The Invite",
+      "reasons": [
+        "existing_catalogue_alias"
+      ]
+    },
+    {
+      "id": "12774",
+      "title": "Passenger",
+      "reasons": [
+        "unresolved_native_reference"
+      ]
+    },
+    {
+      "id": "12815",
+      "title": "Stop! That! Train!",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12851",
+      "title": "Cookie Queens",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12317",
+      "title": "Is This Thing On?",
+      "reasons": [
+        "source_unavailable"
+      ]
+    },
+    {
+      "id": "12527",
+      "title": "Sisu: Road to Revenge",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12642",
+      "title": "We Bury the Dead",
+      "reasons": [
+        "conflicting_source_profile"
+      ]
+    },
+    {
+      "id": "12643",
+      "title": "Night Patrol",
+      "reasons": [
+        "conflicting_source_profile"
+      ]
+    },
+    {
+      "id": "12625",
+      "title": "Kill Bill: The Whole Bloody Affair",
+      "reasons": [
+        "existing_catalogue_alias"
+      ]
+    },
+    {
+      "id": "12674",
+      "title": "Pillion",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12679",
+      "title": "The Secret Agent",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12667",
+      "title": "Primate",
+      "reasons": [
+        "existing_catalogue_alias"
+      ]
+    },
+    {
+      "id": "12680",
+      "title": "No Other Choice",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12687",
+      "title": "If I Had Legs I'd Kick You",
+      "reasons": [
+        "existing_catalogue_alias"
+      ]
+    },
+    {
+      "id": "12689",
+      "title": "Good Luck, Have Fun, Don't Die",
+      "reasons": [
+        "conflicting_source_profile"
+      ]
+    },
+    {
+      "id": "12695",
+      "title": "EPiC: Elvis Presley in Concert",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12710",
+      "title": "A Private Life",
+      "reasons": [
+        "conflicting_source_profile"
+      ]
+    },
+    {
+      "id": "12703",
+      "title": "Undertone",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12717",
+      "title": "A Magnificent Life",
+      "reasons": [
+        "conflicting_source_profile"
+      ]
+    },
+    {
+      "id": "12730",
+      "title": "Carolina Caroline",
+      "reasons": [
+        "conflicting_source_profile"
+      ]
+    },
+    {
+      "id": "12734",
+      "title": "Exit 8",
+      "reasons": [
+        "conflicting_source_profile"
+      ]
+    },
+    {
+      "id": "12743",
+      "title": "I Swear",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12764",
+      "title": "Lorne",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12772",
+      "title": "Tuner",
+      "reasons": [
+        "conflicting_source_profile"
+      ]
+    },
+    {
+      "id": "12771",
+      "title": "Obsession",
+      "reasons": [
+        "insufficient_evidence"
+      ]
+    },
+    {
+      "id": "12775",
+      "title": "Mother Mary",
+      "reasons": [
+        "source_unavailable"
+      ]
+    }
+  ]
+}

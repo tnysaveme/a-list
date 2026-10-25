@@ -1,0 +1,94 @@
+.account-dialog {
+  width: min(580px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+}
+.account-dialog .dialog-inner {
+  padding: 32px;
+}
+.account-dialog h2 {
+  font-size: 36px;
+  padding-right: 36px;
+}
+.account-intro,
+.account-section p,
+.account-confirm p,
+.account-data-note {
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+.account-section {
+  border-top: 1px solid var(--color-rule);
+  padding-top: 20px;
+  margin-top: 24px;
+}
+.account-section h3,
+.account-confirm h3 {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+.account-section .button {
+  margin-top: 12px;
+}
+.account-confirm {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-md);
+}
+.account-confirm label {
+  display: block;
+  margin: 16px 0 6px;
+  font-weight: 600;
+}
+.account-confirm input {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-rule-strong);
+  background: var(--color-surface);
+  font-size: 16px;
+}
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.account-danger,
+.account-error {
+  color: var(--color-accent);
+}
+.account-error,
+.account-message {
+  margin-top: 16px;
+  line-height: 1.6;
+}
+.account-data-note {
+  font-size: 14px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-rule);
+}
+.account-data-note a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 540px) {
+  .account-dialog .dialog-inner {
+    padding: 24px 20px;
+  }
+  .account-confirm {
+    padding: 16px;
+  }
+  .account-dialog h2 {
+    font-size: 30px;
+  }
+  .account-actions .button {
+    width: 100%;
+    white-space: normal;
+  }
+}
+
+.account-signout {
+  margin-top: 24px;
+}
