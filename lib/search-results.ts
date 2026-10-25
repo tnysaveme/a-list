@@ -6,14 +6,16 @@ export function searchMatches(
   query: string,
   today: string,
 ): Movie[] {
-  const term = query.trim().toLowerCase();
+  const term = query.trim().toLowerCase(),
+    films = catalogue.filter((movie) => movie.mediaType !== 'series'),
+    found = results.filter((movie) => movie.mediaType !== 'series');
   if (term.length < 2)
-    return catalogue.filter((m) => m.theatrical && m.theatrical >= today).slice(0, 5);
-  const local = catalogue.filter((m) => m.title.toLowerCase().includes(term));
+    return films.filter((m) => m.theatrical && m.theatrical >= today).slice(0, 5);
+  const local = films.filter((m) => m.title.toLowerCase().includes(term));
   // Search responses contain canonical metadata. A catalogue snapshot must not replace it,
   // including when a newer response removes a date that a source has withdrawn.
-  const fresh = new Map(results.map((m) => [m.id, m]));
-  return [...results, ...local.filter((m) => !fresh.has(m.id))].slice(0, 24);
+  const fresh = new Map(found.map((m) => [m.id, m]));
+  return [...found, ...local.filter((m) => !fresh.has(m.id))].slice(0, 24);
 }
 
 export function searchReleaseSummary(movie: Movie, today: string): string {

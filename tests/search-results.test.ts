@@ -61,3 +61,16 @@ test('search labels distinguish subscription, future dates, and unconfirmed repo
   );
   assert.doesNotMatch(searchReleaseSummary(rumor, '2026-10-23'), /Available/);
 });
+
+test('identified series cannot re-enter movie search through catalogue fallback, remote results or empty-query suggestions', () => {
+  const series: Movie = { ...stale, id: '44', mediaType: 'series', theatrical: '2099-01-01' };
+  assert.deepEqual(
+    searchMatches([series, stale], [series, fresh], 'prada', '2026-10-25').map((movie) => movie.id),
+    [fresh.id],
+  );
+  assert.deepEqual(searchMatches([series], [], '', '2026-10-25'), []);
+  assert.deepEqual(
+    searchMatches([stale], [], 'prada', '2026-10-25').map((movie) => movie.id),
+    [stale.id],
+  );
+});

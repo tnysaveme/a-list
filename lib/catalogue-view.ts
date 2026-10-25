@@ -48,9 +48,10 @@ export function cataloguePage(
   options: CatalogueOptions,
   today: string,
 ): Omit<CataloguePage, 'stale'> {
+  const films = movies.filter((movie) => movie.mediaType !== 'series');
   const term = options.query?.trim().toLowerCase();
   const filtered = discoverMovies(
-    term ? movies.filter((movie) => movie.title.toLowerCase().includes(term)) : movies,
+    term ? films.filter((movie) => movie.title.toLowerCase().includes(term)) : films,
     options.filter || 'all',
     options.sort || 'release',
     today,
@@ -60,7 +61,7 @@ export function cataloguePage(
   const page = filtered.slice(offset, offset + limit).map(movieCard);
   return {
     movies: page,
-    total: movies.length,
+    total: films.length,
     filteredTotal: filtered.length,
     nextOffset: offset + page.length < filtered.length ? offset + page.length : null,
   };

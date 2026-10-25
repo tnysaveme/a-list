@@ -120,3 +120,15 @@ test('Coming soon sorts and displays the upcoming window rather than a previousl
   };
   assert.equal(releaseForView(reported, 'rumored', '2026-10-25')?.confidence, 'rumored');
 });
+
+test('identified series are excluded before catalogue counts and pagination, while sparse movie metadata remains discoverable', () => {
+  const series: Movie = { ...film, id: '2', mediaType: 'series' };
+  const page = cataloguePage([series, film], { limit: 1 }, '2026-10-25');
+  assert.equal(page.total, 1);
+  assert.equal(page.filteredTotal, 1);
+  assert.equal(page.nextOffset, null);
+  assert.deepEqual(
+    page.movies.map((movie) => movie.id),
+    [film.id],
+  );
+});

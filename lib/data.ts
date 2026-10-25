@@ -70,7 +70,7 @@ async function sharedCatalogue(ctx: DataContext): Promise<Catalogue> {
     };
     await remember('catalogue', result, 300);
   }
-  return result;
+  return { ...result, movies: result.movies.filter((movie) => movie.mediaType !== 'series') };
 }
 export async function getCatalogue(
   ctx: DataContext,
