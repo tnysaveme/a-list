@@ -6,6 +6,7 @@ import {throttle,clientAddress,metric} from '../../../lib/infrastructure';
 import {sameOrigin} from '../../../lib/request-origin';
 import {after} from 'next/server';
 import {validMovieId} from '../../../lib/model';
+import {exportLibrary,privacyAction} from '../../../lib/privacy-api';
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
 export const maxDuration=60;
@@ -23,7 +24,12 @@ async function handle(request:Request){
   const blocked=await throttle('api',user.id);if(blocked)return blocked;
   const ctx=await context(user.id);
   after(()=>metric('api_requests'));
-  if(request.method==='GET'&&path==='catalogue')return json(await getCatalogue(ctx));
+  if(request.method==='GET'&&path==='account/export')return exportLibrary(ctx,user.email);
+  if(request.method==='GET'&&path==='catalogue'){
+   let options;try{options=pageOptions(url);}catch{return json({error:'Invalid catalogue page'},400);}
+   if(options.sort==='added')return json({error:'Invalid catalogue sort'},400);
+   return json(await getCatalogue(ctx,options));
+  }
   if(request.method==='GET'&&path==='library'){
    let options;try{options=pageOptions(url);}catch{return json({error:'Invalid library page'},400);}
    return json(await getLibraryPage(ctx,options));
@@ -41,17 +47,20 @@ async function handle(request:Request){
   if(Number(request.headers.get('content-length')||0)>10000)return json({error:'Request too large'},413);
   const raw=await request.text();if(raw.length>10000)return json({error:'Request too large'},413);
   let body;try{body=JSON.parse(raw);}catch{return json({error:'Invalid request'},400);}
+  if(!body||typeof body!=='object'||Array.isArray(body))return json({error:'Invalid request'},400);
+  const privacy=await privacyAction(ctx,user,path,body);if(privacy)return privacy;
   if(path==='init'){
    const owner=await account(ctx);const page=await getLibraryPage(ctx);
    return json({...page,feedPath:`/api/feed/${owner.feed_token}.ics`,includeRumors:owner.include_rumors,feedPublic:true});
   }
   if(path==='settings'){await updateSettings(ctx,body.includeRumors===true);return json({ok:true});}
   if(path!=='library')return json({error:'Not found'},404);
-  if(!['add','remove','track','untrack'].includes(body.action))return json({error:'Unknown library action'},400);
+  if(body.action==='untrack')return json({error:'Calendar dates follow your library. Remove a film from your library to remove its events.'},409);
+  if(!['add','remove','track'].includes(body.action))return json({error:'Unknown library action'},400);
   if(!Array.isArray(body.ids)||body.ids.length>100)return json({error:'Choose up to 100 films at a time.'},400);
   const ids=[...new Set(body.ids.filter((id:unknown)=>typeof id==='string'&&validMovieId(id)))] as string[];
   if(!ids.length)return json({error:'Choose at least one film.'},400);
-  await updateLibrary(ctx,body.action,ids,body.track===true);return json({ok:true});
+  await updateLibrary(ctx,body.action,ids);return json({ok:true});
  }catch(error){console.error('A-List request:',error instanceof Error?error.message:'Request failed');return json({error:'A-List could not refresh this request. Your saved films are safe. Please try again.'},503);}
 }
 async function observed(request:Request){const started=performance.now();const response=await handle(request);console.log(JSON.stringify({event:'api_request',family:new URL(request.url).pathname.split('/')[2],status:response.status,durationMs:Math.round(performance.now()-started)}));return response;}

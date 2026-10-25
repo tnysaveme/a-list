@@ -24,10 +24,13 @@ test('IDs remain bounded and support both providers throughout the library and c
  const dated={...film,releases:dvd.releases};
  const calendar=makeCalendar([dated]);assert.match(calendar,/UID:movie-tt39151344-digital@afterlight/);assert.match(calendar,/20260630T130000Z/);
 });
-test('synopsis enrichment preserves release-provider IDs and dates and separates remakes',()=>{
+test('verified synopsis enrichment preserves release-provider IDs and dates; title/year alone stays separate',()=>{
  const meta={...film,id:'tt33071426',imdbId:'tt33071426',title:dvd.title};
- const merged=mergeSearchProviders([dvd],[meta]);
+ const linked={...dvd,imdbId:meta.id,identityVerifiedAt:'2026-10-24T12:00:00Z'};
+ const merged=mergeSearchProviders([linked],[meta]);
  assert.equal(merged.length,1);assert.equal(merged[0].id,dvd.id);assert.deepEqual(merged[0].releases,dvd.releases);assert.equal(merged[0].overview,film.overview);
+ assert.equal(mergeSearchProviders([dvd],[meta]).length,2);
+ assert.equal(mergeSearchProviders([{...dvd,imdbId:meta.id}],[meta]).length,2);
  assert.equal(mergeSearchProviders([{...dvd,year:'2006'}],[meta]).length,2);
  assert.equal(mergeSearchProviders([{...dvd,year:''}],[meta]).length,2);
 });

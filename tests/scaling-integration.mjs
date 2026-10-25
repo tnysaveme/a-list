@@ -63,9 +63,9 @@ const unchanged=await fetch(url,{headers:{'If-None-Match':etag}});assert.equal(u
 await request(first.feedPath,{user:1,status:404});
 await request('/api/library',{user:1,body:{action:'remove',ids:['80000001']}});
 assert.equal((await fetch(url,{headers:{'If-None-Match':etag}})).status,304);
-await request('/api/library',{body:{action:'untrack',ids:['80000001']}});
+await request('/api/library',{body:{action:'remove',ids:['80000001']}});
 const removed=await fetch(url,{headers:{'If-None-Match':etag}});assert.equal(removed.status,200);assert.doesNotMatch(await removed.text(),/UID:movie-80000001/);
-await request('/api/library',{body:{action:'track',ids:['80000001']}});
+await request('/api/library',{body:{action:'add',ids:['80000001']}});
 const restored=await fetch(url);assert.match(await restored.text(),/UID:movie-80000001/);
 await request('/api/settings',{body:{includeRumors:true}});
 assert.equal((await fetch(url,{headers:{'If-None-Match':restored.headers.get('etag')}})).status,200);

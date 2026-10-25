@@ -29,7 +29,7 @@ export async function remember(key:string,value:unknown,seconds:number){
  try{await cache().set(`alist:${key}`,value,{ex:seconds});}catch{console.warn(JSON.stringify({event:'cache_write_failed'}));}
 }
 const limits=new Map<string,Ratelimit>();
-const policies={api:[120,'1 m'],search:[15,'1 m'],loginIp:[8,'15 m'],loginEmail:[3,'15 m'],feed:[30,'5 m'],feedIp:[120,'1 m']} as const;
+const policies={api:[120,'1 m'],search:[15,'1 m'],loginIp:[8,'15 m'],loginEmail:[3,'15 m'],privacy:[10,'1 h'],feed:[30,'5 m'],feedIp:[120,'1 m']} as const;
 export async function throttle(kind:keyof typeof policies,identity:string):Promise<Response|null>{
  try{
   let limiter=limits.get(kind);

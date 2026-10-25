@@ -1,4 +1,4 @@
-import {nextRelease,type Movie} from './model';
+import {availableRelease,displayRelease,type Movie} from './model';
 
 export function searchMatches(catalogue:Movie[],results:Movie[],query:string,today:string):Movie[]{
  const term=query.trim().toLowerCase();
@@ -11,8 +11,8 @@ export function searchMatches(catalogue:Movie[],results:Movie[],query:string,tod
 }
 
 export function searchReleaseSummary(movie:Movie,today:string):string{
- const available=[...movie.releases].filter(r=>r.confidence==='listed'&&r.date<=today).sort((a,b)=>a.date.localeCompare(b.date)).at(-1);
- const release=available||nextRelease(movie,today);
+ const available=availableRelease(movie,today);
+ const release=displayRelease(movie,today);
  if(!release)return 'Home release date not listed';
  const date=new Date(`${release.date}T12:00:00Z`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});
  const window=release.platform||(release.kind==='Subscription'?'Subscription':release.kind==='PVOD'?'Premium rental/purchase':'Digital rental/purchase');
