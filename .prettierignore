@@ -9,3 +9,5 @@ package-lock.json
 .hallmark
 next-env.d.ts
 .vercel
+# Vercel normalizes this configuration inside its remote build workspace.
+vercel.json
