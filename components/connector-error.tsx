@@ -1,5 +1,5 @@
-import { LinkIcon } from "lucide-react";
-import { connectorErrorRecovery } from "@/lib/connector-errors.mjs";
+import { LinkIcon } from 'lucide-react';
+import { connectorErrorRecovery } from '@/lib/connector-errors.mjs';
 
 /** Render in the affected feature, leaving the rest of the Site usable. */
 export function ConnectorError({
@@ -13,10 +13,7 @@ export function ConnectorError({
 }) {
   const recovery = connectorErrorRecovery(error, connectorName, reconnectHref);
   return (
-    <div
-      role="alert"
-      className="flex min-w-0 flex-col items-start gap-3 text-sm"
-    >
+    <div role="alert" className="flex min-w-0 flex-col items-start gap-3 text-sm">
       <p className="break-words">{recovery.message}</p>
       {recovery.action && (
         <a

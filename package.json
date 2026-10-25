@@ -14,7 +14,11 @@
     "typecheck": "tsc --noEmit",
     "email:render": "node --import tsx scripts/render-emails.tsx",
     "email:preview": "email dev --dir emails --port 3001",
-    "test:scaling": "node tests/scaling-integration.mjs"
+    "test:scaling": "node tests/scaling-integration.mjs",
+    "format": "prettier --write \"{app,components,hooks,lib,tests,scripts,emails,db}/**/*.{ts,tsx,mts,mjs,css}\" \"*.{ts,mjs,css,md,json}\" \".github/workflows/*.{yml,yaml}\"",
+    "format:check": "prettier --check \"{app,components,hooks,lib,tests,scripts,emails,db}/**/*.{ts,tsx,mts,mjs,css}\" \"*.{ts,mjs,css,md,json}\" \".github/workflows/*.{yml,yaml}\"",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
+    "sources:check": "node --import tsx scripts/check-sources.ts"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
@@ -37,6 +41,7 @@
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
     "eslint-config-next": "16.4.3",
+    "prettier": "3.9.10",
     "react-email": "6.11.3",
     "tailwindcss": "4.2.1",
     "tsx": "4.23.15",

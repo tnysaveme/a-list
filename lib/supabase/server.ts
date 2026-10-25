@@ -11,8 +11,11 @@ export async function createClient() {
     cookies: {
       getAll: () => cookieStore.getAll(),
       setAll(values) {
-        try { for (const { name, value, options } of values) cookieStore.set(name, value, options); }
-        catch { /* Server Components cannot set cookies; proxy.ts refreshes sessions. */ }
+        try {
+          for (const { name, value, options } of values) cookieStore.set(name, value, options);
+        } catch {
+          /* Server Components cannot set cookies; proxy.ts refreshes sessions. */
+        }
       },
     },
   });

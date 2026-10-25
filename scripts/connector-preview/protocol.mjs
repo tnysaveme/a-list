@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 const name = z
   .string()
@@ -12,9 +12,7 @@ const fields = { connectorId: name, actionName: name };
 export const invocationSchema = z
   .object({ ...fields, arguments: z.record(z.string(), z.unknown()) })
   .strict();
-export const grantSchema = z
-  .object({ ...fields, readOnly: z.literal(true) })
-  .strict();
+export const grantSchema = z.object({ ...fields, readOnly: z.literal(true) }).strict();
 export const grantsSchema = z.array(grantSchema);
 
 // Only the owning agent sets these limits. Sessions otherwise last until their
@@ -36,17 +34,17 @@ export const sessionOptionsSchema = z
 // The pipe carries JSON-RPC responses and a stop notification. Provider failures
 // still travel inside result as MCP results; JSON-RPC errors mean driver failure.
 export const driverMessageSchema = z.union([
-  z.object({ jsonrpc: z.literal("2.0"), method: z.literal("stop") }).strict(),
+  z.object({ jsonrpc: z.literal('2.0'), method: z.literal('stop') }).strict(),
   z
     .object({
-      jsonrpc: z.literal("2.0"),
+      jsonrpc: z.literal('2.0'),
       id: z.string().uuid(),
       result: z.record(z.string(), z.unknown()),
     })
     .strict(),
   z
     .object({
-      jsonrpc: z.literal("2.0"),
+      jsonrpc: z.literal('2.0'),
       id: z.string().uuid(),
       error: z
         .object({

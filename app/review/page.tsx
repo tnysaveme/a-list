@@ -1,3 +1,5 @@
-import {redirect} from 'next/navigation';
+import { redirect } from 'next/navigation';
 // Preserve existing bookmarks without retaining an administrative workflow.
-export default function RetiredReview(){redirect('/');}
+export default function RetiredReview() {
+  redirect('/');
+}

@@ -1,54 +1,214 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile,readdir} from 'node:fs/promises';
-import {PGlite} from '@electric-sql/pglite';
+import { readFile, readdir } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
 
-test('automatic publication is private, atomic, uncapped over time, preserves primary windows and keeps human audit history separate',async()=>{
- const db=new PGlite();
- try{
-  await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;
+test('automatic publication is private, atomic, uncapped over time, preserves primary windows and keeps human audit history separate', async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;
    alter default privileges in schema public grant execute on functions to anon,authenticated,service_role;
    alter default privileges in schema public grant all on tables to anon,authenticated,service_role;
    create schema auth;create table auth.users(id uuid primary key);
    create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid;$$;
    grant usage on schema auth to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;`);
-  const migrations=new URL('../supabase/migrations/',import.meta.url);
-  for(const name of (await readdir(migrations)).filter(name=>name.endsWith('.sql')).sort())await db.exec(await readFile(new URL(name,migrations),'utf8'));
-  const source='https://whentostream.com/a-film-streaming/',profile={sourceFilmId:'7001',sourceFilmUrl:'https://whentostream.com/a-film-2026/',title:'A Film',year:'2026',directors:['A Director'],cast:['First Actor','Second Actor'],overview:'A family searches for an island.'};
-  const mapping={source_id:'7001',profile,fingerprint:'a'.repeat(64),profile_checked_at:'2026-10-25T00:00:00Z',reports:[],suggestions:[],method:'corroborated',imdb_id:'tt7777777',status:'approved',rationale:'Unique title/year, director and two distinct cast members.',rule_version:1};
-  const release={kind:'Subscription',date:'2099-11-11',platform:'Netflix',confidence:'listed',source,sourceName:'When To Stream',filmImdbId:'tt7777777',filmIdentityMethod:'corroborated',filmIdentitySource:profile.sourceFilmUrl};
-  const primary={kind:'Digital',date:'2099-10-27',confidence:'listed',source:'https://www.dvdsreleasedates.com/movies/123/a-film',sourceName:'DVDs Release Dates'};
-  const movie={id:'tt7777777',imdbId:'tt7777777',title:'A Film',year:'2026',source:'https://www.imdb.com/title/tt7777777/',poster:'',checkedAt:'2026-10-25T00:00:00Z',discoveredFrom:'When To Stream',releases:[primary,release]};
-  const save=(match:unknown=mapping,value:unknown=movie,version:string|null=null,proof:unknown=[release])=>db.query('select public.a_list_store_release_match($1::jsonb,$2::jsonb,$3,$4::jsonb)',[JSON.stringify(match),value===null?null:JSON.stringify(value),version,proof===null?null:JSON.stringify(proof)]);
-  const current=async()=>(await db.query<{movie:typeof movie;updated_at:string}>('select movie,updated_at::text from public.a_list_movies where id=$1',[movie.id])).rows[0];
-  await db.exec('set role authenticated');await assert.rejects(save(),/permission denied/);
-  await db.exec('reset role;set role anon');await assert.rejects(save(),/permission denied/);
-  await assert.rejects(db.query('select public.a_list_withhold_release_report($1)',[source]),/permission denied/);
-  await db.exec('reset role;set role service_role');
-  await assert.rejects(save(mapping,movie,null,[{...release,filmImdbId:'tt1111111'}]),/Verified release/);
-  assert.equal((await db.query<{count:number}>('select count(*)::int as count from public.a_list_movies')).rows[0].count,0);
-  await save();const first=await current();
-  await assert.rejects(save(),/Catalogue changed/);
-  await assert.rejects(save({...mapping,fingerprint:'b'.repeat(64)},movie,'2000-01-01T00:00:00Z'),/Catalogue changed/);
-  assert.deepEqual((await current()).movie.releases,movie.releases);
-  await db.query("update public.a_list_movies set refresh_after='2001-01-01T00:00:00Z',refresh_failures=3,requested_at=now() where id=$1",[movie.id]);
-  await save(mapping,movie,first.updated_at);
-  const retry=(await db.query<{due:string;failures:number;requested:boolean}>('select refresh_after::text as due,refresh_failures as failures,requested_at is not null as requested from public.a_list_movies where id=$1',[movie.id])).rows[0];
-  assert.equal(retry.due,'2001-01-01 00:00:00+00');assert.equal(retry.failures,3);assert.equal(retry.requested,true);
-  assert.equal((await db.query<{count:number}>('select jsonb_array_length(catalogue) as count from public.a_list_source_status')).rows[0].count,1);
-  assert.equal((await db.query<{count:number}>('select count(*)::int as count from public.a_list_release_reviews')).rows[0].count,0);
-  assert.equal((await db.query<{count:number}>('select count(*)::int as count from public.a_list_library')).rows[0].count,0);
-  const second=await current();
-  await save(mapping,{...movie,releases:[primary]},second.updated_at,[{...release,kind:'Digital',confidence:'rumored'}]);
-  assert.deepEqual((await current()).movie.releases,[primary]);
-  for(let index=0;index<25;index++)await save({...mapping,source_id:String(8000+index),profile:{...profile,sourceFilmId:String(8000+index)},status:'pending'},null,null,null);
-  assert.equal((await db.query<{count:number}>('select count(*)::int as count from public.a_list_release_candidates')).rows[0].count,26);
-  const third=await current();await save(mapping,movie,third.updated_at);
-  const withdrawn=(await db.query<{count:number}>('select public.a_list_withhold_release_report($1) as count',[source])).rows[0].count;
-  assert.equal(withdrawn,1);assert.deepEqual((await current()).movie.releases,[primary]);
-  const fourth=await current();await save(mapping,movie,fourth.updated_at);
-  await save({...mapping,profile:{...profile,overview:'Changed identity evidence'},fingerprint:'b'.repeat(64),status:'pending'},null,null,null);
-  assert.deepEqual((await current()).movie.releases,[primary]);
-  await assert.rejects(save({...mapping,imdb_id:'tt8888888'},{...movie,id:'tt8888888',imdbId:'tt8888888'},null,[{...release,filmImdbId:'tt8888888'}]),/Conflicting previous/);
- }finally{await db.close();}
+    const migrations = new URL('../supabase/migrations/', import.meta.url);
+    for (const name of (await readdir(migrations)).filter((name) => name.endsWith('.sql')).sort())
+      await db.exec(await readFile(new URL(name, migrations), 'utf8'));
+    const source = 'https://whentostream.com/a-film-streaming/',
+      profile = {
+        sourceFilmId: '7001',
+        sourceFilmUrl: 'https://whentostream.com/a-film-2026/',
+        title: 'A Film',
+        year: '2026',
+        directors: ['A Director'],
+        cast: ['First Actor', 'Second Actor'],
+        overview: 'A family searches for an island.',
+      };
+    const mapping = {
+      source_id: '7001',
+      profile,
+      fingerprint: 'a'.repeat(64),
+      profile_checked_at: '2026-10-25T00:00:00Z',
+      reports: [],
+      suggestions: [],
+      method: 'corroborated',
+      imdb_id: 'tt7777777',
+      status: 'approved',
+      rationale: 'Unique title/year, director and two distinct cast members.',
+      rule_version: 1,
+    };
+    const release = {
+      kind: 'Subscription',
+      date: '2099-11-11',
+      platform: 'Netflix',
+      confidence: 'listed',
+      source,
+      sourceName: 'When To Stream',
+      filmImdbId: 'tt7777777',
+      filmIdentityMethod: 'corroborated',
+      filmIdentitySource: profile.sourceFilmUrl,
+    };
+    const primary = {
+      kind: 'Digital',
+      date: '2099-10-27',
+      confidence: 'listed',
+      source: 'https://www.dvdsreleasedates.com/movies/123/a-film',
+      sourceName: 'DVDs Release Dates',
+    };
+    const movie = {
+      id: 'tt7777777',
+      imdbId: 'tt7777777',
+      title: 'A Film',
+      year: '2026',
+      source: 'https://www.imdb.com/title/tt7777777/',
+      poster: '',
+      checkedAt: '2026-10-25T00:00:00Z',
+      discoveredFrom: 'When To Stream',
+      releases: [primary, release],
+    };
+    const save = (
+      match: unknown = mapping,
+      value: unknown = movie,
+      version: string | null = null,
+      proof: unknown = [release],
+    ) =>
+      db.query('select public.a_list_store_release_match($1::jsonb,$2::jsonb,$3,$4::jsonb)', [
+        JSON.stringify(match),
+        value === null ? null : JSON.stringify(value),
+        version,
+        proof === null ? null : JSON.stringify(proof),
+      ]);
+    const current = async () =>
+      (
+        await db.query<{ movie: typeof movie; updated_at: string }>(
+          'select movie,updated_at::text from public.a_list_movies where id=$1',
+          [movie.id],
+        )
+      ).rows[0];
+    await db.exec('set role authenticated');
+    await assert.rejects(save(), /permission denied/);
+    await db.exec('reset role;set role anon');
+    await assert.rejects(save(), /permission denied/);
+    await assert.rejects(
+      db.query('select public.a_list_withhold_release_report($1)', [source]),
+      /permission denied/,
+    );
+    await db.exec('reset role;set role service_role');
+    await assert.rejects(
+      save(mapping, movie, null, [{ ...release, filmImdbId: 'tt1111111' }]),
+      /Verified release/,
+    );
+    assert.equal(
+      (await db.query<{ count: number }>('select count(*)::int as count from public.a_list_movies'))
+        .rows[0].count,
+      0,
+    );
+    await save();
+    const first = await current();
+    await assert.rejects(save(), /Catalogue changed/);
+    await assert.rejects(
+      save({ ...mapping, fingerprint: 'b'.repeat(64) }, movie, '2000-01-01T00:00:00Z'),
+      /Catalogue changed/,
+    );
+    assert.deepEqual((await current()).movie.releases, movie.releases);
+    await db.query(
+      "update public.a_list_movies set refresh_after='2001-01-01T00:00:00Z',refresh_failures=3,requested_at=now() where id=$1",
+      [movie.id],
+    );
+    await save(mapping, movie, first.updated_at);
+    const retry = (
+      await db.query<{ due: string; failures: number; requested: boolean }>(
+        'select refresh_after::text as due,refresh_failures as failures,requested_at is not null as requested from public.a_list_movies where id=$1',
+        [movie.id],
+      )
+    ).rows[0];
+    assert.equal(retry.due, '2001-01-01 00:00:00+00');
+    assert.equal(retry.failures, 3);
+    assert.equal(retry.requested, true);
+    assert.equal(
+      (
+        await db.query<{ count: number }>(
+          'select jsonb_array_length(catalogue) as count from public.a_list_source_status',
+        )
+      ).rows[0].count,
+      1,
+    );
+    assert.equal(
+      (
+        await db.query<{ count: number }>(
+          'select count(*)::int as count from public.a_list_release_reviews',
+        )
+      ).rows[0].count,
+      0,
+    );
+    assert.equal(
+      (
+        await db.query<{ count: number }>(
+          'select count(*)::int as count from public.a_list_library',
+        )
+      ).rows[0].count,
+      0,
+    );
+    const second = await current();
+    await save(mapping, { ...movie, releases: [primary] }, second.updated_at, [
+      { ...release, kind: 'Digital', confidence: 'rumored' },
+    ]);
+    assert.deepEqual((await current()).movie.releases, [primary]);
+    for (let index = 0; index < 25; index++)
+      await save(
+        {
+          ...mapping,
+          source_id: String(8000 + index),
+          profile: { ...profile, sourceFilmId: String(8000 + index) },
+          status: 'pending',
+        },
+        null,
+        null,
+        null,
+      );
+    assert.equal(
+      (
+        await db.query<{ count: number }>(
+          'select count(*)::int as count from public.a_list_release_candidates',
+        )
+      ).rows[0].count,
+      26,
+    );
+    const third = await current();
+    await save(mapping, movie, third.updated_at);
+    const withdrawn = (
+      await db.query<{ count: number }>(
+        'select public.a_list_withhold_release_report($1) as count',
+        [source],
+      )
+    ).rows[0].count;
+    assert.equal(withdrawn, 1);
+    assert.deepEqual((await current()).movie.releases, [primary]);
+    const fourth = await current();
+    await save(mapping, movie, fourth.updated_at);
+    await save(
+      {
+        ...mapping,
+        profile: { ...profile, overview: 'Changed identity evidence' },
+        fingerprint: 'b'.repeat(64),
+        status: 'pending',
+      },
+      null,
+      null,
+      null,
+    );
+    assert.deepEqual((await current()).movie.releases, [primary]);
+    await assert.rejects(
+      save(
+        { ...mapping, imdb_id: 'tt8888888' },
+        { ...movie, id: 'tt8888888', imdbId: 'tt8888888' },
+        null,
+        [{ ...release, filmImdbId: 'tt8888888' }],
+      ),
+      /Conflicting previous/,
+    );
+  } finally {
+    await db.close();
+  }
 });

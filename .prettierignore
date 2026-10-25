@@ -1,0 +1,11 @@
+node_modules
+.next
+dist
+outputs
+work
+.sites-runtime
+lib/catalogue.json
+package-lock.json
+.hallmark
+next-env.d.ts
+.vercel
