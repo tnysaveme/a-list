@@ -10,7 +10,7 @@
     "build": "next build --webpack",
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "test": "node --import tsx --test tests/*.test.ts",
+    "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc --noEmit",
     "email:render": "node --import tsx scripts/render-emails.tsx",
     "email:preview": "email dev --dir emails --port 3001",
