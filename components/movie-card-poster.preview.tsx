@@ -1,6 +1,7 @@
 'use client';
 /** Development-only state sheet. Not wired into the production route. */
 import { MovieCardPoster } from './movie-card-poster';
+import { Check, Plus } from 'lucide-react';
 
 const states = [
   'default',
@@ -47,7 +48,25 @@ export default function MovieCardPosterPreview({
                 selecting={state === 'success'}
                 selected={state === 'success'}
                 onOpen={() => {}}
-              />
+              >
+                {state === 'success' ? (
+                  <label className="poster-checkbox">
+                    <input type="checkbox" checked readOnly aria-label="Selected preview film" />
+                  </label>
+                ) : (
+                  <button
+                    className={`save-button ${state === 'disabled' ? 'is-saved' : ''}`}
+                    disabled={state === 'disabled'}
+                    aria-label="Save preview film"
+                  >
+                    {state === 'disabled' ? <Check size={18} /> : <Plus size={20} />}
+                  </button>
+                )}
+              </MovieCardPoster>
+              <div className="movie-info">
+                <h3>One Battle After Another</h3>
+                <div className="movie-meta">2025</div>
+              </div>
             </article>
           </section>
         ))}

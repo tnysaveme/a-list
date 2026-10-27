@@ -7,7 +7,6 @@ import {
   Plus,
   Check,
   X,
-  CalendarDays,
   ChevronDown,
   SlidersHorizontal,
   Grid2X2,
@@ -48,22 +47,6 @@ const shortDate = (date: string) =>
   });
 const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
-function Status({ movie, filter }: { movie: Movie; filter: string }) {
-  const release = releaseForView(movie, filter, today());
-  const state = !release ? 'unknown' : release.confidence === 'rumored' ? 'rumored' : 'listed';
-  return (
-    <span className={`status ${state}`}>
-      <span />
-      {state === 'listed'
-        ? release!.date <= today()
-          ? 'Available now'
-          : 'Date listed'
-        : state === 'rumored'
-          ? 'Reported date'
-          : 'No date yet'}
-    </span>
-  );
-}
 export default function AList({ initialCatalogue }: { initialCatalogue: CataloguePage }) {
   const [view, setView] = useState<'discover' | 'library'>('discover'),
     [filter, setFilter] = useState('all'),
@@ -528,7 +511,6 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                 const release = releaseForView(m, filter, currentDay);
                 const saved = savedIds.has(m.id);
                 const membershipKnown = typeof m.saved === 'boolean' || libraryById.has(m.id);
-                const isTracked = libraryById.get(m.id)?.tracked ?? m.tracked;
                 return (
                   <article
                     className={`movie-card ${selection.has(m.id) ? 'is-selected' : ''}`}
@@ -559,15 +541,6 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                         </label>
                       ) : (
                         <>
-                          <span className="poster-label">
-                            {release?.confidence === 'listed' && release.date <= currentDay
-                              ? 'At home now'
-                              : release
-                                ? release.kind === 'Subscription'
-                                  ? release.platform
-                                  : 'Coming home'
-                                : 'On our radar'}
-                          </span>
                           <button
                             disabled={busy || !ready}
                             className={`save-button ${saved ? 'is-saved' : ''}`}
@@ -593,37 +566,38 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                       )}
                     </MovieCardPoster>
                     <div className="movie-info">
+                      <h3>{m.title}</h3>
                       <div className="movie-meta">
                         {m.year && <span>{m.year}</span>}
-                        {m.rating && (
-                          <>
-                            <span className="meta-dot">·</span>
-                            <span>{m.rating}</span>
-                          </>
-                        )}
-                        {isTracked && (
-                          <CalendarDays
-                            className="calendar-mini"
-                            size={14}
-                            aria-label="Calendar tracking enabled"
-                          />
-                        )}
+                        <span className={`release-line ${release?.confidence || 'unknown'}`}>
+                          {release ? (
+                            <>
+                              <span className="release-confidence" aria-hidden="true" />
+                              <span className="release-timing">
+                                {release.confidence === 'rumored' ? (
+                                  <span className="release-reported">Reported </span>
+                                ) : (
+                                  <span className="sr-only">
+                                    {release.date <= currentDay
+                                      ? 'Available since '
+                                      : 'Listed for '}
+                                  </span>
+                                )}
+                                <time className="release-date" dateTime={release.date}>
+                                  {shortDate(release.date)}
+                                  {release.date.slice(0, 4) !== currentDay.slice(0, 4) &&
+                                    `, ${release.date.slice(0, 4)}`}
+                                </time>
+                              </span>
+                              <span className="release-kind">
+                                {release.platform || release.kind}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="unknown-date">Release date TBA</span>
+                          )}
+                        </span>
                       </div>
-                      <h3>{m.title}</h3>
-                      <div className="release-line">
-                        {release ? (
-                          <>
-                            <time className="release-date" dateTime={release.date}>
-                              {shortDate(release.date)}
-                              <span className="release-year">, {release.date.slice(0, 4)}</span>
-                            </time>
-                            <span className="release-kind">{release.platform || release.kind}</span>
-                          </>
-                        ) : (
-                          <span className="unknown-date">Home release to be announced</span>
-                        )}
-                      </div>
-                      <Status movie={m} filter={filter} />
                     </div>
                   </article>
                 );

@@ -1,6 +1,6 @@
 'use client';
 import { useState, type ReactNode } from 'react';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Film } from 'lucide-react';
 import { FilmPoster } from './film-poster';
 
 type Props = {
@@ -48,7 +48,7 @@ export function MovieCardPoster({
       >
         {artwork !== 'ready' && (
           <span className="card-artwork-placeholder" aria-hidden="true">
-            <span className="card-artwork-title">{title}</span>
+            <Film size={24} />
             <span className="card-artwork-note">
               {loading ? 'Loading artwork' : 'Artwork unavailable'}
             </span>
@@ -67,10 +67,11 @@ export function MovieCardPoster({
             onError={() => setFailedSrc(src)}
           />
         )}
-        <span className="card-view-cue" aria-hidden="true">
-          <span>{selecting ? (selected ? 'Selected' : 'Select film') : 'View film'}</span>
-          <ArrowUpRight aria-hidden="true" size={14} />
-        </span>
+        {!selecting && (
+          <span className="card-view-cue" aria-hidden="true">
+            <ArrowUpRight size={16} />
+          </span>
+        )}
       </button>
       {children}
     </div>
