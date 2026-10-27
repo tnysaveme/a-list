@@ -1,5 +1,6 @@
 @import '../tokens.css';
 @import './afterlight.css';
+@import '../components/movie-card-poster.css';
 @import 'tailwindcss';
 
 @utility scrollbar-thin {

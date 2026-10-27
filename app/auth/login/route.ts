@@ -3,7 +3,7 @@ import { isAllowedEmail } from '../../../lib/auth';
 import { throttle, clientAddress, metric } from '../../../lib/infrastructure';
 import { sameOrigin } from '../../../lib/request-origin';
 import { after } from 'next/server';
-export async function POST(request: Request) {
+async function login(request: Request) {
   if (!sameOrigin(request))
     return Response.json({ error: 'Open sign-in from A-List.' }, { status: 403 });
   const origin = request.headers.get('origin')!;
@@ -36,4 +36,16 @@ export async function POST(request: Request) {
     );
   after(() => metric('sign_in_emails'));
   return Response.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export async function POST(request: Request) {
+  try {
+    return await login(request);
+  } catch {
+    console.error(JSON.stringify({ event: 'sign_in_service_unavailable' }));
+    return Response.json(
+      { error: 'Sign-in is temporarily unavailable. Please try again shortly.' },
+      { status: 503, headers: { 'Retry-After': '30', 'Cache-Control': 'private, no-store' } },
+    );
+  }
 }

@@ -29,6 +29,10 @@ export type Movie = {
   releaseCheckedAt?: string;
   primaryListingUnavailable?: boolean;
   releaseCheck?: ReleaseCheck;
+  /** Current detail lookup outcome; not a claim that no release date exists. */
+  releaseLookupStatus?: 'unresolved' | 'unavailable';
+  /** Response-only state; never persisted in movie records. */
+  refreshPending?: boolean;
   rating?: string;
   theatrical?: string;
   releases: Release[];
@@ -114,4 +118,26 @@ export function mergeMovies(movies: Movie[]): Movie[] {
     map.set(movie.id, { ...prev, ...movie, releases: [...releases.values()] });
   }
   return [...map.values()].map(sanitizeMovie);
+}
+
+export function calendarReleases(movie: Movie, includeRumors = true) {
+  return verifiedReleases(movie).filter((r) => {
+    const parsed = new Date(`${r.date}T13:00:00Z`);
+    return (
+      (includeRumors || r.confidence === 'listed') &&
+      /^\d{4}-\d{2}-\d{2}$/.test(r.date) &&
+      Number.isFinite(parsed.getTime()) &&
+      parsed.toISOString().slice(0, 10) === r.date
+    );
+  });
+}
+export function calendarRelease(
+  movie: Movie,
+  includeRumors = true,
+  today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }),
+) {
+  const releases = calendarReleases(movie, includeRumors).sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+  return releases.find((r) => r.date >= today) || releases.at(-1);
 }

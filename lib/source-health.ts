@@ -27,5 +27,9 @@ export function sourceHealthSummary(
   if (stale(health.wts_feed?.lastSuccess, 7 * 3600_000)) issues.push('wts_feed_stale');
   for (const [source, check] of Object.entries(health))
     if (check.ok === false) issues.push(`${source}_failed`);
-  return { status: issues.length ? 'degraded' : 'healthy', issues, checks: health };
+  return {
+    status: issues.length ? ('degraded' as const) : ('healthy' as const),
+    issues,
+    checks: health,
+  };
 }

@@ -47,7 +47,9 @@ export async function refreshMovie(
   const reports = discoverReleases
     ? [
         ...new Map(
-          movie.releases.filter((r) => r.sourceName === 'When To Stream').map((r) => [r.source, r]),
+          movie.releases
+            .filter((r) => r.sourceName === 'When To Stream')
+            .map((r) => [`${r.source}:${r.kind}`, r]),
         ).values(),
       ]
     : [];

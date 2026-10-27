@@ -192,7 +192,8 @@ test('catalogue publication preserves concurrent edits and inserts in rows, snap
     const after = await calendar();
     assert.notEqual(after.state.sourcesVersion, before.state.sourcesVersion);
     assert.notEqual(after.document.etag, before.document.etag);
-    assert.match(after.document.body, /TRIGGER;VALUE=DATE-TIME:20261105T130000Z/);
+    assert.match(after.document.body, /DTSTART:20261105T130000Z/);
+    assert.match(after.document.body, /TRIGGER;RELATED=START:PT0S/);
     assert.match(after.document.body, /LAST-MODIFIED:\d{8}T\d{6}Z/);
   } finally {
     await db.close();

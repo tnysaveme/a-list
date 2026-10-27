@@ -96,3 +96,44 @@ test('a failed refresh retains dates and returns per-film evidence for the stale
     globalThis.fetch = original;
   }
 });
+
+test('legacy identity repair allows refreshMovie to fetch the corrected film synopsis', async () => {
+  const original = globalThis.fetch;
+  const wrong: Movie = {
+    ...movie,
+    id: '123',
+    imdbId: 'tt9999999',
+    source: 'https://www.dvdsreleasedates.com/movies/123/a-film',
+    overview: 'Wrong old plot.',
+    overviewSource: 'https://v3-cinemeta.strem.io/meta/movie/tt9999999.json',
+    metadataCheckedAt: movie.checkedAt,
+    synopsisCheckedAt: movie.checkedAt,
+  };
+  let metadataCalls = 0;
+  globalThis.fetch = async (url) => {
+    if (String(url) === wrong.source)
+      return new Response(
+        `<link rel="canonical" href="${wrong.source}"><h1>A Film (2026)</h1><a itemprop="sameAs" href="https://www.imdb.com/title/tt1234567/">IMDb</a>${padding}`,
+      );
+    assert.equal(String(url), 'https://v3-cinemeta.strem.io/meta/movie/tt1234567.json');
+    metadataCalls++;
+    return Response.json({
+      meta: {
+        id: 'tt1234567',
+        type: 'movie',
+        name: 'A Film',
+        year: '2026',
+        description: 'The corrected plot.',
+      },
+    });
+  };
+  try {
+    const result = await refreshMovie(wrong);
+    assert.equal(metadataCalls, 1);
+    assert.equal(result.overview, 'The corrected plot.');
+    assert.equal(result.imdbId, 'tt1234567');
+    assert.match(result.overviewSource!, /tt1234567/);
+  } finally {
+    globalThis.fetch = original;
+  }
+});

@@ -153,7 +153,9 @@ test('calendar generation is deterministic for a source revision and keeps the G
     feedDocument(first, options.now.toISOString()).etag,
     feedDocument(second, options.now.toISOString()).etag,
   );
-  assert.match(first, /TRIGGER;VALUE=DATE-TIME:20261120T130000Z/);
+  assert.match(first, /DTSTART:20261120T130000Z/);
+  assert.match(first, /DTEND:20261120T133000Z/);
+  assert.match(first, /TRIGGER;RELATED=START:PT0S/);
   movie.releases[0].date = '2026-11-21';
   assert.notEqual(makeCalendar([movie], options), first);
 });

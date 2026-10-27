@@ -122,6 +122,27 @@ test('automatic credit inference requires a unique exact title/year, director an
   );
   assert.throws(() => automaticEvidence(profile, [evidence], 'tt1111111'), /insufficient/);
 });
+test('year disagreements need three distinct shared cast members and a unique director/title match', () => {
+  const source = { ...profile, year: '2026', cast: ['First Actor', 'Second Actor', 'Third Actor'] };
+  const known = { ...evidence, movie: { ...evidence.movie, year: '2025' }, cast: [...source.cast] };
+  assert.equal(automaticEvidence(source, [known]).movie.id, known.movie.id);
+  for (const bad of [
+    { ...known, cast: known.cast.slice(0, 2) },
+    { ...known, cast: ['First Actor', 'Second Actor', 'Second Actor'] },
+    { ...known, directors: ['Different Director'] },
+    { ...known, movie: { ...known.movie, title: 'Another Film' } },
+  ])
+    assert.throws(() => automaticEvidence(source, [bad]), /insufficient/);
+  assert.throws(
+    () =>
+      automaticEvidence(source, [
+        known,
+        { ...known, movie: { ...known.movie, id: 'tt8888888', imdbId: 'tt8888888', year: '2026' } },
+      ]),
+    /ambiguous/,
+  );
+  assert.equal(automaticEvidence(source, [known], known.movie.id).movie.id, known.movie.id);
+});
 test('persisted reviewed identities retain their method and inference never masquerades as human review', () => {
   const row = {
     source_id: '7001',

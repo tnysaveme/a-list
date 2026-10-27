@@ -176,6 +176,8 @@ assert.equal(feed.status, 200);
 const body = await feed.text();
 assert.match(body, /UID:movie-80000001-digital@afterlight/);
 assert.match(body, /20261120T130000Z/);
+assert.match(body, /DTEND:20261120T133000Z/);
+assert.match(body, /TRIGGER;RELATED=START:PT0S/);
 const etag = feed.headers.get('etag');
 assert.ok(etag);
 const unchanged = await fetch(url, { headers: { 'If-None-Match': etag } });

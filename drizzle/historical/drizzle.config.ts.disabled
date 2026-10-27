@@ -1,0 +1,9 @@
+// Historical SQLite scaffolding. Not an executable A-List migration configuration.
+// Production schema: supabase/migrations/. See docs/operations.md.
+import { defineConfig } from 'drizzle-kit';
+
+export default defineConfig({
+  out: './drizzle',
+  schema: './db/schema.ts',
+  dialect: 'sqlite',
+});

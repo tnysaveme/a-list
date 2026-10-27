@@ -49,6 +49,7 @@ export function MovieDetails({
 }: MovieDetailsProps) {
   const id = useId();
   const [expanded, setExpanded] = useState(false);
+  const series = movie.mediaType === 'series';
   const release = displayRelease(movie);
   const available = !!availableRelease(movie);
   const collapsible = !!movie.overview && movie.overview.length > 180;
@@ -99,10 +100,12 @@ export function MovieDetails({
           <Bookmark size={18} aria-hidden="true" />
           <span>
             {saved ? 'In your library' : 'Keep this film on your radar'}
-            <small>
-              {saved
-                ? 'Sourced dates are included in your calendar.'
-                : 'Save it to add sourced dates to your calendar.'}
+            <small id={series ? `${id}-movie-only` : undefined}>
+              {series
+                ? 'A-List tracks movies only. TV series are not supported.'
+                : saved
+                  ? 'Sourced dates are included in your calendar.'
+                  : 'Save it to add sourced dates to your calendar.'}
             </small>
           </span>
         </p>
@@ -128,7 +131,8 @@ export function MovieDetails({
           <button
             className="film-control film-save"
             data-autofocus
-            disabled={!ready || busy}
+            disabled={!ready || busy || series}
+            aria-describedby={series ? `${id}-movie-only` : undefined}
             aria-busy={busy}
             data-state={busy ? 'loading' : undefined}
             onClick={onSave}
@@ -138,7 +142,7 @@ export function MovieDetails({
             ) : (
               <Plus size={16} aria-hidden="true" />
             )}
-            {busy ? 'Saving…' : 'Save to library'}
+            {series ? 'Movies only' : busy ? 'Saving…' : 'Save to library'}
           </button>
         )}
       </div>
@@ -198,10 +202,13 @@ export function MovieDetails({
           <div className="film-no-release">
             <CalendarDays size={24} aria-hidden="true" />
             <div>
-              <strong>Date not announced</strong>
+              <strong>
+                {movie.releaseLookupStatus ? 'Date not verified' : 'Date not announced'}
+              </strong>
               <p>
-                No US digital or subscription date is listed yet. Save the film and its sourced
-                dates will join your calendar when they appear.
+                {movie.releaseLookupStatus
+                  ? 'We’re checking sources for a verifiable US home release date. Save the film and its sourced dates will join your calendar when verified.'
+                  : 'No US digital or subscription date is listed yet. Save the film and its sourced dates will join your calendar when they appear.'}
               </p>
             </div>
           </div>

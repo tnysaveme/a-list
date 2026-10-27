@@ -1,10 +1,12 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { requestApi } from '../lib/client-api';
-import type { LibraryPage } from '../lib/pagination';
+import { getApi, postApi } from '../lib/client-api';
 import type { Movie } from '../lib/model';
 
-export function useMovieCalendar(notify: (message: string, error?: boolean) => void) {
+export function useMovieCalendar(
+  notify: (message: string, error?: boolean) => void,
+  onPreferenceChange?: () => Promise<unknown>,
+) {
   const [calendar, setCalendar] = useState(false),
     [feedPath, setFeedPath] = useState(''),
     [feedPublic, setFeedPublic] = useState(false),
@@ -39,9 +41,8 @@ export function useMovieCalendar(notify: (message: string, error?: boolean) => v
       controller.current = new AbortController();
       setTrackedBusy(true);
       try {
-        const data = await requestApi<LibraryPage>(
+        const data = await getApi(
           `library?tracked=true&sort=title&offset=${offset}`,
-          undefined,
           controller.current.signal,
         );
         if (current !== request.current) return;
@@ -64,15 +65,16 @@ export function useMovieCalendar(notify: (message: string, error?: boolean) => v
     async (value: boolean) => {
       setSettingsBusy(true);
       try {
-        await requestApi('settings', { includeRumors: value });
+        await postApi('settings', { includeRumors: value });
         setIncludeRumors(value);
+        await onPreferenceChange?.();
       } catch (error) {
         notify((error as Error).message, true);
       } finally {
         setSettingsBusy(false);
       }
     },
-    [notify],
+    [notify, onPreferenceChange],
   );
   const resetFeed = useCallback((path: string) => {
     setFeedPath(path);

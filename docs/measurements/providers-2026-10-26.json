@@ -1,0 +1,74 @@
+{
+  "measuredAt": "2026-10-26T17:51:47.103Z",
+  "scope": "Read-only live provider searches from this machine. Repeated requests do not measure the Next/Redis cache, authenticated API or production concurrency.",
+  "samples": [
+    {
+      "phase": "first",
+      "query": "Filipinana",
+      "durationMs": 1949.7606669999998,
+      "degraded": false,
+      "results": 16
+    },
+    {
+      "phase": "first",
+      "query": "Big Baby",
+      "durationMs": 348.3654580000002,
+      "degraded": false,
+      "results": 15
+    },
+    {
+      "phase": "first",
+      "query": "The Lost Ones",
+      "durationMs": 299.65149999999994,
+      "degraded": false,
+      "results": 19
+    },
+    {
+      "phase": "first",
+      "query": "Hunting Matthew Nichols",
+      "durationMs": 334.36395800000037,
+      "degraded": false,
+      "results": 16
+    },
+    {
+      "phase": "repeated",
+      "query": "Filipinana",
+      "durationMs": 319.99662499999977,
+      "degraded": false,
+      "results": 16
+    },
+    {
+      "phase": "repeated",
+      "query": "Big Baby",
+      "durationMs": 300.5025420000002,
+      "degraded": false,
+      "results": 15
+    },
+    {
+      "phase": "repeated",
+      "query": "The Lost Ones",
+      "durationMs": 290.1969589999999,
+      "degraded": false,
+      "results": 19
+    },
+    {
+      "phase": "repeated",
+      "query": "Hunting Matthew Nichols",
+      "durationMs": 301.02733400000034,
+      "degraded": false,
+      "results": 16
+    }
+  ],
+  "summary": {
+    "first": {
+      "samples": 4,
+      "p50Ms": 334.36395800000037,
+      "p95Ms": 1949.7606669999998
+    },
+    "repeated": {
+      "samples": 4,
+      "p50Ms": 300.5025420000002,
+      "p95Ms": 319.99662499999977
+    }
+  }
+}

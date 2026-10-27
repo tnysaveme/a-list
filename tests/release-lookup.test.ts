@@ -94,7 +94,8 @@ test('daily title lookups cache empty results, skip complete windows, and retain
     globalThis.fetch = async () => new Response('Unavailable', { status: 503 });
     const failed = cache();
     const result = await lookupReleaseReports(movie, { db, lookupCache: failed.api });
-    assert.equal(result.movie, movie);
+    assert.deepEqual(result.movie.releases, movie.releases);
+    assert.equal(result.movie.releaseLookupStatus, 'unavailable');
     assert.equal(result.outcome, 'source_unavailable');
     assert.deepEqual(failed.writes, [600]);
   } finally {
@@ -270,6 +271,263 @@ test('a completed publication can be read and cached after the source deadline, 
     assert.equal(read, true);
     assert.equal(result.outcome, 'matched');
     assert.deepEqual(fake.writes, [86400]);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('native film profiles are verified before announcements and complete profiles avoid article work', async () => {
+  const original = globalThis.fetch,
+    fake = cache();
+  const profileUrl = 'https://whentostream.com/filipinana-2026/';
+  const feed =
+    '<rss><channel><item><title>Filipiñana (2026)</title><link>' +
+    profileUrl +
+    '</link></item><item><title>FILIPIÑANA Gets Digital Release Date</title><link>https://whentostream.com/film-digital/</link><description>Digital release on November 3, 2026.</description></item>' +
+    '.'.repeat(600) +
+    '</channel></rss>';
+  const page =
+    '<link rel="canonical" href="' +
+    profileUrl +
+    '"><article id="post-7001"><h1>Filipiñana (2026)</h1><p>VOD Release Date: October 27, 2026</p><p>SVOD Release Date: November 1, 2026 (Netflix)</p></article>' +
+    '.'.repeat(600);
+  const calls: string[] = [];
+  let current = movie,
+    expansions = 0;
+  globalThis.fetch = async (url) => {
+    calls.push(String(url));
+    return new Response(String(url).includes('/feed/') ? feed : page);
+  };
+  const fakeDb = {
+    from() {
+      const q = {
+        select() {
+          return q;
+        },
+        eq() {
+          return q;
+        },
+        abortSignal() {
+          return q;
+        },
+        async maybeSingle() {
+          return { data: { movie: current }, error: null };
+        },
+      };
+      return q;
+    },
+  } as unknown as typeof db;
+  try {
+    const result = await lookupReleaseReports(movie, {
+      db: fakeDb,
+      lookupCache: fake.api,
+      expand: async (entries, options) => {
+        expansions++;
+        assert.equal(entries.length, 1, 'A profile supplies its windows in a single publication');
+        assert.equal(entries[0].report.release.source, profileUrl);
+        assert.equal(options?.sourcePages?.get(profileUrl), page);
+        current = {
+          ...movie,
+          releases: [
+            {
+              kind: 'Digital',
+              date: '2026-10-27',
+              confidence: 'listed',
+              source: profileUrl,
+              sourceName: 'When To Stream',
+              filmImdbId: movie.id,
+            },
+            {
+              kind: 'Subscription',
+              date: '2026-11-01',
+              platform: 'Netflix',
+              confidence: 'listed',
+              source: profileUrl,
+              sourceName: 'When To Stream',
+              filmImdbId: movie.id,
+            },
+          ],
+        };
+        return {
+          processed: 1,
+          matched: 1,
+          unresolved: 0,
+          changed: true,
+          dryRun: false,
+          durationMs: 1,
+          decisions: [{ source: profileUrl, outcome: 'matched' }],
+        };
+      },
+    });
+    assert.equal(result.outcome, 'matched');
+    assert.equal(expansions, 1);
+    assert.equal(calls.length, 2);
+    assert.equal(result.movie.releases.length, 2);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('a TBA or unresolved native profile falls back to matching announcements within the same request budget', async () => {
+  const original = globalThis.fetch;
+  const profileUrl = 'https://whentostream.com/filipinana-2026/';
+  const articleUrl = 'https://whentostream.com/film-digital/';
+  const feed = `<rss><channel><item><title>Filipiñana (2026)</title><link>${profileUrl}</link></item><item><title>FILIPIÑANA Gets Digital Release Date</title><link>${articleUrl}</link><description>Digital release on November 3, 2026.</description></item>${'.'.repeat(600)}</channel></rss>`;
+  try {
+    for (const unresolved of [false, true]) {
+      const calls: string[] = [];
+      const page = `<link rel="canonical" href="${profileUrl}"><article id="post-7001"><h1>Filipiñana (2026)</h1><p>VOD Release Date: ${unresolved ? 'October 27, 2026' : 'TBA'}</p></article>${'.'.repeat(600)}`;
+      globalThis.fetch = async (url) => new Response(String(url).includes('/feed/') ? feed : page);
+      const result = await lookupReleaseReports(movie, {
+        db,
+        lookupCache: cache().api,
+        expand: async (entries) => {
+          calls.push(entries[0].report.release.source);
+          return {
+            processed: 1,
+            matched: 0,
+            unresolved: 1,
+            changed: false,
+            dryRun: false,
+            durationMs: 1,
+            decisions: [
+              { source: entries[0].report.release.source, outcome: 'insufficient_evidence' },
+            ],
+          };
+        },
+      });
+      assert.deepEqual(calls, unresolved ? [profileUrl, articleUrl] : [articleUrl]);
+      assert.equal(result.outcome, 'unresolved');
+      assert.equal(result.movie.releaseLookupStatus, 'unresolved');
+    }
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('profile outages receive short retries and identified series never trigger lookups', async () => {
+  const original = globalThis.fetch,
+    fake = cache();
+  let calls = 0;
+  globalThis.fetch = async (url) => {
+    calls++;
+    return String(url).includes('/feed/')
+      ? new Response(
+          `<rss><channel><item><title>Filipiñana (2026)</title><link>https://whentostream.com/filipinana-2026/</link></item>${'.'.repeat(600)}</channel></rss>`,
+        )
+      : new Response('Unavailable', { status: 503 });
+  };
+  try {
+    const result = await lookupReleaseReports(movie, { db, lookupCache: fake.api });
+    assert.equal(result.outcome, 'source_unavailable');
+    assert.deepEqual(fake.writes, [600]);
+    assert.equal(calls, 2);
+    const cached = await lookupReleaseReports(movie, { db, lookupCache: fake.api });
+    assert.equal(cached.outcome, 'cached');
+    assert.equal(cached.movie.releaseLookupStatus, 'unavailable');
+    assert.equal(calls, 2);
+    assert.equal(
+      (await lookupReleaseReports({ ...movie, mediaType: 'series' }, { db, lookupCache: fake.api }))
+        .outcome,
+      'ineligible',
+    );
+    assert.equal(calls, 2);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('announcements fill an absent subscription window without replacing a verified profile VOD date', async () => {
+  const original = globalThis.fetch;
+  const profileUrl = 'https://whentostream.com/filipinana-2026/',
+    digitalUrl = 'https://whentostream.com/film-digital/',
+    subscriptionUrl = 'https://whentostream.com/film-streaming/';
+  const feed = `<rss><channel><item><title>Filipiñana (2026)</title><link>${profileUrl}</link></item><item><title>FILIPIÑANA Gets Digital Release Date</title><link>${digitalUrl}</link><description>Digital release on November 3, 2026.</description></item><item><title>FILIPIÑANA Gets Streaming Release Date</title><link>${subscriptionUrl}</link><description>Arriving on Netflix on November 10, 2026.</description></item>${'.'.repeat(600)}</channel></rss>`;
+  const page = `<link rel="canonical" href="${profileUrl}"><article id="post-7001"><h1>Filipiñana (2026)</h1><p>VOD Release Date: October 27, 2026</p><p>SVOD Release Date: TBA</p></article>${'.'.repeat(600)}`;
+  let current = movie;
+  const calls: string[] = [];
+  const fakeDb = {
+    from() {
+      const q = {
+        select() {
+          return q;
+        },
+        eq() {
+          return q;
+        },
+        abortSignal() {
+          return q;
+        },
+        async maybeSingle() {
+          return { data: { movie: current }, error: null };
+        },
+      };
+      return q;
+    },
+  } as unknown as typeof db;
+  globalThis.fetch = async (url) => new Response(String(url).includes('/feed/') ? feed : page);
+  try {
+    const result = await lookupReleaseReports(movie, {
+      db: fakeDb,
+      lookupCache: cache().api,
+      expand: async (entries) => {
+        assert.equal(entries.length, 1);
+        const r = entries[0].report.release;
+        calls.push(r.source);
+        current = { ...current, releases: [...current.releases, { ...r, filmImdbId: movie.id }] };
+        return {
+          processed: 1,
+          matched: 1,
+          unresolved: 0,
+          changed: true,
+          dryRun: false,
+          durationMs: 1,
+          decisions: [{ source: r.source, outcome: 'matched' }],
+        };
+      },
+    });
+    assert.deepEqual(calls, [profileUrl, subscriptionUrl]);
+    assert.deepEqual(
+      result.movie.releases.map((r) => [r.kind, r.date]),
+      [
+        ['Digital', '2026-10-27'],
+        ['Subscription', '2026-11-10'],
+      ],
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+test('a stale feed year cannot veto the current native profile before credit verification', async () => {
+  const original = globalThis.fetch;
+  const source = 'https://whentostream.com/filipinana-2026/';
+  globalThis.fetch = async (url) =>
+    new Response(
+      String(url).includes('/feed/')
+        ? `<rss><channel><item><title>Filipiñana (2025)</title><link>${source}</link></item>${'.'.repeat(600)}</channel></rss>`
+        : `<link rel="canonical" href="${source}"><article id="post-7001"><h1>Filipiñana (2026)</h1><p>VOD Release Date: October 27, 2026</p></article>${'.'.repeat(600)}`,
+    );
+  let attempted = false;
+  try {
+    const result = await lookupReleaseReports(movie, {
+      db,
+      lookupCache: cache().api,
+      expand: async (entries) => {
+        attempted = true;
+        assert.equal(entries[0].report.year, '2026');
+        return {
+          processed: 1,
+          matched: 0,
+          unresolved: 1,
+          changed: false,
+          dryRun: false,
+          durationMs: 1,
+          decisions: [{ source, outcome: 'insufficient_evidence' }],
+        };
+      },
+    });
+    assert.equal(attempted, true);
+    assert.equal(result.outcome, 'unresolved');
   } finally {
     globalThis.fetch = original;
   }

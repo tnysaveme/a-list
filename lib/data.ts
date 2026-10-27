@@ -1,4 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { interactiveResult } from './interactive-refresh';
+import { singleFlight } from './single-flight';
 import { getDb } from '../db';
 import type { AccountRow, LibraryRow } from '../db/schema';
 import snapshot from './catalogue.json';
@@ -47,29 +49,40 @@ export async function membership(ctx: DataContext, movies: Movie[]): Promise<Mov
     addedAt: saved.get(m.id)?.added_at,
   }));
 }
-type Catalogue = { movies: Movie[]; checkedAt: string | null };
+type Catalogue = { movies: Movie[]; checkedAt: string | null; provenance?: 'live' | 'fallback' };
 async function sharedCatalogue(ctx: DataContext): Promise<Catalogue> {
   let result = await cached<Catalogue>('catalogue');
-  if (!result) {
-    const row = checked(
-      await ctx.db
-        .from('a_list_source_status')
-        .select('catalogue,catalogue_success_at')
-        .eq('id', true)
-        .single(),
-    )!;
-    const listing = (row.catalogue.length ? row.catalogue : snapshot) as Movie[];
-    const fresh = await movieRows(
-      ctx.db,
-      listing.map((m) => m.id),
-    );
-    const canonical = new Map(fresh.map((r) => [r.id, r.movie as Movie]));
-    result = {
-      movies: listing.map((m) => canonical.get(m.id) || m),
-      checkedAt: row.catalogue_success_at,
-    };
-    await remember('catalogue', result, 300);
-  }
+  if (!result)
+    result = await singleFlight('catalogue', async () => {
+      const again = await cached<Catalogue>('catalogue');
+      if (again) return again;
+      try {
+        const row = checked(
+          await ctx.db
+            .from('a_list_source_status')
+            .select('catalogue,catalogue_success_at')
+            .eq('id', true)
+            .single(),
+        )!;
+        const listing = (row.catalogue.length ? row.catalogue : snapshot) as Movie[];
+        const fresh = await movieRows(
+          ctx.db,
+          listing.map((m) => m.id),
+        );
+        const canonical = new Map(fresh.map((r) => [r.id, r.movie as Movie]));
+        result = {
+          movies: listing.map((m) => canonical.get(m.id) || m),
+          checkedAt: row.catalogue_success_at,
+        };
+        await remember('catalogue', result, 300);
+        await remember('catalogue:last-good', result, 86400);
+        return result;
+      } catch (error) {
+        const previous = await cached<Catalogue>('catalogue:last-good');
+        if (previous) return { ...previous, provenance: 'fallback' as const };
+        throw error;
+      }
+    });
   return { ...result, movies: result.movies.filter((movie) => movie.mediaType !== 'series') };
 }
 export async function getCatalogue(
@@ -82,7 +95,12 @@ export async function getCatalogue(
   return {
     ...page,
     movies: await membership(ctx, page.movies),
-    stale: !result.checkedAt || Date.now() - Date.parse(result.checkedAt) > 7 * 3600_000,
+    checkedAt: result.checkedAt,
+    provenance: result.provenance || (result.checkedAt ? 'live' : 'fallback'),
+    stale:
+      result.provenance === 'fallback' ||
+      !result.checkedAt ||
+      Date.now() - Date.parse(result.checkedAt) > 7 * 3600_000,
   };
 }
 async function searchUpstream(ctx: DataContext, query: string): Promise<Movie[]> {
@@ -166,7 +184,43 @@ export async function searchMovies(ctx: DataContext, query: string): Promise<Mov
     [...results, ...catalogue.filter((movie) => !ids.has(movie.id))].slice(0, 24),
   );
 }
-export async function getMovie(ctx: DataContext, id: string): Promise<Movie | null> {
+export async function getMovie(
+  ctx: DataContext,
+  id: string,
+  cachedOnly = false,
+): Promise<Movie | null> {
+  const row = checked(
+    await ctx.db.from('a_list_movies').select('movie').eq('id', id).maybeSingle(),
+  );
+  if (!row) return null;
+  const baseline = row.movie as Movie;
+  if (cachedOnly) {
+    const pending = await cached<string>(`lock:detail:${id}`);
+    return (await membership(ctx, [{ ...baseline, refreshPending: !!pending }]))[0];
+  }
+  const work = withLease(`detail:${id}`, 45, () => refreshStoredMovie(ctx, id));
+  // Keep the background promise registered with Next even after the interactive wait ends.
+  after(async () => {
+    try {
+      await work;
+    } catch {
+      console.warn(JSON.stringify({ event: 'detail_refresh_deferred', movieId: id }));
+    }
+  });
+  let result;
+  try {
+    result = await interactiveResult(work, 1500);
+  } catch {
+    return (
+      await membership(ctx, [
+        { ...baseline, releaseLookupStatus: 'unavailable', refreshPending: false },
+      ])
+    )[0];
+  }
+  if (result.ready && result.value) return { ...result.value, refreshPending: false };
+  return (await membership(ctx, [{ ...baseline, refreshPending: true }]))[0];
+}
+async function refreshStoredMovie(ctx: DataContext, id: string): Promise<Movie | null> {
   const row = checked(
     await ctx.db
       .from('a_list_movies')

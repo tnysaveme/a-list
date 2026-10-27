@@ -1,5 +1,5 @@
 import type { Movie, Release } from './model';
-import { verifiedIdentityId } from './film-identity';
+import { titleKey, verifiedIdentityId } from './film-identity';
 import {
   assertListingSource,
   listingImdbId,
@@ -8,7 +8,9 @@ import {
 } from './source-identity';
 import {
   sourceAttribute,
+  profileReference,
   reviewedReportIdentity,
+  type ReportReference,
   type ReviewedReportIdentity,
 } from './reviewed-report-identities';
 import { releaseConfidence } from './release-confidence';
@@ -215,6 +217,24 @@ export function parseDetail(
   const sourceId = listingImdbId(html),
     expectedId = verifiedIdentityId(movie);
   if (expectedId && sourceId !== expectedId) throw new Error('Film source identity mismatch');
+  const nativeSubject = listingSubjectMatches(html, movie, text);
+  const series = /\(\s*TV (?:Mini )?Series\b/i.test(
+    text(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || ''),
+  );
+  if (series && !nativeSubject) throw new Error('Film source identity mismatch');
+  const mediaType = series ? 'series' : movie.mediaType || (nativeSubject ? 'movie' : undefined);
+  const repaired = !!sourceId && !!movie.imdbId && sourceId !== movie.imdbId;
+  const overview = parseSynopsis(html);
+  const identityAndSynopsis = {
+    imdbId: sourceId,
+    identityVerifiedAt: sourceId ? checkedAt : undefined,
+    mediaType,
+    ...(repaired
+      ? { metadataCheckedAt: undefined, synopsisCheckedAt: undefined, metadataIssue: undefined }
+      : {}),
+    overview: overview || (!repaired ? movie.overview : undefined),
+    overviewSource: overview ? movie.source : !repaired ? movie.overviewSource : undefined,
+  };
   if (
     !/\b(?:Digital HD|(?:DVD|Blu-ray)(?: and Blu-ray)? release(?: date)?|(?:digital|home) release date)\b/i.test(
       heading,
@@ -222,19 +242,10 @@ export function parseDetail(
   ) {
     // Old source pages with no release section are coverage gaps, not outages.
     // Existing dates stay unverified until the source positively supplies new evidence.
-    if (heading || !listingSubjectMatches(html, movie, text) || !sourceId)
-      throw new Error('Movie source format changed');
-    const overview = parseSynopsis(html);
-    const series = /\(\s*TV (?:Mini )?Series\b/i.test(
-      text(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || ''),
-    );
+    if (heading || !nativeSubject || !sourceId) throw new Error('Movie source format changed');
     return {
       ...movie,
-      imdbId: sourceId,
-      identityVerifiedAt: checkedAt,
-      mediaType: series ? 'series' : 'movie',
-      overview: overview || movie.overview,
-      overviewSource: overview ? movie.source : movie.overviewSource,
+      ...identityAndSynopsis,
       checkedAt,
       releaseCheckedAt: checkedAt,
       primaryListingUnavailable: true,
@@ -245,17 +256,25 @@ export function parseDetail(
       /\b(?:(?:estimated|expected|rumou?red|tentative|unconfirmed)\s+)?Digital HD\b([\s\S]*)/i,
     )?.[0]
     .split(/\b(?:DVD|Blu[ -]?ray|theatrical|cinemas?|theatres?|theaters?)\b/i)[0];
-  const withdrawn =
-    !!digital &&
-    /\b(?:withdrawn|cancelled|canceled|postponed indefinitely|no longer scheduled)\b/i.test(
-      digital,
-    );
+  const withdrawal = digital
+    ? [
+        ...digital.matchAll(
+          /\b(?:withdrawn|cancelled|canceled|postponed indefinitely|no longer scheduled)\b/gi,
+        ),
+      ].at(-1)
+    : undefined;
   const replacement = digital?.match(
     /\b(?:postponed|delayed|moved|rescheduled)\b[\s\S]*?\bto\b([\s\S]*)/i,
-  )?.[1];
-  const date = digital && !withdrawn ? dateFromText(replacement || digital) : null;
+  );
+  // A later replacement supersedes the old cancellation; a later withdrawal still wins.
+  const date = replacement
+    ? !withdrawal || replacement.index! > withdrawal.index!
+      ? dateFromText(replacement[1])
+      : null
+    : digital && !withdrawal
+      ? dateFromText(digital)
+      : null;
   // Only the Digital HD statement counts. DVD and theatrical dates are never substituted.
-  const overview = parseSynopsis(html);
   const releases: Release[] = movie.releases.filter(
     (r) => r.kind === 'Subscription' || (!date && r.sourceName === 'When To Stream'),
   );
@@ -270,18 +289,11 @@ export function parseDetail(
       checkedAt,
     });
   if (!date && !expectedId && movie.releases.some((r) => r.sourceName === 'DVDs Release Dates')) {
-    if (!listingSubjectMatches(html, movie, text))
-      throw new Error('Movie source subject not verified');
+    if (!nativeSubject) throw new Error('Movie source subject not verified');
   }
-  const imdbId = sourceId;
-  const repaired = !!sourceId && !!movie.imdbId && sourceId !== movie.imdbId;
   return {
     ...movie,
-    imdbId,
-    identityVerifiedAt: imdbId ? checkedAt : undefined,
-    ...(repaired ? { metadataCheckedAt: undefined, synopsisCheckedAt: undefined } : {}),
-    overview: overview || (!repaired ? movie.overview : undefined),
-    overviewSource: overview ? movie.source : !repaired ? movie.overviewSource : undefined,
+    ...identityAndSynopsis,
     releaseCheckedAt: checkedAt,
     checkedAt,
     primaryListingUnavailable: false,
@@ -343,6 +355,130 @@ export function parseReports(xml: string): ReleaseReport[] {
     });
   }
   return result;
+}
+/** RSS profile titles shortlist native pages; they never establish a film identity or date. */
+export function parseReportProfiles(xml: string, movie: Pick<Movie, 'title' | 'year'>) {
+  const profiles = new Map<string, { title: string; year: string; source: string }>();
+  for (const item of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+    const title = text(item[1].match(/<title>([\s\S]*?)<\/title>/)?.[1] || '').match(
+      /^(.*?)\s+\(((?:18|19|20)\d{2})\)$/,
+    );
+    const source = text(item[1].match(/<link>([\s\S]*?)<\/link>/)?.[1] || '');
+    if (!title || titleKey(title[1]) !== titleKey(movie.title)) continue;
+    try {
+      const url = new URL(source);
+      if (
+        url.origin !== 'https://whentostream.com' ||
+        url.username ||
+        url.password ||
+        url.search ||
+        url.hash ||
+        !/^\/[a-z0-9-]+\/$/.test(url.pathname)
+      )
+        continue;
+      const previous = profiles.get(source);
+      if (
+        !previous ||
+        Math.abs(Number(title[2]) - Number(movie.year)) <
+          Math.abs(Number(previous.year) - Number(movie.year))
+      )
+        profiles.set(source, { title: title[1], year: title[2], source });
+    } catch {}
+  }
+  return [...profiles.values()]
+    .sort(
+      (a, b) =>
+        Math.abs(Number(a.year) - Number(movie.year)) -
+        Math.abs(Number(b.year) - Number(movie.year)),
+    )
+    .slice(0, 2);
+}
+/** Read only labelled home-release fields on this native film page. TBA never supplies a date. */
+export function profileReleaseEvidence(html: string, reference: ReportReference) {
+  const native = profileReference(html, reference.title, text);
+  if (
+    !native ||
+    native.sourceFilmId !== reference.sourceFilmId ||
+    native.sourceFilmUrl !== reference.sourceFilmUrl ||
+    native.year !== reference.year
+  )
+    throw new Error('Source film identity changed');
+  const body = html.match(/<article\b[^>]*>[\s\S]*?<\/article>/i)?.[0] || '';
+  const paragraphs = [...body.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)].map((p) => text(p[1]));
+  if (!paragraphs.some((p) => /^(?:VOD|PVOD|SVOD) Release Date\s*:/i.test(p)))
+    throw new Error('Release profile format changed');
+  const reports: ReleaseReport[] = [];
+  const withdrawnKinds: Release['kind'][] = [],
+    unknownKinds: Release['kind'][] = [];
+  for (const [label, kind] of [
+    ['VOD', 'Digital'],
+    ['PVOD', 'PVOD'],
+    ['SVOD', 'Subscription'],
+  ] as const) {
+    const fields = paragraphs.filter((p) => new RegExp(`^${label} Release Date\\s*:`, 'i').test(p));
+    if (fields.length > 1) throw new Error('Ambiguous profile release dates');
+    const field = fields[0];
+    if (!field) {
+      unknownKinds.push(kind);
+      continue;
+    }
+    const replacement = field.match(
+      /\b(?:postponed|delayed|moved|rescheduled)\b[\s\S]*?\bto\b([\s\S]*)/i,
+    );
+    const withdrawal = [
+      ...field.matchAll(
+        /\b(?:TBA|TBD|withdrawn|cancelled|canceled|postponed indefinitely|no longer scheduled)\b/gi,
+      ),
+    ].at(-1);
+    const input =
+      replacement && (!withdrawal || replacement.index! > withdrawal.index!)
+        ? replacement[1]
+        : field;
+    if (withdrawal && input === field) {
+      withdrawnKinds.push(kind);
+      continue;
+    }
+    const dates = [
+      ...input.matchAll(
+        /(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+20\d{2}/gi,
+      ),
+    ];
+    const date = dates.length === 1 ? dateFromText(dates[0][0]) : null;
+    if (!date) {
+      unknownKinds.push(kind);
+      continue;
+    }
+    const platform =
+      kind === 'Subscription'
+        ? field.match(
+            /\b(HBO Max|Netflix|Shudder|Hulu|Peacock|Disney\+|Prime Video|Paramount\+|MGM\+|Apple TV\+?)(?=\W|$)/i,
+          )?.[1]
+        : undefined;
+    reports.push({
+      title: native.title,
+      year: native.year,
+      release: {
+        kind,
+        date,
+        confidence: releaseConfidence(field),
+        source: native.sourceFilmUrl,
+        sourceName: 'When To Stream',
+        checkedAt: new Date().toISOString(),
+        ...(platform ? { platform } : {}),
+      },
+    });
+  }
+  return { reports, withdrawnKinds, unknownKinds };
+}
+export function parseProfileReports(
+  html: string,
+  reference: ReportReference,
+  requiredKind?: Release['kind'],
+): ReleaseReport[] {
+  const evidence = profileReleaseEvidence(html, reference);
+  if (requiredKind && evidence.unknownKinds.includes(requiredKind))
+    throw new Error('Release profile date format changed');
+  return evidence.reports;
 }
 export const normalized = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 const reportPlatform = (description: string) => {
@@ -433,8 +569,14 @@ export function parseVerifiedReport(
   // A release year in article copy is never the film's production year.
   if (!subject?.imdbId) return null;
   if (report.imdbId && report.imdbId !== subject.imdbId) return null;
-  if (report.year && subject.year && report.year !== subject.year) return null;
-  const release = parseReportDetail(html, report.release);
+  if (report.year && subject.year && report.year !== subject.year && !report.imdbId) return null;
+  const native = profileReference(html, report.title, text);
+  if (native && native.sourceFilmUrl !== report.release.source) return null;
+  const release = native
+    ? parseProfileReports(html, native, report.release.kind).find(
+        (r) => r.release.kind === report.release.kind,
+      )?.release
+    : parseReportDetail(html, report.release);
   return release
     ? {
         ...report,

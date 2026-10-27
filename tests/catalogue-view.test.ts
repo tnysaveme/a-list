@@ -132,3 +132,39 @@ test('identified series are excluded before catalogue counts and pagination, whi
     [film.id],
   );
 });
+
+test('fallback retains newer evidence and known membership; unknown membership stays unknown', async () => {
+  const { fallbackMovies, catalogueFreshness } = await import('../lib/catalogue-fallback');
+  const snapshot = [make('1', 'Older', '2026-10-01'), make('2', 'Unknown')];
+  const recent = { ...snapshot[0], releases: [], saved: true };
+  const fallback = fallbackMovies(snapshot, new Map([['1', recent]]));
+  assert.equal(fallback[0].saved, true);
+  assert.deepEqual(fallback[0].releases, []);
+  assert.equal(fallback[1].saved, undefined);
+  assert.equal(
+    catalogueFreshness({ stale: false, checkedAt: null }),
+    'Listings have not been verified yet',
+  );
+  assert.equal(
+    catalogueFreshness({ stale: false, checkedAt: '2026-10-25T12:00:00Z' }),
+    'Listings checked Oct 25, 2026',
+  );
+});
+
+test('fallback pages retain confirmed off-page membership changes even after an older response arrives', async () => {
+  const { CatalogueMemory } = await import('../lib/catalogue-memory');
+  const saved = { ...make('1', 'Saved film'), saved: true };
+  const memory = new CatalogueMemory([saved]);
+  const startedAt = memory.epoch;
+  memory.recordMembership({ '1': false, '2': true });
+  memory.remember([saved], startedAt === memory.epoch);
+  const fallback = memory.fallback([saved, make('2', 'Other saved film')]);
+  assert.equal(fallback[0].saved, false);
+  assert.equal(fallback[1].saved, true);
+  memory.remember([{ ...make('3', 'New import'), saved: true }]);
+  assert.equal(memory.fallback([saved]).length, 1);
+  assert.equal(
+    memory.fallback([saved], true).some((movie) => movie.id === '3' && movie.saved),
+    true,
+  );
+});

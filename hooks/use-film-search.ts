@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { requestApi } from '../lib/client-api';
+import { getApi } from '../lib/client-api';
 import type { Movie } from '../lib/model';
 
 export function useFilmSearch() {
@@ -20,11 +20,7 @@ export function useFilmSearch() {
     const controller = new AbortController();
     const timer = setTimeout(
       () =>
-        requestApi<{ movies: Movie[] }>(
-          `search?q=${encodeURIComponent(term)}`,
-          undefined,
-          controller.signal,
-        )
+        getApi(`search?q=${encodeURIComponent(term)}`, controller.signal)
           .then((data) => {
             if (!controller.signal.aborted) {
               setResults(data.movies);

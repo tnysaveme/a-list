@@ -15,3 +15,15 @@ export async function requestApi<T>(
   if (!response.ok) throw new Error(data.error || 'Could not complete this request.');
   return data;
 }
+
+import type { GetPath, GetResponse, PostRequests, PostResponses } from './api-contract';
+export function getApi<P extends GetPath>(path: P, signal?: AbortSignal) {
+  return requestApi<GetResponse<P>>(path, undefined, signal);
+}
+export function postApi<P extends keyof PostRequests>(
+  path: P,
+  body: PostRequests[P],
+  signal?: AbortSignal,
+) {
+  return requestApi<PostResponses[P]>(path, body, signal);
+}

@@ -1,21 +1,23 @@
 import 'server-only';
+import { requireConfiguration, ConfigurationError } from './configuration';
+import { runWithLease } from './lease';
 import { createHmac, randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
 import { Redis } from '@upstash/redis';
 import { Ratelimit } from '@upstash/ratelimit';
 let redis: Redis | undefined;
 export function cache() {
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN)
-    throw new Error('Shared cache is not configured');
+  requireConfiguration('api');
   return (redis ??= new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
     token: process.env.UPSTASH_REDIS_REST_TOKEN,
     retry: { retries: 1, backoff: () => 100 },
+    signal: () => AbortSignal.timeout(2500),
   }));
 }
 export function privateKey(value: string) {
   const salt = process.env.ALIST_KEY_SALT;
-  if (!salt) throw new Error('Private cache salt is not configured');
+  if (!salt) throw new ConfigurationError(['ALIST_KEY_SALT']);
   return createHmac('sha256', salt).update(value).digest('hex');
 }
 export function clientAddress(request: Request) {
@@ -90,7 +92,9 @@ export async function throttle(
         },
       },
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof ConfigurationError)
+      console.error(JSON.stringify({ event: 'configuration_missing', keys: error.missing }));
     console.error(JSON.stringify({ event: 'rate_limit_unavailable', kind }));
     return Response.json(
       { error: 'A-List is temporarily unavailable. Please try again shortly.' },
@@ -104,14 +108,19 @@ export async function withLease<T>(
   work: () => Promise<T>,
 ): Promise<T | null> {
   const token = randomUUID();
-  if (!(await cache().set(`alist:lock:${key}`, token, { nx: true, ex: seconds }))) return null;
-  try {
-    return await work();
-  } finally {
-    await cache().eval(
-      "if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) else return 0 end",
-      [`alist:lock:${key}`],
-      [token],
-    );
-  }
+  return runWithLease(
+    {
+      acquire: async (value) =>
+        !!(await cache().set(`alist:lock:${key}`, value, { nx: true, ex: seconds })),
+      release: (value) =>
+        cache().eval(
+          "if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) else return 0 end",
+          [`alist:lock:${key}`],
+          [value],
+        ),
+    },
+    token,
+    work,
+    () => console.warn(JSON.stringify({ event: 'lease_cleanup_failed' })),
+  );
 }

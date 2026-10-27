@@ -24,3 +24,7 @@ coverage/
 .aws/
 supabase/.temp/
 supabase/.branches/
+
+.next-e2e/
+test-results/
+playwright-report/

@@ -58,11 +58,44 @@ export type ReportReference = {
   title: string;
   year: string;
 };
+/** A native film page is also a release source, bound to its canonical URL and page ID. */
+export function profileReference(
+  html: string,
+  title: string,
+  readText: (html: string) => string,
+): ReportReference | undefined {
+  const id = html.match(/<article\b[^>]*\bid=['"]post-(\d{1,10})['"][^>]*>/i)?.[1];
+  const heading = readText(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || '').match(
+    /^(.*?)\s+\(((?:18|19|20)\d{2})\)$/,
+  );
+  const canonical = [...html.matchAll(/<link\b[^>]*>/gi)].find(
+    (link) => attribute(link[0], 'rel') === 'canonical',
+  );
+  const href = canonical && attribute(canonical[0], 'href');
+  if (!id || !heading || titleKey(heading[1]) !== titleKey(title) || !href) return;
+  try {
+    const url = new URL(href);
+    if (
+      url.origin !== 'https://whentostream.com' ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      !/^\/[a-z0-9-]+\/$/.test(url.pathname)
+    )
+      return;
+  } catch {
+    return;
+  }
+  return { sourceFilmId: id, sourceFilmUrl: href, title: heading[1], year: heading[2] };
+}
 export function reportReference(
   html: string,
   title: string,
   readText: (html: string) => string,
 ): ReportReference | undefined {
+  const native = profileReference(html, title, readText);
+  if (native) return native;
   const opening = html.match(/itemprop=['"]articleBody['"][^>]*>([\s\S]*?)<\/p>/i)?.[1];
   if (!opening) return;
   const links = [...opening.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)].filter(

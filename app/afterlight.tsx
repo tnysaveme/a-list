@@ -19,17 +19,18 @@ import {
   RefreshCw,
   Film,
   LoaderCircle,
+  CircleHelp,
 } from 'lucide-react';
-import { nextRelease, sanitizeMovie, type Movie } from '../lib/model';
+import { calendarRelease, type Movie } from '../lib/model';
 import { searchMatches } from '../lib/search-results';
 import { releaseForView, type CataloguePage } from '../lib/catalogue-view';
 import { useCatalogue } from '../hooks/use-catalogue';
-import { requestApi } from '../lib/client-api';
+import { useMovieDetails } from '../hooks/use-movie-details';
+import { catalogueFreshness } from '../lib/catalogue-fallback';
 import { refreshGate } from '../lib/refresh-gate';
-import { FilmPoster } from '../components/film-poster';
+import { MovieCardPoster } from '../components/movie-card-poster';
 import { MovieDetails } from '../components/movie-details';
 import { AppHeader } from '../components/app-header';
-import type { LibraryPage } from '../lib/pagination';
 import { useLibrary } from '../hooks/use-library';
 import { useFilmSearch } from '../hooks/use-film-search';
 import { useMovieCalendar } from '../hooks/use-movie-calendar';
@@ -45,17 +46,6 @@ const shortDate = (date: string) =>
     timeZone: 'UTC',
   });
 const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-async function api(path: string, body?: unknown, signal?: AbortSignal) {
-  return requestApi<
-    LibraryPage & {
-      movie: Movie;
-      feedPath: string;
-      feedPublic: boolean;
-      includeRumors: boolean;
-      stale: boolean;
-    }
-  >(path, body, signal);
-}
 
 function Status({ movie, filter }: { movie: Movie; filter: string }) {
   const release = releaseForView(movie, filter, today());
@@ -80,9 +70,6 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
     [layout, setLayout] = useState('grid');
   const [selection, setSelection] = useState<Set<string>>(new Set()),
     [selecting, setSelecting] = useState(false);
-  const [movie, setMovie] = useState<Movie | null>(null),
-    [detailBusy, setDetailBusy] = useState(false),
-    [detailError, setDetailError] = useState('');
   const [about, setAbout] = useState(false),
     [accountOpen, setAccountOpen] = useState(false);
   const [notice, setNotice] = useState<{ message: string; error?: boolean; undo?: Movie[] } | null>(
@@ -100,6 +87,8 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
     page: cataloguePage,
     busy: catalogueBusy,
     load: loadCatalogue,
+    recordMembership,
+    rememberMovie,
   } = useCatalogue(initialCatalogue, notify);
   const {
     library,
@@ -117,7 +106,7 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
   const searchState = useFilmSearch();
   const { searching, setSearching, query, results, setResults, resultsQuery, closeSearch } =
     searchState;
-  const calendarState = useMovieCalendar(notify);
+  const calendarState = useMovieCalendar(notify, loadLibrary);
   const {
     calendar,
     setCalendar,
@@ -128,6 +117,25 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
     openCalendar,
     resetFeed,
   } = calendarState;
+  const applyDetails = useCallback(
+    (value: Movie) => {
+      rememberMovie(value);
+      const update = (list: Movie[]) => list.map((item) => (item.id === value.id ? value : item));
+      setCatalogue(update);
+      setResults(update);
+      setLibrary(update);
+      setTracked(update);
+      if (value.saved) void loadLibrary();
+    },
+    [setCatalogue, setResults, setLibrary, setTracked, loadLibrary, rememberMovie],
+  );
+  const {
+    movie,
+    setMovie,
+    busy: detailBusy,
+    error: detailError,
+    open: openMovie,
+  } = useMovieDetails(applyDetails);
   const busy = libraryBusy || settingsBusy,
     stale = cataloguePage.stale;
   const initialize = useCallback(
@@ -158,33 +166,6 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
     document.addEventListener('keydown', key);
     return () => document.removeEventListener('keydown', key);
   }, [movie, calendar, about, accountOpen, setSearching]);
-  const movieId = movie?.id;
-  useEffect(() => {
-    if (!movieId) return;
-    const id = movieId;
-    const controller = new AbortController();
-    api(`movie/${id}`, undefined, controller.signal)
-      .then((d) => {
-        if (controller.signal.aborted) return;
-        setMovie((current) => (current?.id === id ? d.movie : current));
-        const update = (list: Movie[]) => list.map((m) => (m.id === id ? d.movie : m));
-        setCatalogue(update);
-        setResults(update);
-        setLibrary(update);
-        setTracked(update);
-        if (d.movie.saved) void loadLibrary();
-      })
-      .catch(() => {
-        if (!controller.signal.aborted)
-          setDetailError(
-            'The source could not be refreshed. Showing the last checked information.',
-          );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setDetailBusy(false);
-      });
-    return () => controller.abort();
-  }, [movieId, loadLibrary, setCatalogue, setResults, setLibrary, setTracked]);
   useEffect(() => {
     if (!ready) return;
     const controller = new AbortController();
@@ -250,15 +231,10 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
     else if (ready) void loadLibrary(0, false, { sort: next, filter });
   }
 
-  function openMovie(next: Movie) {
-    setDetailBusy(true);
-    setDetailError('');
-    setMovie(sanitizeMovie(next));
-  }
-
   async function mutate(action: 'add' | 'remove', ids: string[]) {
     const result = await runMutation(action, ids);
     if (!result) return null;
+    recordMembership(result.membership);
     const update = (m: Movie) =>
       Object.hasOwn(result.membership, m.id)
         ? { ...m, saved: result.membership[m.id], tracked: result.membership[m.id] }
@@ -330,7 +306,9 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
   }
 
   const nextMovie = page.upcoming;
-  const nextDate = nextMovie ? nextRelease(nextMovie) : undefined;
+  const nextDate =
+    page.upcomingRelease ||
+    (nextMovie ? calendarRelease(nextMovie, calendarState.includeRumors) : undefined);
   const upcoming = nextMovie && nextDate ? { movie: nextMovie, release: nextDate } : null;
   return (
     <div className="app-shell">
@@ -539,39 +517,27 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
               {movies.map((m, index) => {
                 const release = releaseForView(m, filter, currentDay);
                 const saved = savedIds.has(m.id);
+                const membershipKnown = typeof m.saved === 'boolean' || libraryById.has(m.id);
                 const isTracked = libraryById.get(m.id)?.tracked ?? m.tracked;
                 return (
                   <article
                     className={`movie-card ${selection.has(m.id) ? 'is-selected' : ''}`}
                     key={m.id}
                   >
-                    <div className="poster-wrap">
-                      <button
-                        className="poster-button"
-                        aria-label={`View ${m.title}`}
-                        onClick={() => (selecting ? toggle(m.id) : openMovie(m))}
-                      >
-                        <FilmPoster
-                          src={m.poster}
-                          alt={`${m.title} poster`}
-                          width={300}
-                          height={450}
-                          sizes={
-                            layout === 'list'
-                              ? '80px'
-                              : '(max-width: 620px) 45vw, (max-width: 1000px) 25vw, 220px'
-                          }
-                          loading={index < 5 ? 'eager' : 'lazy'}
-                          fetchPriority={index === 0 ? 'high' : undefined}
-                          onError={(e) => {
-                            e.currentTarget.style.visibility = 'hidden';
-                          }}
-                        />
-                        <span className="poster-fallback" aria-hidden="true">
-                          <Film size={32} />
-                          {m.title}
-                        </span>
-                      </button>
+                    <MovieCardPoster
+                      src={m.poster}
+                      title={m.title}
+                      sizes={
+                        layout === 'list'
+                          ? '80px'
+                          : '(max-width: 620px) 45vw, (max-width: 1000px) 25vw, 220px'
+                      }
+                      eager={index < 5}
+                      priority={index === 0}
+                      selecting={selecting}
+                      selected={selection.has(m.id)}
+                      onOpen={() => (selecting ? toggle(m.id) : openMovie(m))}
+                    >
                       {selecting ? (
                         <label className="poster-checkbox">
                           <input
@@ -595,15 +561,27 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                           <button
                             disabled={busy || !ready}
                             className={`save-button ${saved ? 'is-saved' : ''}`}
-                            aria-label={saved ? `${m.title} is saved` : `Save ${m.title}`}
-                            aria-pressed={saved}
-                            onClick={() => (saved ? openMovie(m) : save(m))}
+                            aria-label={
+                              !membershipKnown
+                                ? `Check saved state for ${m.title}`
+                                : saved
+                                  ? `${m.title} is saved`
+                                  : `Save ${m.title}`
+                            }
+                            aria-pressed={membershipKnown ? saved : undefined}
+                            onClick={() => (saved || !membershipKnown ? openMovie(m) : save(m))}
                           >
-                            {saved ? <Check size={18} /> : <Plus size={20} />}
+                            {!membershipKnown ? (
+                              <CircleHelp size={18} />
+                            ) : saved ? (
+                              <Check size={18} />
+                            ) : (
+                              <Plus size={20} />
+                            )}
                           </button>
                         </>
                       )}
-                    </div>
+                    </MovieCardPoster>
                     <div className="movie-info">
                       <div className="movie-meta">
                         {m.year && <span>{m.year}</span>}
@@ -684,9 +662,7 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
           <span className="footer-brand">A-List.</span>
           <p>For the love of a good film.</p>
           <span>
-            {stale
-              ? 'Showing last checked listings'
-              : `Listings checked ${shortDate(catalogue[0]?.checkedAt.slice(0, 10) || today())}`}{' '}
+            {catalogueFreshness(cataloguePage)}{' '}
             <span className={`source-dot ${stale ? 'stale' : ''}`} />
           </span>
         </footer>

@@ -31,6 +31,8 @@ export type CataloguePage = {
   filteredTotal: number;
   nextOffset: number | null;
   stale: boolean;
+  checkedAt?: string | null;
+  provenance?: 'live' | 'fallback';
 };
 
 /** Cards do not need synopsis and metadata payloads; details load on opening. */
@@ -85,21 +87,35 @@ export function discoverMovies(
       return movie.releases.some((release) => release.confidence === 'rumored');
     return true;
   });
-  if (sort === 'title') return films.sort((a, b) => a.title.localeCompare(b.title));
+  if (sort === 'title') return films.sort((a, b) => compareTitles(a, b));
   if (sort === 'added')
-    return films.sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || ''));
+    return films.sort(
+      (a, b) => (b.addedAt || '').localeCompare(a.addedAt || '') || compareTitles(a, b),
+    );
   if (sort === 'theatrical')
-    return films.sort((a, b) => (b.theatrical || '').localeCompare(a.theatrical || ''));
+    return films.sort(
+      (a, b) => (b.theatrical || '').localeCompare(a.theatrical || '') || compareTitles(a, b),
+    );
   return films
     .map((movie) => {
       const date = releaseForView(movie, filter, today)?.date;
       return { movie, date: date || '9999', rank: !date ? 2 : date >= today ? 0 : 1 };
     })
     .sort(
-      (a, b) =>
-        a.rank - b.rank ||
-        a.date.localeCompare(b.date) ||
-        a.movie.title.localeCompare(b.movie.title),
+      (a, b) => a.rank - b.rank || a.date.localeCompare(b.date) || compareTitles(a.movie, b.movie),
     )
     .map(({ movie }) => movie);
+}
+
+function compareText(a: string, b: string) {
+  const left = Array.from(a),
+    right = Array.from(b);
+  for (let i = 0; i < Math.min(left.length, right.length); i++) {
+    const difference = left[i].codePointAt(0)! - right[i].codePointAt(0)!;
+    if (difference) return difference;
+  }
+  return left.length - right.length;
+}
+function compareTitles(a: Movie, b: Movie) {
+  return compareText(a.title.toLowerCase(), b.title.toLowerCase()) || compareText(a.id, b.id);
 }

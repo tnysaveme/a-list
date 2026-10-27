@@ -1,3 +1,5 @@
+import type { PostResponses, MovieResponse } from '../../../lib/api-contract';
+import { ConfigurationError } from '../../../lib/configuration';
 import { getUser } from '../../../lib/auth';
 import {
   account,
@@ -15,9 +17,10 @@ import { feedResponse } from '../../../lib/feed-cache';
 import { throttle, clientAddress, metric } from '../../../lib/infrastructure';
 import { sameOrigin } from '../../../lib/request-origin';
 import { after } from 'next/server';
+import { InvalidRequest, settingsInput, libraryInput } from '../../../lib/api-validation';
 import { validMovieId } from '../../../lib/model';
 import { exportLibrary, privacyAction } from '../../../lib/privacy-api';
-import { readLibraryMembership } from '../../../lib/library-mutations';
+import { MovieOnlyError, readLibraryMembership } from '../../../lib/library-mutations';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -78,8 +81,10 @@ async function handle(request: Request) {
       return json({ movies: query.length < 2 ? [] : await searchMovies(ctx, query) });
     }
     if (request.method === 'GET' && path.startsWith('movie/') && validMovieId(path.slice(6))) {
-      const movie = await getMovie(ctx, path.slice(6));
-      return movie ? json({ movie }) : json({ error: 'This film could not be found.' }, 404);
+      const movie = await getMovie(ctx, path.slice(6), url.searchParams.get('cached') === 'true');
+      return movie
+        ? json({ movie } satisfies MovieResponse)
+        : json({ error: 'This film could not be found.' }, 404);
     }
     if (request.method !== 'POST') return json({ error: 'Not found' }, 404);
     if (!sameOrigin(request))
@@ -101,15 +106,16 @@ async function handle(request: Request) {
     if (path === 'init') {
       const owner = await account(ctx);
       const page = await getLibraryPage(ctx);
-      return json({
+      const response: PostResponses['init'] = {
         ...page,
         feedPath: `/api/feed/${owner.feed_token}.ics`,
         includeRumors: owner.include_rumors,
         feedPublic: true,
-      });
+      };
+      return json(response);
     }
     if (path === 'settings') {
-      await updateSettings(ctx, body.includeRumors === true);
+      await updateSettings(ctx, settingsInput(body));
       return json({ ok: true });
     }
     if (path !== 'library') return json({ error: 'Not found' }, 404);
@@ -121,17 +127,16 @@ async function handle(request: Request) {
         },
         409,
       );
-    if (!['add', 'remove', 'track'].includes(body.action))
-      return json({ error: 'Unknown library action' }, 400);
-    if (!Array.isArray(body.ids) || body.ids.length > 100)
-      return json({ error: 'Choose up to 100 films at a time.' }, 400);
-    const ids = [
-      ...new Set(body.ids.filter((id: unknown) => typeof id === 'string' && validMovieId(id))),
-    ] as string[];
-    if (!ids.length) return json({ error: 'Choose at least one film.' }, 400);
-    await updateLibrary(ctx, body.action, ids);
+    const input = libraryInput(body);
+    await updateLibrary(ctx, input.action, input.ids);
     return json({ ok: true });
   } catch (error) {
+    if (error instanceof ConfigurationError) {
+      console.error(JSON.stringify({ event: 'configuration_missing', keys: error.missing }));
+      return json({ error: 'A-List needs configuration. Please check the server setup.' }, 503);
+    }
+    if (error instanceof InvalidRequest) return json({ error: error.message }, 400);
+    if (error instanceof MovieOnlyError) return json({ error: error.message }, 400);
     console.error('A-List request:', error instanceof Error ? error.message : 'Request failed');
     return json(
       {

@@ -5,7 +5,7 @@ import { fetchSource, parseDetail, parseVerifiedReport, type ReleaseReport } fro
 import type { ReviewedReportIdentity } from './reviewed-report-identities';
 import { reviewedReportIdentity } from './reviewed-report-identities';
 import { text } from './sources';
-import { parseSourceProfile, profileFingerprint } from './release-profile';
+import { parseSourceProfile, profileFingerprint, SourceProfileConflict } from './release-profile';
 
 /** Existing mappings need current native evidence; a failed fetch is not a withdrawal. */
 export async function fetchVerifiedReport(
@@ -15,11 +15,21 @@ export async function fetchVerifiedReport(
   profiles = new Map<string, Promise<string>>(),
   fresh = false,
 ) {
-  const html = await fetchSource(report.release.source, {
-    signal,
-    ...(fresh ? { cache: 'no-store' as const } : {}),
-  });
-  const mapping = reviewedReportIdentity(html, report.title, text, identities);
+  let page = profiles.get(report.release.source);
+  if (!page) {
+    page = fetchSource(report.release.source, {
+      signal,
+      ...(fresh ? { cache: 'no-store' as const } : {}),
+    });
+    profiles.set(report.release.source, page);
+  }
+  const html = await page;
+  const mapping =
+    reviewedReportIdentity(html, report.title, text, identities) ||
+    identities?.find(
+      (identity) =>
+        identity.sourceFilmUrl === report.release.source && identity.imdbId === report.imdbId,
+    );
   if (mapping?.profileFingerprint) {
     let profile = profiles.get(mapping.sourceFilmUrl);
     if (!profile) {
@@ -30,8 +40,9 @@ export async function fetchVerifiedReport(
     try {
       if (profileFingerprint(parseSourceProfile(native, mapping)) !== mapping.profileFingerprint)
         return null;
-    } catch {
-      return null;
+    } catch (error) {
+      if (error instanceof SourceProfileConflict) return null;
+      throw error;
     }
   }
   return parseVerifiedReport(html, report, identities);

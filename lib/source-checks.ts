@@ -6,10 +6,16 @@ export async function recordSourceCheck(
   source: string,
   success: boolean,
 ) {
-  checked(
-    await db
-      .rpc('a_list_record_source_check', { p_source: source, p_success: success })
-      .abortSignal(AbortSignal.timeout(3000)),
-  );
-  console.info(JSON.stringify({ event: 'source_check', source, success }));
+  try {
+    checked(
+      await db
+        .rpc('a_list_record_source_check', { p_source: source, p_success: success })
+        .abortSignal(AbortSignal.timeout(3000)),
+    );
+    console.info(JSON.stringify({ event: 'source_check', source, success }));
+    return true;
+  } catch {
+    console.warn(JSON.stringify({ event: 'source_health_write_failed', source }));
+    return false;
+  }
 }

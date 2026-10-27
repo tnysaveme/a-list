@@ -109,3 +109,118 @@ test('partial and stale source checks are visible while saved dates stay intact'
   );
   assert.equal(dated.releases[0].date, '2026-11-03');
 });
+
+test('verified WTS dates suppress a missing-primary-listing notice while real failures and unknown dates remain clear', () => {
+  const now = Date.parse('2026-10-26T01:00:00Z');
+  const film: Movie = {
+    ...movie,
+    id: 'tt37028623',
+    imdbId: 'tt37028623',
+    primaryListingUnavailable: true,
+    releaseCheckedAt: '2026-10-26T00:00:00Z',
+    releases: [
+      {
+        kind: 'Digital',
+        date: '2026-10-27',
+        confidence: 'listed',
+        source: 'https://whentostream.com/the-lost-ones-2026/',
+        sourceName: 'When To Stream',
+        filmImdbId: 'tt37028623',
+      },
+    ],
+  };
+  assert.equal(releaseStatusNotice(film, now), undefined);
+  assert.equal(
+    releaseStatusNotice(
+      { ...film, releases: [{ ...film.releases[0], confidence: 'rumored' }] },
+      now,
+    ),
+    undefined,
+  );
+  assert.match(
+    releaseStatusNotice(
+      {
+        ...film,
+        releaseCheck: { status: 'partial', attemptedAt: film.releaseCheckedAt!, issues: [] },
+      },
+      now,
+    )!,
+    /could not be refreshed/,
+  );
+  assert.match(
+    releaseStatusNotice({ ...film, releaseCheckedAt: '2026-10-25T00:00:00Z' }, now)!,
+    /awaiting a source refresh/,
+  );
+  for (const releases of [[], [{ ...film.releases[0], filmImdbId: 'tt1111111' }]])
+    assert.equal(
+      releaseStatusNotice({ ...film, releases }, now),
+      'No home release date has been found in the checked sources yet.',
+    );
+});
+
+test('an explicit replacement survives cancellation of the old date, but a later withdrawal wins', () => {
+  const previous = parseDetail('<h2>Digital HD on November 3, 2026.</h2>', movie);
+  for (const wording of [
+    'Digital HD on November 3, 2026 was cancelled and rescheduled to November 10, 2026.',
+    'Digital HD on November 3, 2026 was withdrawn, then moved to November 10, 2026.',
+  ]) {
+    const moved = parseDetail(native + `<h2>${wording}</h2>`, previous);
+    assert.equal(moved.releases[0].date, '2026-11-10');
+    const calendar = makeCalendar([moved]);
+    assert.match(calendar, /DTSTART:20261110T130000Z/);
+    assert.equal(calendar.match(/UID:.+/)?.[0], makeCalendar([previous]).match(/UID:.+/)?.[0]);
+  }
+  for (const wording of [
+    'Digital HD previously on November 3, 2026, rescheduled to November 10, 2026, then cancelled.',
+    'Digital HD on November 3, 2026 was cancelled and rescheduled to a date to be announced.',
+    'Digital HD previously on November 3, 2026, postponed to a date to be announced.',
+  ])
+    assert.deepEqual(parseDetail(native + `<h2>${wording}</h2>`, previous).releases, []);
+});
+
+test('verified TV and mini-series subjects are classified regardless of the release heading', () => {
+  for (const type of ['TV Series', 'TV Mini Series']) {
+    for (const heading of ['', '<h2>Digital HD on November 3, 2026.</h2>']) {
+      const page = native.replace('A Film (2026)', `A Film (${type} 2026)`) + heading;
+      assert.equal(parseDetail(page, movie).mediaType, 'series');
+      assert.deepEqual(parseSearchResults(page), []);
+    }
+  }
+  const seriesPage = native.replace('A Film (2026)', 'Another Film (TV Series)');
+  assert.throws(
+    () => parseDetail(seriesPage + '<h2>Digital HD on November 3, 2026.</h2>', movie),
+    /identity/,
+  );
+});
+
+test('legacy identity repairs discard old-film metadata and retain only a synopsis from the new subject', () => {
+  const wrong: Movie = {
+    ...movie,
+    imdbId: 'tt9999999',
+    overview: 'A different film plot.',
+    overviewSource: 'https://v3-cinemeta.strem.io/meta/movie/tt9999999.json',
+    metadataCheckedAt: movie.checkedAt,
+    synopsisCheckedAt: movie.checkedAt,
+    metadataIssue: { provider: 'metadata', category: 'not_listed' },
+  };
+  for (const heading of ['', '<h2>Digital HD on November 3, 2026.</h2>']) {
+    const repaired = parseDetail(native + heading, wrong);
+    assert.equal(repaired.imdbId, 'tt1234567');
+    for (const field of [
+      'overview',
+      'overviewSource',
+      'metadataCheckedAt',
+      'synopsisCheckedAt',
+      'metadataIssue',
+    ] as const)
+      assert.equal(repaired[field], undefined);
+    const fresh = parseDetail(
+      native + heading + '<p itemprop="description">The correct native synopsis.</p>',
+      wrong,
+    );
+    assert.equal(fresh.overview, 'The correct native synopsis.');
+    assert.equal(fresh.overviewSource, movie.source);
+  }
+  const unchanged = parseDetail(native, { ...wrong, imdbId: 'tt1234567' });
+  assert.equal(unchanged.overview, wrong.overview);
+});

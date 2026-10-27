@@ -168,6 +168,8 @@ try {
   assert.match(calendarText, /UID:movie-99000001-digital@afterlight/);
   assert.match(calendarText, /BEGIN:VALARM/);
   assert.match(calendarText, /20991111T130000Z/);
+  assert.match(calendarText, /DTEND:20991111T133000Z/);
+  assert.match(calendarText, /TRIGGER;RELATED=START:PT0S/);
   assert.equal((await fetch(base + other.feedPath)).status, 200);
   const deleted = await request('/api/account/delete', {
     body: { confirmation: 'DELETE', userId: users[1].id },

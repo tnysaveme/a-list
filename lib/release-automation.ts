@@ -6,7 +6,7 @@ import type { Movie, Release } from './model';
 import type { ReleaseReport } from './sources';
 import type { ReviewedReportIdentity } from './reviewed-report-identities';
 
-export const MATCH_RULE_VERSION = 1;
+export const MATCH_RULE_VERSION = 2;
 export const SIX_HOURS = 6 * 3600_000;
 export type MatchMethod = 'reviewed' | 'structured' | 'corroborated';
 export type FeedEntry = {
@@ -50,9 +50,13 @@ export function automaticEvidence(
   ];
   const matches = unique.filter((candidate) => {
     const agreement = evidenceAgreement(profile, candidate);
-    if (!imdbId(candidate.movie.id) || !agreement.title || !agreement.year) return false;
+    if (!imdbId(candidate.movie.id) || !agreement.title) return false;
     if (explicitId) return candidate.movie.id === explicitId;
-    return agreement.director && new Set(agreement.cast.map(titleKey)).size >= 2;
+    // Providers can use festival, production or distribution years. A disagreement needs
+    // a third distinct shared cast member; title/year alone never supplies identity.
+    return (
+      agreement.director && new Set(agreement.cast.map(titleKey)).size >= (agreement.year ? 2 : 3)
+    );
   });
   if (matches.length !== 1)
     throw new UnresolvedRelease(matches.length ? 'ambiguous_identity' : 'insufficient_evidence');
@@ -65,7 +69,9 @@ export function cachedIdentity(row: MatchRow): ReviewedReportIdentity | undefine
     row.fingerprint !== row.reviewed_fingerprint
   )
     return;
-  if (row.match_method === 'corroborated' && row.rule_version !== MATCH_RULE_VERSION) return;
+  // Rule 1's exact-year matches remain valid under the stricter evidence required for year drift.
+  if (row.match_method === 'corroborated' && ![1, MATCH_RULE_VERSION].includes(row.rule_version))
+    return;
   return {
     sourceFilmId: row.source_id,
     sourceFilmUrl: row.profile.sourceFilmUrl,
@@ -116,19 +122,28 @@ export function inferredIdentity(
       corroboration:
         method === 'structured'
           ? 'Explicit source Movie identity'
-          : `Rule ${MATCH_RULE_VERSION}: unique title/year, director and two distinct shared cast members`,
+          : `Rule ${MATCH_RULE_VERSION}: unique title/director match and ${profile.year === evidence.movie.year ? 'two' : 'three'} distinct shared cast members; source year ${profile.year}, metadata year ${evidence.movie.year}`,
     },
   };
 }
-export function expansionMovie(metadata: Movie, reports: Release[], existing?: Movie): Movie {
+export function expansionMovie(
+  metadata: Movie,
+  reports: Release[],
+  existing?: Movie,
+  withdrawals: { source: string; kind: Release['kind'] }[] = [],
+): Movie {
   const id = metadata.imdbId || metadata.id;
   if (!imdbId(id) || (existing && verifiedIdentityId(existing) !== id))
     throw new UnresolvedRelease('conflicting_catalogue_identity');
   if (!reports.length || reports.some((report) => report.filmImdbId !== id))
     throw new UnresolvedRelease('unverified_report');
   const movie = existing || metadata,
-    replaced = new Set(reports.map((report) => report.source));
-  const releases = movie.releases.filter((release) => !replaced.has(release.source));
+    replaced = new Set(
+      [...reports, ...withdrawals].map((report) => `${report.source}:${report.kind}`),
+    );
+  const releases = movie.releases.filter(
+    (release) => !replaced.has(`${release.source}:${release.kind}`),
+  );
   const kinds = new Set<string>();
   for (const report of reports) {
     if (kinds.has(report.kind)) continue;

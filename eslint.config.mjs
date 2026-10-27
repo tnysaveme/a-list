@@ -7,6 +7,9 @@ const eslintConfig = defineConfig([
   ...nextTs,
   globalIgnores([
     'dist/**',
+    '.next-e2e/**',
+    'test-results/**',
+    'playwright-report/**',
     '.vinext/**',
     '.wrangler/**',
     '.sites-runtime/**',

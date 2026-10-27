@@ -1,4 +1,4 @@
-import type { Movie } from './model';
+import type { Movie, Release } from './model';
 export type LibraryPage = {
   movies: Movie[];
   total: number;
@@ -8,6 +8,7 @@ export type LibraryPage = {
   listedEvents: number;
   rumoredEvents: number;
   upcoming: Movie | null;
+  upcomingRelease?: Release | null;
   nextOffset: number | null;
 };
 export function pageOptions(url: URL) {

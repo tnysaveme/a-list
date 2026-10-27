@@ -10,6 +10,19 @@ export type SourceProfile = ReportReference & {
   overview: string;
 };
 
+export class SourceProfileUnavailable extends Error {
+  constructor(message = 'Release profile format changed') {
+    super(message);
+    this.name = 'SourceProfileUnavailable';
+  }
+}
+export class SourceProfileConflict extends Error {
+  constructor() {
+    super('Source film identity changed');
+    this.name = 'SourceProfileConflict';
+  }
+}
+
 export function parseSourceProfile(html: string, reference: ReportReference): SourceProfile {
   const native = html.match(/<article\b[^>]*\bid=['"]post-(\d+)['"][^>]*>/i)?.[1];
   const heading = text(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || '').match(
@@ -18,6 +31,21 @@ export function parseSourceProfile(html: string, reference: ReportReference): So
   const canonical = [...html.matchAll(/<link\b[^>]*>/gi)].find(
     (link) => sourceAttribute(link[0], 'rel') === 'canonical',
   );
+  if (!native || !heading || !canonical || !sourceAttribute(canonical[0], 'href'))
+    throw new SourceProfileUnavailable();
+  try {
+    const canonicalUrl = new URL(sourceAttribute(canonical[0], 'href')!);
+    if (
+      canonicalUrl.origin !== 'https://whentostream.com' ||
+      canonicalUrl.username ||
+      canonicalUrl.password ||
+      canonicalUrl.search ||
+      canonicalUrl.hash
+    )
+      throw new SourceProfileUnavailable();
+  } catch {
+    throw new SourceProfileUnavailable();
+  }
   if (
     native !== reference.sourceFilmId ||
     !heading ||
@@ -26,7 +54,7 @@ export function parseSourceProfile(html: string, reference: ReportReference): So
     !canonical ||
     sourceAttribute(canonical[0], 'href') !== reference.sourceFilmUrl
   )
-    throw new Error('Source film identity changed');
+    throw new SourceProfileConflict();
   const paragraphs = [...html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)].map((match) =>
     text(match[1]),
   );
@@ -47,7 +75,7 @@ export function parseSourceProfile(html: string, reference: ReportReference): So
     .slice(0, 30);
   const overview = field('Synopsis').slice(0, 4000);
   if (!directors.length || !cast.length || !overview)
-    throw new Error('Source film evidence incomplete');
+    throw new SourceProfileUnavailable('Source film evidence incomplete');
   return { ...reference, title: heading[1], directors, cast, overview };
 }
 export function profileFingerprint(profile: SourceProfile): string {

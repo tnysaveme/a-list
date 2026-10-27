@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import type { useMovieCalendar } from '../hooks/use-movie-calendar';
 import type { LibraryPage } from '../lib/pagination';
-import { nextRelease } from '../lib/model';
+import { calendarRelease } from '../lib/model';
 const fullDate = (date: string) =>
   new Date(date + 'T12:00:00Z').toLocaleDateString('en-US', {
     month: 'long',
@@ -88,7 +88,7 @@ export function CalendarSettings({
       <p className="calendar-tip">
         <strong>Release-day reminders · 1pm GMT</strong>
         <br />
-        Each event includes an alert at 13:00 GMT (UTC), even when your device changes time zone. In
+        Each release is a 30-minute block from 13:00–13:30 GMT (UTC), with an alert at its start. In
         Apple Calendar, leave “Alerts” unchecked under Remove and turn off “Ignore alerts”. Calendar
         notifications must be enabled on your device.
       </p>
@@ -168,7 +168,11 @@ export function CalendarSettings({
               <span>
                 {m.title}
                 <small>
-                  {nextRelease(m) ? fullDate(nextRelease(m)!.date) : 'Waiting for a date'}
+                  {calendarRelease(m, includeRumors)
+                    ? fullDate(calendarRelease(m, includeRumors)!.date)
+                    : m.releases.length
+                      ? 'Reported dates excluded'
+                      : 'Waiting for a date'}
                 </small>
               </span>
             </div>

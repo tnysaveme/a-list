@@ -1,7 +1,14 @@
 import 'server-only';
 import { verifiedReleases, type Movie } from './model';
 import { verifiedIdentityId, titleKey } from './film-identity';
-import { fetchSource, parseReports } from './sources';
+import {
+  fetchSource,
+  parseReports,
+  parseReportProfiles,
+  parseProfileReports,
+  text,
+} from './sources';
+import { profileReference } from './reviewed-report-identities';
 import { expandReleases } from './release-expansion';
 import { mergeReleaseFeed } from './release-automation';
 import { adminDb } from './supabase/admin';
@@ -24,9 +31,18 @@ export type LookupCache = {
   lease: <T>(key: string, ttl: number, work: () => Promise<T>) => Promise<T | null>;
 };
 const sharedCache: LookupCache = { read: cached, write: remember, lease: withLease };
+function lookupStatus(movie: Movie, outcome: LookupOutcome): Movie {
+  if (outcome === 'unresolved' || outcome === 'source_unavailable')
+    return {
+      ...movie,
+      releaseLookupStatus: outcome === 'unresolved' ? 'unresolved' : 'unavailable',
+    };
+  return movie.releaseLookupStatus ? { ...movie, releaseLookupStatus: undefined } : movie;
+}
 export function needsReportLookup(movie: Movie) {
   const releases = verifiedReleases(movie).filter((r) => r.confidence === 'listed');
   return (
+    movie.mediaType !== 'series' &&
     !!verifiedIdentityId(movie) &&
     !!movie.year &&
     (!releases.some((r) => r.kind === 'Digital' || r.kind === 'PVOD') ||
@@ -52,12 +68,14 @@ export async function lookupReleaseReports(
 ): Promise<LookupResult> {
   const id = verifiedIdentityId(movie);
   if (!id || !needsReportLookup(movie)) return { movie, attempted: false, outcome: 'ineligible' };
-  const key = `release-lookup:v2:${id}`,
+  const key = `release-lookup:v5:${id}`,
+    settleDeadline = Date.now() + budgetMs + 3000,
     own = AbortSignal.timeout(budgetMs),
     signal = parent ? AbortSignal.any([parent, own]) : own;
-  let attempted = false;
+  let attempted = false,
+    value = movie;
   const cachedResult = (state: LookupState): LookupResult => ({
-    movie,
+    movie: lookupStatus(movie, state.outcome),
     attempted: false,
     outcome: 'cached',
     nextCheckAt: state.nextCheckAt,
@@ -70,7 +88,7 @@ export async function lookupReleaseReports(
     const ttl = retry ? 600 : 86400,
       nextCheckAt = new Date(Date.now() + ttl * 1000).toISOString();
     await lookupCache.write(key, { outcome, nextCheckAt }, ttl);
-    return { movie: value, attempted, outcome, nextCheckAt };
+    return { movie: lookupStatus(value, outcome), attempted, outcome, nextCheckAt };
   };
   try {
     const hit = await lookupCache.read(key);
@@ -86,53 +104,81 @@ export async function lookupReleaseReports(
       );
       if (!/<rss\b/i.test(xml) || !/<channel\b/i.test(xml) || !/<\/channel>/i.test(xml))
         throw new Error('Release feed format changed');
-      const reports = parseReports(xml).filter(
-        (report) =>
-          titleKey(report.title) === titleKey(movie.title) &&
-          (!report.year || report.year === movie.year),
+      const sourcePages = new Map<string, string>();
+      const profiles = await Promise.allSettled(
+        parseReportProfiles(xml, movie).map(async (candidate) => {
+          const html = await fetchSource(candidate.source, { signal, cache: 'no-store' });
+          const reference = profileReference(html, candidate.title, text);
+          if (!reference || reference.sourceFilmUrl !== candidate.source)
+            throw new Error('Source film identity changed');
+          sourcePages.set(candidate.source, html);
+          return parseProfileReports(html, reference);
+        }),
       );
-      // Prefer a missing subscription window over articles repeating a known rental date.
+      // Native profiles come first. Announcements fill only windows still missing after verification.
       const window = (kind: string) => (kind === 'PVOD' ? 'Digital' : kind);
-      const known = new Set(
-        verifiedReleases(movie)
-          .filter((r) => r.confidence === 'listed')
-          .map((r) => window(r.kind)),
-      );
-      const selected = reports
-        .sort(
-          (a, b) =>
-            Number(known.has(window(a.release.kind))) - Number(known.has(window(b.release.kind))),
-        )
-        .slice(0, 2);
-      if (!selected.length) return complete('no_report');
-      const result = await expand(mergeReleaseFeed([], selected, new Date().toISOString()), {
-        db,
-        signal,
-        limit: 2,
-        budgetMs,
-        checkpoint: false,
-        expectedImdbId: id,
-      });
-      const retry = result.decisions.some((d) =>
-        ['source_unavailable', 'budget_exhausted', 'imports_paused'].includes(d.outcome),
-      );
-      let value = movie;
-      if (result.matched) {
-        // A completed publication gets a short read/settling window after source work expires.
-        const settle = AbortSignal.timeout(3000),
-          readSignal = parent ? AbortSignal.any([parent, settle]) : settle;
-        const row = checked(
-          await db
-            .from('a_list_movies')
-            .select('movie')
-            .eq('id', movie.id)
-            .abortSignal(readSignal)
-            .maybeSingle(),
+      let remaining = 2,
+        matched = 0,
+        processed = false;
+      let retry = profiles.some((result) => result.status === 'rejected');
+      for (const reports of [
+        profiles.flatMap((result) => (result.status === 'fulfilled' ? result.value : [])),
+        parseReports(xml),
+      ]) {
+        const known = new Set(
+          verifiedReleases(value)
+            .filter((r) => r.confidence === 'listed' || sourcePages.has(r.source))
+            .map((r) => window(r.kind)),
         );
-        value = (row?.movie as Movie) || movie;
+        const selected = reports.filter(
+          (report) =>
+            titleKey(report.title) === titleKey(movie.title) &&
+            (!report.year ||
+              report.year === movie.year ||
+              sourcePages.has(report.release.source)) &&
+            !known.has(window(report.release.kind)),
+        );
+        const feed = mergeReleaseFeed([], selected, new Date().toISOString()).slice(0, remaining);
+        if (!feed.length) continue;
+        if (signal.aborted) {
+          retry = true;
+          break;
+        }
+        processed = true;
+        remaining -= feed.length;
+        const result = await expand(feed, {
+          db,
+          signal,
+          limit: feed.length,
+          budgetMs,
+          checkpoint: false,
+          expectedImdbId: id,
+          sourcePages,
+        });
+        retry ||= result.decisions.some(
+          (d) =>
+            d.partial ||
+            ['source_unavailable', 'budget_exhausted', 'imports_paused'].includes(d.outcome),
+        );
+        matched += result.matched;
+        if (result.matched) {
+          // One shared settling deadline bounds reads after a completed publication.
+          const settle = AbortSignal.timeout(Math.max(1, settleDeadline - Date.now()));
+          const readSignal = parent ? AbortSignal.any([parent, settle]) : settle;
+          const row = checked(
+            await db
+              .from('a_list_movies')
+              .select('movie')
+              .eq('id', movie.id)
+              .abortSignal(readSignal)
+              .maybeSingle(),
+          );
+          value = (row?.movie as Movie) || value;
+        }
+        if (!remaining) break;
       }
       return complete(
-        retry ? 'source_unavailable' : result.matched ? 'matched' : 'unresolved',
+        retry ? 'source_unavailable' : matched ? 'matched' : processed ? 'unresolved' : 'no_report',
         value,
         retry,
       );
@@ -141,7 +187,7 @@ export async function lookupReleaseReports(
   } catch {
     console.warn(JSON.stringify({ event: 'release_lookup_deferred' }));
     if (!attempted) return { movie, attempted: false, outcome: 'busy' };
-    return complete('source_unavailable', movie, true);
+    return complete('source_unavailable', value, true);
   }
 }
 export async function lookupMovieReports(

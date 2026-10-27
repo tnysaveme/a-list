@@ -17,8 +17,15 @@
     "test:scaling": "node tests/scaling-integration.mjs",
     "format": "prettier --write \"{app,components,hooks,lib,tests,scripts,emails,db}/**/*.{ts,tsx,mts,mjs,css}\" \"*.{ts,mjs,css,md,json}\" \".github/workflows/*.{yml,yaml}\"",
     "format:check": "prettier --check \"{app,components,hooks,lib,tests,scripts,emails,db}/**/*.{ts,tsx,mts,mjs,css}\" \"*.{ts,mjs,css,md,json}\" \".github/workflows/*.{yml,yaml}\"",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
-    "sources:check": "node --import tsx scripts/check-sources.ts"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run test:backup",
+    "sources:check": "node --import tsx scripts/check-sources.ts",
+    "test:e2e": "playwright test",
+    "health:check": "node scripts/check-health.mjs",
+    "config:check": "node --import tsx scripts/check-configuration.ts",
+    "benchmark": "node --import tsx scripts/benchmark.ts",
+    "backup:create": "node scripts/backup.mjs create",
+    "backup:verify": "node scripts/backup.mjs verify",
+    "test:backup": "node scripts/backup.mjs self-test"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
@@ -35,6 +42,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.11",
+    "@playwright/test": "1.64.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",

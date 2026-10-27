@@ -1,15 +1,11 @@
 'use client';
 import { useCallback, useRef, useState } from 'react';
-import { requestApi } from '../lib/client-api';
+import { getApi, postApi } from '../lib/client-api';
 import type { Movie } from '../lib/model';
 import type { LibraryPage } from '../lib/pagination';
 import { applyLibraryBatch, type LibraryAction } from '../lib/library-batch';
 
-export type LibraryInit = LibraryPage & {
-  feedPath: string;
-  feedPublic: boolean;
-  includeRumors: boolean;
-};
+export type { LibraryInit } from '../lib/api-contract';
 const emptyPage: LibraryPage = {
   movies: [],
   total: 0,
@@ -37,7 +33,7 @@ export function useLibrary(
   const initialize = useCallback(
     async (signal?: AbortSignal) => {
       try {
-        const data = await requestApi<LibraryInit>('init', {}, signal);
+        const data = await postApi('init', {}, signal);
         if (signal?.aborted) return;
         setLibrary(data.movies);
         setPage(data);
@@ -56,9 +52,8 @@ export function useLibrary(
       const request = ++pageRequest.current;
       setPageBusy(true);
       try {
-        const data = await requestApi<LibraryPage>(
+        const data = await getApi(
           `library?sort=${options.sort}&filter=${options.filter}&offset=${offset}`,
-          undefined,
           signal,
         );
         if (signal?.aborted || request !== pageRequest.current) return false;
@@ -88,13 +83,9 @@ export function useLibrary(
       try {
         const result = await applyLibraryBatch(action, ids, {
           read: async (chunk) =>
-            (
-              await requestApi<{ membership: Record<string, boolean> }>(
-                `library/membership?ids=${chunk.join(',')}`,
-              )
-            ).membership,
+            (await getApi(`library/membership?ids=${chunk.join(',')}`)).membership,
           write: async (action, chunk) => {
-            await requestApi('library', { action, ids: chunk });
+            await postApi('library', { action, ids: chunk });
           },
         });
         const affected = new Set(result.completedIds);

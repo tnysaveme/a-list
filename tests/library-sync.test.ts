@@ -110,3 +110,36 @@ test('missing films and independent untracking cannot partially change the libra
   );
   assert.equal(f.writes(), 0);
 });
+
+test('known series cannot be added or tracked, including mixed batches, but can be removed', async () => {
+  const series: Movie = { ...movie, id: '54321', title: 'A Series', mediaType: 'series' };
+  const all = [movie, series];
+  let writes = 0;
+  const db = createClient('https://library.test', 'test-key', {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      fetch: async (input) => {
+        const url = new URL(String(input));
+        if (url.pathname.endsWith('/a_list_movies')) {
+          const ids = (url.searchParams.get('id') || '').slice(4, -1).split(',');
+          return Response.json(
+            all.filter((m) => ids.includes(m.id)).map((movie) => ({ id: movie.id, movie })),
+          );
+        }
+        writes++;
+        return new Response(null, { status: 204 });
+      },
+    },
+  });
+  for (const action of ['add', 'track']) {
+    await assert.rejects(writeLibrary(db, 'owner', action, [series.id]), {
+      name: 'MovieOnlyError',
+    });
+    await assert.rejects(writeLibrary(db, 'owner', action, [movie.id, series.id]), {
+      name: 'MovieOnlyError',
+    });
+  }
+  assert.equal(writes, 0, 'No part of a mixed batch may be saved or tracked');
+  await writeLibrary(db, 'owner', 'remove', [series.id]);
+  assert.equal(writes, 1);
+});

@@ -1,0 +1,60 @@
+{
+  "measuredAt": "2026-10-26T18:00:59.187Z",
+  "scope": "Local CPU/serialization and controlled-delay fixtures; not production capacity or provider latency",
+  "catalogue": [
+    {
+      "size": 366,
+      "samples": 20,
+      "p50Ms": 0.30683299999999747,
+      "p95Ms": 0.544542000000007,
+      "pageBytes": 12398,
+      "pageGzipBytes": 1423,
+      "hydrationQueries": 2
+    },
+    {
+      "size": 1000,
+      "samples": 20,
+      "p50Ms": 0.9107079999999996,
+      "p95Ms": 1.3082079999999934,
+      "pageBytes": 12613,
+      "pageGzipBytes": 1026,
+      "hydrationQueries": 5
+    },
+    {
+      "size": 5000,
+      "samples": 20,
+      "p50Ms": 5.482375000000019,
+      "p95Ms": 6.483709000000005,
+      "pageBytes": 12658,
+      "pageGzipBytes": 729,
+      "hydrationQueries": 25
+    },
+    {
+      "size": 10000,
+      "samples": 20,
+      "p50Ms": 11.632790999999997,
+      "p95Ms": 13.064250000000015,
+      "pageBytes": 12660,
+      "pageGzipBytes": 729,
+      "hydrationQueries": 50
+    }
+  ],
+  "concurrentRebuild": {
+    "callers": 20,
+    "rebuilds": 1,
+    "fixtureDelayMs": 50,
+    "wallMs": 52.172916999999984
+  },
+  "interactiveRefresh": {
+    "samples": 4,
+    "sourceDelayMs": 2000,
+    "budgetMs": 1500,
+    "p50Ms": 1502.2704589999998,
+    "p95Ms": 1502.2983750000003
+  },
+  "decisions": [
+    "Coalesce identical catalogue rebuilds; retain current bounded hydration for present scale.",
+    "Return last-good details after a 1.5 second interactive wait and poll the committed background result.",
+    "Production warm/cold p50/p95 and cold database hydration remain deployment acceptance checks."
+  ]
+}

@@ -189,7 +189,7 @@ test('calendar includes reported dates by default, labels them tentative, and pr
   assert.match(confirmed, /STATUS:CONFIRMED/);
   assert.equal(tentative.match(/UID:.+/)?.[0], confirmed.match(/UID:.+/)?.[0]);
 });
-test('stable IDs survive date changes; all-day end is exclusive across year boundaries', () => {
+test('stable IDs survive date changes and reminder blocks stay on their release day at year end', () => {
   const changed = {
     ...sample,
     releases: sample.releases.map((r) => ({ ...r, date: '2026-12-31' })),
@@ -197,7 +197,8 @@ test('stable IDs survive date changes; all-day end is exclusive across year boun
   const a = makeCalendar([sample]);
   const b = makeCalendar([changed]);
   assert.equal(a.match(/UID:.+/)?.[0], b.match(/UID:.+/)?.[0]);
-  assert.match(b, /DTEND;VALUE=DATE:20270101/);
+  assert.match(b, /DTSTART:20261231T130000Z/);
+  assert.match(b, /DTEND:20261231T133000Z/);
   assert.match(a, /SUMMARY:A film\\, with\\; punctuation/);
 });
 test('calendar content is escaped and UTF-8 lines are folded at 75 bytes', () => {
@@ -223,7 +224,7 @@ test('unknown films do not create fake events; next release chooses upcoming win
     'Subscription',
   );
 });
-test('each dated release gets a display alert at 1pm GMT without changing its all-day date', () => {
+test('every release is a thirty-minute UTC block at 1pm with a single at-start alarm across winter and summer', () => {
   const film = {
     ...sample,
     releases: [
@@ -236,16 +237,17 @@ test('each dated release gets a display alert at 1pm GMT without changing its al
   assert.equal(events.length, 2);
   for (const [index, event] of events.entries()) {
     const day = film.releases[index].date.replace(/-/g, '');
-    assert.match(event, new RegExp(`DTSTART;VALUE=DATE:${day}\\r\\n`));
+    assert.match(event, new RegExp(`DTSTART:${day}T130000Z\\r\\n`));
+    assert.match(event, new RegExp(`DTEND:${day}T133000Z\\r\\n`));
     assert.match(
       event,
-      new RegExp(
-        `BEGIN:VALARM\\r\\nACTION:DISPLAY\\r\\nTRIGGER;VALUE=DATE-TIME:${day}T130000Z\\r\\n`,
-      ),
+      new RegExp('BEGIN:VALARM\\r\\nACTION:DISPLAY\\r\\nTRIGGER;RELATED=START:PT0S\\r\\n'),
     );
     assert.equal((event.match(/BEGIN:VALARM/g) || []).length, 1);
     assert.match(event, /DESCRIPTION:A film\\, with\\; punctuation/);
+    assert.doesNotMatch(event, /DTSTART;VALUE=DATE|DTEND;VALUE=DATE|TRIGGER[^\r\n]*-P1D/);
   }
+  assert.match(calendar, /X-WR-TIMEZONE:UTC/);
 });
 test('an alert follows a changed release date and excluded rumors do not leave orphan alerts', () => {
   const changed = {
@@ -253,9 +255,10 @@ test('an alert follows a changed release date and excluded rumors do not leave o
     releases: sample.releases.map((r) => ({ ...r, date: '2027-01-01' })),
   };
   const calendar = makeCalendar([changed]);
-  assert.match(calendar, /TRIGGER;VALUE=DATE-TIME:20270101T130000Z/);
+  assert.match(calendar, /DTSTART:20270101T130000Z/);
+  assert.match(calendar, /TRIGGER;RELATED=START:PT0S/);
   assert.doesNotMatch(calendar, /20261103T130000Z/);
-  assert.match(calendar, /DTEND;VALUE=DATE:20270102/);
+  assert.match(calendar, /DTEND:20270101T133000Z/);
   const rumor = {
     ...sample,
     releases: sample.releases.map((r) => ({ ...r, confidence: 'rumored' as const })),

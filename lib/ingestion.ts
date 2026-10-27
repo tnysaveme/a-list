@@ -14,6 +14,9 @@ import { expandReleases, expansionFeed } from './release-expansion';
 import { SIX_HOURS, type FeedEntry } from './release-automation';
 import { refreshReportLookups } from './release-lookup';
 import { recordSourceCheck } from './source-checks';
+import { healthTransition, type MonitorState } from './health-transition';
+import { sourceHealthSummary } from './source-health';
+import { cached } from './infrastructure';
 import { TRANSIENT_RETRY_MS } from './source-health';
 import { movieRows } from './movie-rows';
 import { failedRefreshMovie } from './source-errors';
@@ -219,8 +222,8 @@ export async function refreshSources() {
         try {
           const result = await expandReleases(feed, { budgetMs, signal, db });
           if (result.processed) {
-            const success = !result.decisions.some((d) =>
-              ['source_unavailable', 'budget_exhausted'].includes(d.outcome),
+            const success = !result.decisions.some(
+              (d) => d.partial || ['source_unavailable', 'budget_exhausted'].includes(d.outcome),
             );
             checks.set('wts_reports', (checks.get('wts_reports') ?? true) && success);
             if (!success) failed++;
@@ -251,6 +254,22 @@ export async function refreshSources() {
       } catch {
         console.warn(JSON.stringify({ event: 'catalogue_cache_invalidation_failed' }));
       }
+    try {
+      const healthRow = checked(
+        await db
+          .from('a_list_source_status')
+          .select('last_success_at,catalogue_success_at,failures,source_health')
+          .eq('id', true)
+          .single(),
+      );
+      const current = sourceHealthSummary(healthRow || {});
+      const previous = await cached<MonitorState>('health:last');
+      const transition = healthTransition(previous || undefined, current);
+      if (transition) console.info(JSON.stringify(transition));
+      await remember('health:last', { status: current.status, issues: current.issues }, 86400);
+    } catch {
+      console.warn(JSON.stringify({ event: 'health_transition_unavailable' }));
+    }
     await metric('refresh_failures', failed);
     await metric('refreshed_movies', refreshed);
     const result = { catalogueUpdated, refreshed, failed, durationMs: Date.now() - started };
