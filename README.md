@@ -2,6 +2,10 @@
 
 A personal movie library for sourced US digital and subscription release dates, with an updating Apple Calendar feed. Built with Next.js 16, React 19, Supabase Auth/Postgres, and Vercel. [Open A-List](https://a-list-nine.vercel.app).
 
+## Design system
+
+The shared visual system is documented in [design.md](design.md), with portable colours, typography, spacing and motion in `tokens.css`. Branding is the text **A-List** in Figtree; the interface uses Inter. Next.js self-hosts both Google Fonts. Appearance follows the device’s light or dark preference. Email templates use matching neutral styling with email-client font fallbacks. Regenerate their HTML with `npm run email:render`.
+
 ## Local development
 
 Use Node.js 24. Install with `npm ci`, copy `.env.example` to `.env.local`, and fill in the Supabase project URL, publishable key, the owner's email address, an optional comma-separated list of invited members, and the sign-up setting. Normal API, sign-in and calendar throttling also require the Redis settings and `ALIST_KEY_SALT`. Complete source search/detail refresh, automatic discovery and account deletion additionally require `SUPABASE_SERVICE_ROLE_KEY`. Run `npm run config:check` to inspect missing setting names. Keep privileged credentials server-side and never commit `.env.local`.

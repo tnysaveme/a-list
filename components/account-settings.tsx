@@ -125,9 +125,9 @@ export default function AccountSettings({
           disabled={busy}
           onClick={onClose}
         >
-          <X size={20} />
+          <X aria-hidden="true" size={20} />
         </button>
-        <h2 id="account-title">Your account.</h2>
+        <h2 id="account-title">Your account</h2>
         <p className="account-intro">A few simple controls for your collection and calendar.</p>
         <section className="account-section">
           <h3>Your library, to keep.</h3>
@@ -136,7 +136,7 @@ export default function AccountSettings({
             preference as a JSON file. Your secret calendar link is excluded.
           </p>
           <button className="button subtle" onClick={download} disabled={busy}>
-            <ArrowDownToLine size={16} />
+            <ArrowDownToLine aria-hidden="true" size={16} />
             Export library
           </button>
         </section>
@@ -152,7 +152,7 @@ export default function AccountSettings({
             onClick={() => choose('reset')}
             disabled={busy}
           >
-            <CalendarDays size={16} />
+            <CalendarDays aria-hidden="true" size={16} />
             Reset calendar link
           </button>
         </section>
@@ -168,7 +168,7 @@ export default function AccountSettings({
             onClick={() => choose('delete')}
             disabled={busy}
           >
-            <Trash2 size={16} />
+            <Trash2 aria-hidden="true" size={16} />
             Delete account
           </button>
         </section>
@@ -203,7 +203,7 @@ export default function AccountSettings({
                 className={`button primary ${confirm === 'delete' ? 'account-danger-action' : ''}`}
                 disabled={busy || typed !== (confirm === 'reset' ? 'RESET' : 'DELETE')}
               >
-                {busy ? <LoaderCircle size={16} className="spin" /> : null}
+                {busy ? <LoaderCircle aria-hidden="true" size={16} className="spin" /> : null}
                 {confirm === 'reset' ? 'Reset link' : 'Delete account permanently'}
               </button>
               <button

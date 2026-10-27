@@ -8,13 +8,9 @@ export function AboutContent({ onClose }: { onClose: () => void }) {
         aria-label="Close information"
         onClick={() => onClose()}
       >
-        <X size={20} />
+        <X aria-hidden="true" size={20} />
       </button>
-      <h2>
-        Less guesswork.
-        <br />
-        More movie nights.
-      </h2>
+      <h2>How A-List works</h2>
       <p>
         A-List is your personal library for a film’s next chapter: the moment it comes home in the
         United States.

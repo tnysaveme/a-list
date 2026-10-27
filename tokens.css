@@ -1,62 +1,97 @@
-/* Hallmark · macrostructure: Catalogue · tone: editorial · anchor hue: rust
- * genre: editorial · theme: Newsprint · nav: N13 · footer: Ft2 · enrichment: real film posters
- * audience: personal · use: follow sourced US home releases · pre-emit critique: P5 H5 E4 S5 R5 V4 */
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;550;600;650;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap');
+/* Hallmark · macrostructure: Workbench · genre: modern-minimal · design-system: design.md · designed-as-app
+ * theme: A-List neutral · nav: N5 · footer: Ft1 · enrichment: none; film artwork is product content
+ * audience: owner and friends · use: follow sourced US home releases · pre-emit critique: P5 H5 E4 S5 R5 V4 */
 :root {
-  --color-paper: oklch(97.2% 0.012 84);
-  --color-surface: oklch(99% 0.006 84);
-  --color-paper-2: oklch(93.6% 0.015 84);
-  --color-ink: oklch(25% 0.016 61);
-  --color-muted: oklch(49% 0.018 69);
-  --color-rule: oklch(85% 0.019 79);
-  --color-rule-strong: oklch(65% 0.018 69);
-  --color-accent: oklch(48% 0.145 35);
-  --color-accent-hover: oklch(41% 0.13 35);
-  --color-accent-wash: oklch(93% 0.035 46);
-  --color-green: oklch(40% 0.068 155);
-  --color-green-wash: oklch(94% 0.022 145);
-  --color-amber: oklch(45% 0.09 74);
-  --color-amber-wash: oklch(95% 0.04 80);
-  --color-overlay: oklch(20% 0.012 60 / 0.55);
-  --color-shadow: oklch(20% 0.012 60 / 0.14);
-  --color-on-dark: oklch(98% 0.008 84);
-  --color-on-dark-muted: oklch(81% 0.016 79);
+  color-scheme: light dark;
+  --color-paper: oklch(100% 0 0);
+  --color-surface: oklch(100% 0 0);
+  --color-paper-2: oklch(97% 0 0);
+  --color-ink: oklch(21% 0 0);
+  --color-text-secondary: oklch(48% 0 0);
+  --color-muted: var(--color-text-secondary);
+  --color-rule: oklch(90% 0 0);
+  --color-rule-strong: oklch(66% 0 0);
+  --color-action: oklch(25% 0 0);
+  --color-accent: var(--color-action);
+  --color-accent-hover: oklch(35% 0 0);
+  --color-accent-wash: oklch(96% 0 0);
+  --color-accent-ink: oklch(100% 0 0);
+  --color-focus: oklch(53% 0.19 255);
+  --color-green: oklch(41% 0.09 155);
+  --color-green-wash: oklch(95% 0.025 155);
+  --color-amber: oklch(43% 0.08 75);
+  --color-amber-wash: oklch(96% 0.025 80);
+  --color-danger: oklch(47% 0.16 25);
+  --color-danger-wash: oklch(96% 0.018 25);
+  --color-overlay: oklch(15% 0 0 / 0.42);
+  --color-shadow: oklch(15% 0 0 / 0.12);
+  --color-on-dark: oklch(100% 0 0);
+  --color-on-dark-muted: oklch(85% 0 0);
+  --color-artwork-scrim: oklch(14% 0 0 / 0.8);
+  --color-artwork-surface: oklch(100% 0 0 / 0.96);
+  --color-artwork-ink: oklch(21% 0 0);
   --color-clear: oklch(0% 0 0 / 0);
-  --font-display: 'Newsreader', Georgia, serif;
-  --font-body: 'Geist', sans-serif;
-  --space-compact: 20px;
-  --space-comfortable: 28px;
-  --space-inset: 36px;
-  --space-section: 40px;
-  --space-control: 44px;
-  --space-panel: 56px;
-  --space-page: 72px;
-  --space-wide: 80px;
-  --color-accent-ink: var(--color-on-dark);
+  --font-brand: var(--font-figtree), sans-serif;
+  --font-body: var(--font-inter), sans-serif;
+  --font-display: var(--font-body);
+  --font-code: var(--font-body);
   --space-2xs: 4px;
   --space-xs: 8px;
   --space-sm: 12px;
   --space-md: 16px;
+  --space-compact: 20px;
   --space-lg: 24px;
+  --space-comfortable: 28px;
   --space-xl: 32px;
+  --space-inset: 36px;
+  --space-section: 40px;
+  --space-control: 44px;
   --space-2xl: 48px;
+  --space-panel: 56px;
   --space-3xl: 64px;
+  --space-page: 72px;
+  --space-wide: 80px;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
   --text-md: 1.125rem;
-  --text-lg: 1.4rem;
-  --text-xl: 2rem;
-  --text-display: clamp(1.75rem, 2.5vw, 2.25rem);
-  --radius-sm: 3px;
-  --radius-md: 6px;
-  --radius-lg: 12px;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+  --text-display: clamp(1.75rem, 3vw, 2.25rem);
+  --radius-sm: 8px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-poster: 12px;
   --radius-round: 100px;
   --rule-hair: 1px;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --dur-short: 120ms;
-  --dur-medium: 200ms;
+  --dur-medium: 180ms;
   --z-dropdown: 40;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-paper: oklch(20% 0.004 250);
+    --color-surface: oklch(24% 0.004 250);
+    --color-paper-2: oklch(28% 0.004 250);
+    --color-ink: oklch(94% 0.002 250);
+    --color-text-secondary: oklch(72% 0.006 250);
+    --color-rule: oklch(34% 0.004 250);
+    --color-rule-strong: oklch(54% 0.006 250);
+    --color-action: oklch(94% 0.002 250);
+    --color-accent-hover: oklch(83% 0.003 250);
+    --color-accent-ink: oklch(21% 0.004 250);
+    --color-accent-wash: oklch(30% 0.004 250);
+    --color-focus: oklch(73% 0.14 255);
+    --color-green: oklch(78% 0.1 155);
+    --color-green-wash: oklch(28% 0.03 155);
+    --color-amber: oklch(81% 0.1 80);
+    --color-amber-wash: oklch(29% 0.025 80);
+    --color-danger: oklch(77% 0.13 25);
+    --color-danger-wash: oklch(28% 0.035 25);
+    --color-overlay: oklch(8% 0.003 250 / 0.66);
+    --color-shadow: oklch(5% 0.002 250 / 0.4);
+  }
 }

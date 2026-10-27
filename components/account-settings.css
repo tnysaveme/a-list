@@ -1,94 +1,101 @@
+/* Hallmark · genre: modern-minimal · macrostructure: Workbench · design-system: design.md · designed-as-app */
 .account-dialog {
-  width: min(580px, calc(100vw - 24px));
-  max-height: calc(100dvh - 24px);
-}
-.account-dialog .dialog-inner {
-  padding: 32px;
+  width: 600px;
+  max-height: calc(100dvh - var(--space-xl));
 }
 .account-dialog h2 {
-  font-size: 36px;
-  padding-right: 36px;
+  font-size: var(--text-xl);
+  padding-inline-end: var(--space-xl);
 }
 .account-intro,
 .account-section p,
 .account-confirm p,
 .account-data-note {
   color: var(--color-muted);
-  line-height: 1.6;
+  font-size: var(--text-sm);
+  line-height: 1.7;
+}
+.account-intro {
+  margin-top: var(--space-sm);
 }
 .account-section {
-  border-top: 1px solid var(--color-rule);
-  padding-top: 20px;
-  margin-top: 24px;
+  border-top: var(--rule-hair) solid var(--color-rule);
+  padding-top: var(--space-lg);
+  margin-top: var(--space-lg);
 }
 .account-section h3,
 .account-confirm h3 {
-  font-size: 24px;
-  margin-bottom: 8px;
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-xs);
+  font-weight: 600;
 }
 .account-section .button {
-  margin-top: 12px;
+  margin-top: var(--space-sm);
 }
 .account-confirm {
-  margin-top: 24px;
-  padding: 20px;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-md);
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  border: var(--rule-hair) solid var(--color-rule-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-paper);
 }
 .account-confirm label {
   display: block;
-  margin: 16px 0 6px;
-  font-weight: 600;
+  margin: var(--space-md) 0 var(--space-xs);
+  font-size: var(--text-sm);
+  font-weight: 500;
 }
 .account-confirm input {
   display: block;
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--color-rule-strong);
+  min-height: var(--space-control);
+  padding: var(--space-sm);
+  border: var(--rule-hair) solid var(--color-rule-strong);
+  border-radius: var(--radius-md);
   background: var(--color-surface);
-  font-size: 16px;
+  color: var(--color-ink);
+  font-size: var(--text-base);
 }
 .account-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
+  gap: var(--space-xs);
+  margin-top: var(--space-md);
 }
 .account-danger,
 .account-error {
-  color: var(--color-accent);
+  color: var(--color-danger);
+}
+.account-danger-action {
+  background: var(--color-danger) !important;
+  border-color: var(--color-danger) !important;
+  color: var(--color-surface) !important;
 }
 .account-error,
 .account-message {
-  margin-top: 16px;
+  margin-top: var(--space-md);
+  font-size: var(--text-sm);
   line-height: 1.6;
 }
+.account-message {
+  color: var(--color-green);
+}
 .account-data-note {
-  font-size: 14px;
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-rule);
+  font-size: var(--text-xs);
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: var(--rule-hair) solid var(--color-rule);
 }
 .account-data-note a {
+  display: inline-block;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-@media (max-width: 540px) {
-  .account-dialog .dialog-inner {
-    padding: 24px 20px;
-  }
-  .account-confirm {
-    padding: 16px;
-  }
-  .account-dialog h2 {
-    font-size: 30px;
-  }
+.account-signout {
+  margin-top: var(--space-lg);
+}
+@media (max-width: 39.99rem) {
   .account-actions .button {
     width: 100%;
-    white-space: normal;
   }
-}
-
-.account-signout {
-  margin-top: 24px;
 }

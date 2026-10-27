@@ -1,8 +1,5 @@
-/* Hallmark · component: movie details modal · genre: editorial · theme: Newsprint
- * states: default · hover · focus · active · disabled · loading · error · success
- * audience: personal film tracking · use: save to library · tone: restrained editorial
- * contrast: pass (40–41) · mobile: pass (320 / 375 / 414 / 768)
- * pre-emit critique: P5 H5 E4 S5 R5 V4 */
+/* Hallmark · genre: modern-minimal · macrostructure: Workbench · design-system: design.md · designed-as-app
+ * states: default · hover · focus · active · disabled · loading · error · success */
 .movie-dialog {
   width: 760px;
   background: var(--color-surface);
@@ -32,7 +29,7 @@
 }
 .film-control:focus-visible,
 .film-control.is-focus {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-focus);
   outline-offset: 3px;
 }
 .film-control:active:not(:disabled),
@@ -95,9 +92,9 @@
 .movie-dialog .film-heading h2 {
   font-family: var(--font-display);
   font-size: var(--text-xl);
-  font-weight: 500;
+  font-weight: 600;
   font-style: normal;
-  line-height: 1.08;
+  line-height: 1.2;
   letter-spacing: -0.025em;
   margin: var(--space-xs) 0 var(--space-sm);
   overflow-wrap: anywhere;
@@ -204,7 +201,7 @@
 }
 .film-release-description strong {
   font-size: var(--text-sm);
-  font-weight: 550;
+  font-weight: 500;
 }
 .film-release-description p {
   font-size: var(--text-xs);
@@ -218,7 +215,7 @@
 .film-release-date time {
   display: block;
   font-size: var(--text-sm);
-  font-weight: 550;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 .film-release-confidence {
@@ -292,10 +289,10 @@
 .film-warning {
   padding: var(--space-sm);
   margin-top: var(--space-sm);
-  border: var(--rule-hair) solid var(--color-accent);
+  border: var(--rule-hair) solid var(--color-rule);
   border-radius: var(--radius-md);
-  background: var(--color-accent-wash);
-  color: var(--color-accent);
+  background: var(--color-paper);
+  color: var(--color-muted);
   font-size: var(--text-xs);
   line-height: 1.6;
 }
@@ -311,7 +308,7 @@
 }
 .film-no-release strong {
   font-size: var(--text-sm);
-  font-weight: 550;
+  font-weight: 500;
 }
 .film-no-release p {
   font-size: var(--text-sm);
@@ -350,7 +347,7 @@
     width: 112px;
   }
   .movie-dialog .film-heading h2 {
-    font-size: 40px;
+    font-size: var(--text-xl);
   }
   .film-heading {
     padding-top: var(--space-xs);
@@ -422,5 +419,39 @@
   .film-control:active:not(:disabled),
   .film-control.is-active {
     transform: none;
+  }
+}
+
+/* Settings-like evidence rows, shared with the neutral app system. */
+.film-poster {
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+.film-close {
+  background: var(--color-paper-2);
+}
+.film-source {
+  border-color: var(--color-clear);
+  background: var(--color-clear);
+  color: var(--color-muted);
+}
+.film-saved {
+  background: var(--color-paper);
+}
+.film-availability {
+  margin-top: var(--space-xs);
+}
+@media (max-width: 39.99rem) {
+  .film-header {
+    grid-template-columns: 72px minmax(0, 1fr);
+    padding-top: var(--space-xl);
+    padding-right: 0;
+  }
+  .film-header-long {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .movie-dialog .film-heading h2 {
+    font-size: 1.5rem;
+    padding: 0;
   }
 }

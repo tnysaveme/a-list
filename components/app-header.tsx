@@ -15,6 +15,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import './app-header.css';
+import { Wordmark } from './wordmark';
 
 type AppHeaderProps = {
   ready: boolean;
@@ -46,10 +47,7 @@ export function AppHeader({
     <header className="app-header">
       <div className="app-header-inner">
         <button className="wordmark app-header-brand" onClick={onHome} aria-label="A-List home">
-          <span className="brand-symbol" aria-hidden="true">
-            A
-          </span>
-          A-List<span className="wordmark-period">.</span>
+          <Wordmark />
         </button>
         <button
           className="app-header-control app-header-search"
@@ -60,7 +58,7 @@ export function AppHeader({
           <Search size={18} aria-hidden="true" />
           <span>Find a film</span>
           <kbd aria-hidden="true">
-            <Command size={12} />K
+            <Command aria-hidden="true" size={12} />K
           </kbd>
         </button>
         <nav className="app-header-actions" aria-label="App controls">

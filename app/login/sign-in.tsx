@@ -1,5 +1,6 @@
 'use client';
 import { useState, type FormEvent } from 'react';
+import { Wordmark } from '../../components/wordmark';
 import { ArrowRight, Mail, LoaderCircle, Check } from 'lucide-react';
 export default function SignIn({
   expired = false,
@@ -40,41 +41,34 @@ export default function SignIn({
   }
   return (
     <main className="login-shell">
-      <div className="login-brand wordmark">
-        <span className="brand-symbol" aria-hidden="true">
-          A
-        </span>
-        A-List<span className="wordmark-period">.</span>
+      <div className="login-brand">
+        <Wordmark />
       </div>
       <section className="login-panel">
-        <p className="intro-caption">Your own little corner of cinema.</p>
-        <h1>
-          For your next
-          <br />
-          movie night.
-        </h1>
+        <p className="intro-caption">Your personal film library</p>
+        <h1>Your next movie night.</h1>
         {deleted && (
           <p className="login-note" role="status">
             Your account and saved library have been deleted.
           </p>
         )}
         <p className="login-copy">
-          Save the films. Follow the dates. Keep something good to look forward to.
+          Save films you want to see. Follow their digital and streaming releases, all in one place.
         </p>
         {state === 'sent' ? (
           <div className="login-success" role="status">
-            <Check size={24} />
+            <Check aria-hidden="true" size={24} />
             <h2>Check your inbox.</h2>
             <p>We sent you a sign-in link. Open it in this browser to return to your library.</p>
             <button className="text-link" onClick={() => setState('idle')}>
-              Use another email <ArrowRight size={14} />
+              Use another email <ArrowRight aria-hidden="true" size={14} />
             </button>
           </div>
         ) : (
           <form onSubmit={submit}>
             <label htmlFor="email">Your email address</label>
             <div className="login-input" data-invalid={invalidEmail || undefined}>
-              <Mail size={18} />
+              <Mail aria-hidden="true" size={18} />
               <input
                 id="email"
                 name="email"
@@ -111,18 +105,19 @@ export default function SignIn({
             </p>
             <button
               className="button primary"
+              aria-busy={state === 'loading'}
               type="submit"
               disabled={state === 'loading' || !email.trim()}
             >
               {state === 'loading' ? (
                 <>
-                  <LoaderCircle className="spin" size={16} />
+                  <LoaderCircle aria-hidden="true" className="spin" size={16} />
                   Sending your link…
                 </>
               ) : (
                 <>
-                  Email me a sign-in link
-                  <ArrowRight size={16} />
+                  Continue with email
+                  <ArrowRight aria-hidden="true" size={16} />
                 </>
               )}
             </button>
@@ -132,7 +127,7 @@ export default function SignIn({
           Your email. Your own private library. <a href="/privacy">How your data is used</a>
         </p>
       </section>
-      <p className="login-colophon">The big screen. Then your screen.</p>
+      <p className="login-colophon">Films worth looking forward to.</p>
     </main>
   );
 }

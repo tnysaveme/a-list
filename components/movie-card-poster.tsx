@@ -69,7 +69,7 @@ export function MovieCardPoster({
         )}
         <span className="card-view-cue" aria-hidden="true">
           <span>{selecting ? (selected ? 'Selected' : 'Select film') : 'View film'}</span>
-          <ArrowUpRight size={14} />
+          <ArrowUpRight aria-hidden="true" size={14} />
         </span>
       </button>
       {children}

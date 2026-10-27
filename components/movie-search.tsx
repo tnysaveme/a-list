@@ -20,11 +20,11 @@ export function MovieSearch({
   return (
     <>
       <div className="search-field">
-        <Search size={20} />
+        <Search aria-hidden="true" size={20} />
         <input
           ref={searchRef}
           value={query}
-          placeholder="Which film is on your mind?"
+          placeholder="Search movies"
           aria-label="Search movie titles"
           autoComplete="off"
           onChange={(e) => changeQuery(e.target.value)}
@@ -36,12 +36,12 @@ export function MovieSearch({
           }}
         />
         <button className="icon-button" aria-label="Close search" onClick={closeSearch}>
-          <X size={20} />
+          <X aria-hidden="true" size={20} />
         </button>
       </div>
       <div className="search-result-heading">
-        <span>{query.trim().length < 2 ? 'Coming to a screen near you' : 'Matching films'}</span>
-        {searchBusy && <LoaderCircle className="spin" size={16} />}
+        <span>{query.trim().length < 2 ? 'Coming soon' : 'Matching films'}</span>
+        {searchBusy && <LoaderCircle aria-hidden="true" className="spin" size={16} />}
       </div>
       <div className="search-results" aria-live="polite">
         {searchError && (
@@ -75,7 +75,11 @@ export function MovieSearch({
                 {searchReleaseSummary(m, today())}
               </small>
             </span>
-            {savedIds.has(m.id) ? <Check size={16} /> : <ArrowUpRight size={16} />}
+            {savedIds.has(m.id) ? (
+              <Check aria-hidden="true" size={16} />
+            ) : (
+              <ArrowUpRight aria-hidden="true" size={16} />
+            )}
           </button>
         ))}
         {!searchResults.length && !searchBusy && (

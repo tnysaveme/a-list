@@ -1,3 +1,4 @@
+import { Wordmark } from '../../components/wordmark';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import './privacy.css';
@@ -9,9 +10,9 @@ export default function Privacy() {
   return (
     <main className="privacy-page">
       <Link href="/" className="privacy-home">
-        A-List.
+        <Wordmark />
       </Link>
-      <h1>Your data.</h1>
+      <h1>Your data</h1>
       <p>
         A-List is a small movie tracker for its owner and friends. This note explains what the app
         keeps and the controls available to you.

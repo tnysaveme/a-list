@@ -56,12 +56,12 @@ export function CalendarSettings({
         aria-label="Close calendar settings"
         onClick={() => setCalendar(false)}
       >
-        <X size={20} />
+        <X aria-hidden="true" size={20} />
       </button>
       <span className="dialog-emblem">
-        <CalendarDays size={28} />
+        <CalendarDays aria-hidden="true" size={28} />
       </span>
-      <h2>A date with a good film.</h2>
+      <h2>Your calendar</h2>
       <p className="calendar-intro">
         Every film in your library is included automatically. Subscribe once; dates update when your
         calendar refreshes.
@@ -107,7 +107,7 @@ export function CalendarSettings({
       </label>
       {!canSubscribe && (
         <div className="subscription-notice">
-          <CircleHelp size={18} />
+          <CircleHelp aria-hidden="true" size={18} />
           <p>
             <strong>One hosting step remains.</strong> Apple Calendar needs a feed it can reach
             without a site sign-in. This private preview keeps your library protected; subscription
@@ -131,17 +131,22 @@ export function CalendarSettings({
           if (!ready || !trackedCount || !canSubscribe) e.preventDefault();
         }}
       >
-        <CalendarDays size={17} />
+        <CalendarDays aria-hidden="true" size={17} />
         Subscribe in Apple Calendar
-        <ArrowUpRight size={16} />
+        <ArrowUpRight aria-hidden="true" size={16} />
       </a>
       <div className="calendar-secondary">
         <button
           className="button subtle"
+          data-state={copied ? 'success' : undefined}
           disabled={!ready || !trackedCount || !canSubscribe}
           onClick={() => void copyFeed()}
         >
-          {copied ? <Check size={15} /> : <ExternalLink size={15} />}{' '}
+          {copied ? (
+            <Check aria-hidden="true" size={15} />
+          ) : (
+            <ExternalLink aria-hidden="true" size={15} />
+          )}{' '}
           {copied ? 'Link copied' : 'Copy feed link'}
         </button>
         <button
@@ -149,7 +154,7 @@ export function CalendarSettings({
           disabled={!(page.listedEvents + (includeRumors ? page.rumoredEvents : 0))}
           onClick={() => download()}
         >
-          <ArrowDownToLine size={15} />
+          <ArrowDownToLine aria-hidden="true" size={15} />
           Download .ics
         </button>
       </div>
@@ -183,7 +188,7 @@ export function CalendarSettings({
               disabled={trackedBusy}
               onClick={() => loadTracked(trackedNext)}
             >
-              More films <ArrowDownToLine size={16} />
+              More films <ArrowDownToLine aria-hidden="true" size={16} />
             </button>
           )}
           {trackedBusy && <p role="status">Opening your films…</p>}

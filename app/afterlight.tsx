@@ -35,6 +35,7 @@ import { useLibrary } from '../hooks/use-library';
 import { useFilmSearch } from '../hooks/use-film-search';
 import { useMovieCalendar } from '../hooks/use-movie-calendar';
 import { Dialog } from '../components/dialog';
+import { Wordmark } from '../components/wordmark';
 import { CalendarSettings } from '../components/calendar-settings';
 import { MovieSearch } from '../components/movie-search';
 import { AboutContent } from '../components/about-content';
@@ -325,32 +326,37 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
       />
       <main id="main" className="main-content">
         <section className="intro">
-          <h1>Your next movie night.</h1>
+          <div>
+            <h1>{view === 'library' ? 'Your library' : 'Discover'}</h1>
+            <p className="intro-copy">
+              {view === 'library'
+                ? 'The films you’re looking forward to, all in one place.'
+                : 'Find your next watch. We’ll follow the release dates.'}
+            </p>
+          </div>
           <div className="intro-calendar">
-            <span className="territory">
-              <span className="us-mark" aria-hidden="true">
-                US
-              </span>{' '}
-              United States releases
-            </span>
+            <span className="territory">US releases</span>
           </div>
         </section>
         <nav className="main-nav" aria-label="Your collection">
           <div className="nav-tabs">
             <button
               className={view === 'library' ? 'active' : ''}
+              aria-pressed={view === 'library'}
               onClick={() => changeView('library')}
             >
-              <Bookmark size={16} /> My library <span className="count">{page.total}</span>
+              <Bookmark aria-hidden="true" size={16} /> My library{' '}
+              <span className="count">{page.total}</span>
             </button>
             <button
               className={view === 'discover' ? 'active' : ''}
+              aria-pressed={view === 'discover'}
               onClick={() => changeView('discover')}
             >
-              <Film size={16} /> Discover
+              <Film aria-hidden="true" size={16} /> Discover
             </button>
           </div>
-          <span className="save-note">A little less scrolling. A little more cinema.</span>
+          <span className="save-note">Digital & streaming releases</span>
         </nav>
         {view === 'library' && upcoming && (
           <aside className="next-up">
@@ -367,7 +373,7 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
               <p>Next on your horizon</p>
               <button className="text-link" onClick={() => openMovie(upcoming.movie)}>
                 {upcoming.movie.title}
-                <ArrowUpRight size={16} />
+                <ArrowUpRight aria-hidden="true" size={16} />
               </button>
             </div>
             <span className="next-up-type">
@@ -382,7 +388,7 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
         <section className="collection" aria-labelledby="collection-heading">
           <div className="section-heading">
             <h2 id="collection-heading">
-              {view === 'library' ? 'Your library' : 'Discover films'}
+              {view === 'library' ? 'Saved films' : 'All films'}
               <span className="heading-count">
                 {view === 'library' ? page.filteredTotal : cataloguePage.filteredTotal}
               </span>
@@ -393,9 +399,9 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
               {[
                 ['all', 'All films', 'All'],
                 ['soon', 'Coming soon', 'Soon'],
-                ['available', 'Available now', 'Available'],
+                ['available', 'Available now', 'Now'],
                 ['unknown', 'No date yet', 'No date'],
-                ['rumored', 'Reported', 'Reported'],
+                ['rumored', 'Reported', 'Reports'],
               ].map(([id, label, shortLabel]) => (
                 <button
                   key={id}
@@ -413,7 +419,7 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
             </div>
             <div className="sort-layout">
               <label className="sort-control">
-                <SlidersHorizontal size={14} />
+                <SlidersHorizontal aria-hidden="true" size={14} />
                 <span className="sr-only">Sort films</span>
                 <select
                   aria-label="Sort films"
@@ -425,7 +431,7 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                   <option value="theatrical">Theatrical date</option>
                   {view === 'library' && <option value="added">Recently added</option>}
                 </select>
-                <ChevronDown size={14} />
+                <ChevronDown aria-hidden="true" size={14} />
               </label>
               {view === 'library' && (
                 <button
@@ -438,7 +444,11 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                     setSelection(new Set());
                   }}
                 >
-                  {selecting ? <X size={16} /> : <CheckCheck size={16} />}
+                  {selecting ? (
+                    <X aria-hidden="true" size={16} />
+                  ) : (
+                    <CheckCheck aria-hidden="true" size={16} />
+                  )}
                   <span>{selecting ? 'Cancel selection' : 'Select films'}</span>
                 </button>
               )}
@@ -448,14 +458,14 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                   aria-pressed={layout === 'grid'}
                   onClick={() => setLayout('grid')}
                 >
-                  <Grid2X2 size={16} />
+                  <Grid2X2 aria-hidden="true" size={16} />
                 </button>
                 <button
                   aria-label="List view"
                   aria-pressed={layout === 'list'}
                   onClick={() => setLayout('list')}
                 >
-                  <List size={18} />
+                  <List aria-hidden="true" size={18} />
                 </button>
               </div>
             </div>
@@ -482,18 +492,18 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                   void initialize();
                 }}
               >
-                Try again <RefreshCw size={14} />
+                Try again <RefreshCw aria-hidden="true" size={14} />
               </button>
             </div>
           )}
           {((initializing || (pageBusy && library.length === 0)) && view === 'library') ||
           (catalogueBusy && catalogue.length === 0 && view === 'discover') ? (
             <p className="loading-state">
-              <LoaderCircle size={18} className="spin" /> Opening your library…
+              <LoaderCircle aria-hidden="true" size={18} className="spin" /> Opening your library…
             </p>
           ) : movies.length === 0 ? (
             <div className="empty-state">
-              <Bookmark size={32} />
+              <Bookmark aria-hidden="true" size={32} />
               <h3>
                 {page.total || view === 'discover'
                   ? 'Nothing in this chapter yet.'
@@ -509,7 +519,7 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                 onClick={() => (page.total ? changeFilter('all') : setSearching(true))}
               >
                 {page.total ? 'Show all films' : 'Find your first film'}
-                <ArrowRight size={16} />
+                <ArrowRight aria-hidden="true" size={16} />
               </button>
             </div>
           ) : (
@@ -572,11 +582,11 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                             onClick={() => (saved || !membershipKnown ? openMovie(m) : save(m))}
                           >
                             {!membershipKnown ? (
-                              <CircleHelp size={18} />
+                              <CircleHelp aria-hidden="true" size={18} />
                             ) : saved ? (
-                              <Check size={18} />
+                              <Check aria-hidden="true" size={18} />
                             ) : (
-                              <Plus size={20} />
+                              <Plus aria-hidden="true" size={20} />
                             )}
                           </button>
                         </>
@@ -632,7 +642,7 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                 }
               >
                 {(view === 'library' ? pageBusy : catalogueBusy) ? 'Opening films…' : 'More films'}{' '}
-                <ArrowDownToLine size={16} />
+                <ArrowDownToLine aria-hidden="true" size={16} />
               </button>
               <span>
                 Showing {movies.length} of{' '}
@@ -655,11 +665,11 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
             </span>
           </div>
           <button className="text-link" onClick={() => setAbout(true)}>
-            How we track <ArrowUpRight size={14} />
+            How we track <ArrowUpRight aria-hidden="true" size={14} />
           </button>
         </aside>
         <footer className="site-footer">
-          <span className="footer-brand">A-List.</span>
+          <Wordmark className="footer-brand" />
           <p>For the love of a good film.</p>
           <span>
             {catalogueFreshness(cataloguePage)}{' '}
@@ -670,11 +680,11 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
       {selecting && selection.size > 0 && (
         <div className="batch-bar">
           <span>
-            <CheckCheck size={18} />
+            <CheckCheck aria-hidden="true" size={18} />
             <strong>{selection.size}</strong> selected
           </span>
           <button disabled={busy || !ready} onClick={() => remove([...selection])}>
-            <Trash2 size={16} />
+            <Trash2 aria-hidden="true" size={16} />
             <span>Remove</span>
           </button>
           <button
@@ -685,7 +695,7 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
               setSelecting(false);
             }}
           >
-            <X size={18} />
+            <X aria-hidden="true" size={18} />
           </button>
         </div>
       )}
@@ -701,7 +711,7 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
             onClick={() => setNotice(null)}
             aria-label="Dismiss message"
           >
-            <X size={16} />
+            <X aria-hidden="true" size={16} />
           </button>
         </div>
       )}

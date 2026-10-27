@@ -1,42 +1,51 @@
+/* Hallmark · genre: modern-minimal · macrostructure: Long Document · design-system: design.md · designed-as-app */
 .privacy-page {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 40px 24px 64px;
-  font:
-    16px/1.7 system-ui,
-    sans-serif;
-  color: #27221b;
+  max-width: 760px;
+  margin-inline: auto;
+  padding: var(--space-xl) var(--space-lg) var(--space-3xl);
+  color: var(--color-ink);
+  font: 400 var(--text-base)/1.8 var(--font-body);
 }
 .privacy-page h1 {
-  font:
-    48px/1.2 Georgia,
-    serif;
-  margin: 32px 0 20px;
+  font-family: var(--font-body);
+  font-size: var(--text-display);
+  line-height: 1.2;
+  margin: var(--space-2xl) 0 var(--space-lg);
 }
 .privacy-page h2 {
-  font:
-    26px/1.3 Georgia,
-    serif;
-  margin: 32px 0 12px;
+  font-family: var(--font-body);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.4;
+  margin: var(--space-xl) 0 var(--space-sm);
 }
 .privacy-page p {
-  margin: 0 0 16px;
+  margin-bottom: var(--space-md);
+  color: var(--color-muted);
 }
 .privacy-page a {
-  color: #8f361a;
+  color: var(--color-ink);
   text-underline-offset: 3px;
 }
-.privacy-page a:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 4px;
-}
 .privacy-home {
-  display: inline-block;
-  padding: 8px 0;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-control);
+  padding-block: var(--space-xs);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
 }
 .privacy-updated {
-  margin-top: 32px !important;
-  color: #6a6258;
-  font-size: 14px;
+  padding-top: var(--space-lg);
+  margin-top: var(--space-xl);
+  border-top: var(--rule-hair) solid var(--color-rule);
+  font-size: var(--text-sm);
+}
+@media (min-width: 48rem) {
+  .privacy-page {
+    padding-top: var(--space-2xl);
+  }
 }
