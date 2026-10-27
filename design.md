@@ -539,3 +539,11 @@ Use with the root tokens above.
   --ring: var(--color-focus);
 }
 ```
+
+## Shared terminology and inline search
+
+Use **Available**, **Coming Soon**, and **TBA** for release timing throughout the app. **Unconfirmed** is a certainty qualifier, replacing the ambiguous “Reported” label; it must never imply a verified release or availability. Storage/API confidence values stay unchanged. Calendar titles use `[Unconfirmed]` and preserve their existing event identities and 1pm GMT alarms.
+
+The floating pill contains a real search field between the text wordmark and calendar/account controls. Results open in an anchored, non-modal panel; typing stays focused in the field, arrow keys navigate, Enter opens, Escape dismisses, and Cmd/Ctrl+K focuses search. Search state belongs to the header, so typing does not rerender the film collection. The panel uses restrained opacity/position feedback and respects reduced motion.
+
+Search focus never changes navbar geometry. Calendar/account controls remain visible on narrow screens, the desktop shortcut/clear slot has a fixed width, and phone clear/close controls live in the results panel. The input retains the same position and width when focused, typed into, cleared, or dismissed.

@@ -40,7 +40,9 @@ export default function AppHeaderPreview() {
       <AppHeader
         ready={ready}
         onHome={() => setResult('Discover selected')}
-        onSearch={() => setPanel('Find a film')}
+        catalogue={[]}
+        savedIds={new Set()}
+        onSelectMovie={(movie) => setPanel(movie.title)}
         onCalendar={() => setPanel('Calendar settings')}
         onAccount={() => setPanel('Account settings')}
         onAbout={() => setPanel('How A-List works')}

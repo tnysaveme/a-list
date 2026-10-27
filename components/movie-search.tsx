@@ -1,95 +1,116 @@
 'use client';
-import { ArrowUpRight, Check, LoaderCircle, Search, X } from 'lucide-react';
+import { ArrowUpRight, Check, LoaderCircle, X } from 'lucide-react';
 import type { useFilmSearch } from '../hooks/use-film-search';
 import type { Movie } from '../lib/model';
 import { searchReleaseSummary } from '../lib/search-results';
 import { FilmPoster } from './film-poster';
-const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+
 export function MovieSearch({
   search,
   searchResults,
   savedIds,
   onSelect,
+  resultsId,
+  activeIndex,
+  onActiveIndex,
+  currentDay,
 }: {
   search: ReturnType<typeof useFilmSearch>;
   searchResults: Movie[];
   savedIds: Set<string>;
   onSelect: (movie: Movie) => void;
+  resultsId: string;
+  activeIndex: number;
+  onActiveIndex: (index: number) => void;
+  currentDay: string;
 }) {
-  const { query, searchBusy, searchError, searchRef, changeQuery, closeSearch } = search;
+  const { query, searchBusy, searchError } = search;
   return (
     <>
-      <div className="search-field">
-        <Search aria-hidden="true" size={20} />
-        <input
-          ref={searchRef}
-          value={query}
-          placeholder="Search movies"
-          aria-label="Search movie titles"
-          autoComplete="off"
-          onChange={(e) => changeQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowDown') {
-              e.preventDefault();
-              document.querySelector<HTMLButtonElement>('[data-search-result]')?.focus();
-            }
+      <div className="search-result-heading">
+        <span>{query.trim().length < 2 ? 'Explore films' : 'Matching films'}</span>
+        <span role="status" className="search-status">
+          {searchBusy ? (
+            <>
+              <LoaderCircle aria-hidden="true" className="spin" size={14} /> Searching…
+            </>
+          ) : (
+            `${searchResults.length} ${searchResults.length === 1 ? 'film' : 'films'}`
+          )}
+        </span>
+        <button
+          className="search-mobile-action"
+          aria-label={query ? 'Clear search' : 'Close search'}
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => {
+            if (query) {
+              search.changeQuery('');
+              onActiveIndex(-1);
+              search.searchRef.current?.focus({ preventScroll: true });
+            } else search.closeSearch();
           }}
-        />
-        <button className="icon-button" aria-label="Close search" onClick={closeSearch}>
-          <X aria-hidden="true" size={20} />
+        >
+          <X size={18} aria-hidden="true" />
         </button>
       </div>
-      <div className="search-result-heading">
-        <span>{query.trim().length < 2 ? 'Coming soon' : 'Matching films'}</span>
-        {searchBusy && <LoaderCircle aria-hidden="true" className="spin" size={16} />}
-      </div>
-      <div className="search-results" aria-live="polite">
-        {searchError && (
-          <p className="search-error">{searchError} Showing matches from the catalogue.</p>
-        )}
-        {searchResults.map((m, index) => (
-          <button
+      {searchError && (
+        <p className="search-error" role="status">
+          {searchError} Showing matches from the catalogue.
+        </p>
+      )}
+      <div
+        className="search-results"
+        id={resultsId}
+        role="listbox"
+        aria-label="Film results"
+        aria-busy={searchBusy}
+      >
+        {searchResults.map((movie, index) => (
+          <div
             data-search-result
-            key={m.id}
+            id={`${resultsId}-${movie.id}`}
+            role="option"
+            aria-selected={activeIndex === index}
+            key={movie.id}
             className="search-result"
-            onClick={() => {
-              onSelect(m);
+            onPointerMove={() => {
+              if (activeIndex !== index) onActiveIndex(index);
             }}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                e.preventDefault();
-                const nodes = [
-                  ...document.querySelectorAll<HTMLButtonElement>('[data-search-result]'),
-                ];
-                nodes[
-                  (index + (e.key === 'ArrowDown' ? 1 : -1) + nodes.length) % nodes.length
-                ]?.focus();
-              }
-            }}
+            onPointerDown={(event) => event.preventDefault()}
+            onClick={() => onSelect(movie)}
           >
-            <FilmPoster src={m.poster} width={36} height={54} sizes="36px" alt="" />
+            <FilmPoster src={movie.poster} width={36} height={54} sizes="40px" alt="" />
             <span>
-              <strong>{m.title}</strong>
+              <strong>{movie.title}</strong>
               <small>
-                {m.year && `${m.year} · `}
-                {searchReleaseSummary(m, today())}
+                {movie.year && `${movie.year} · `}
+                {searchReleaseSummary(movie, currentDay)}
               </small>
+              {(savedIds.has(movie.id) || movie.saved) && (
+                <span className="sr-only">Saved to your library</span>
+              )}
             </span>
-            {savedIds.has(m.id) ? (
+            {savedIds.has(movie.id) || movie.saved ? (
               <Check aria-hidden="true" size={16} />
             ) : (
               <ArrowUpRight aria-hidden="true" size={16} />
             )}
-          </button>
+          </div>
         ))}
-        {!searchResults.length && !searchBusy && (
-          <p className="search-empty">No films found. Try a shorter title or different spelling.</p>
-        )}
       </div>
-      <div className="search-foot">
-        <span>↑ ↓ to explore</span>
-        <span>↵ to open</span>
-        <span>esc to close</span>
+      {!searchResults.length && (
+        <p className="search-empty">
+          {searchBusy
+            ? 'Searching the catalogue…'
+            : query.trim().length < 2
+              ? 'Type at least two letters to find a film.'
+              : 'No films found. Try a shorter title or different spelling.'}
+        </p>
+      )}
+      <div className="search-foot" aria-hidden="true">
+        <span>↑ ↓ Navigate</span>
+        <span>↵ Open</span>
+        <span>esc Close</span>
       </div>
     </>
   );

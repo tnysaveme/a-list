@@ -28,14 +28,14 @@ test('fresh Prada search result replaces the stale catalogue entry without losin
   assert.equal(found[0].releases[0].date, '2026-06-30');
   assert.equal(
     searchReleaseSummary(found[0], '2026-10-23'),
-    'Digital rental/purchase · Available since Jun 30, 2026',
+    'Digital rental/purchase · Available · Jun 30, 2026',
   );
 });
 test('a newer search response can withdraw a date; merging does not resurrect stale releases', () => {
   const found = searchMatches([fresh], [stale], 'prada', '2026-10-23');
   assert.equal(found.length, 1);
   assert.equal(found[0].releases.length, 0);
-  assert.equal(searchReleaseSummary(found[0], '2026-10-23'), 'Home release date not listed');
+  assert.equal(searchReleaseSummary(found[0], '2026-10-23'), 'TBA');
 });
 test('search labels distinguish subscription, future dates, and unconfirmed reports', () => {
   const subscription = {
@@ -51,13 +51,16 @@ test('search labels distinguish subscription, future dates, and unconfirmed repo
   };
   assert.equal(
     searchReleaseSummary(subscription, '2026-10-23'),
-    'Disney+ / Hulu · Available since Jul 29, 2026',
+    'Disney+ / Hulu · Available · Jul 29, 2026',
   );
-  assert.equal(searchReleaseSummary(subscription, '2026-07-01'), 'Disney+ / Hulu · Jul 29, 2026');
+  assert.equal(
+    searchReleaseSummary(subscription, '2026-07-01'),
+    'Disney+ / Hulu · Coming Soon · Jul 29, 2026',
+  );
   const rumor = { ...fresh, releases: [{ ...fresh.releases[0], confidence: 'rumored' as const }] };
   assert.equal(
     searchReleaseSummary(rumor, '2026-10-23'),
-    'Digital rental/purchase · Reported Jun 30, 2026',
+    'Digital rental/purchase · Unconfirmed · Jun 30, 2026',
   );
   assert.doesNotMatch(searchReleaseSummary(rumor, '2026-10-23'), /Available/);
 });

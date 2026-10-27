@@ -62,7 +62,7 @@ test('unresolved film matches explain verification instead of claiming that no d
       movie: { ...series, mediaType: 'movie', releaseLookupStatus: 'unresolved' },
     }),
   );
-  assert.match(html, /Date not verified/);
+  assert.match(html, /TBA/);
   assert.match(html, /film identity could not be verified/);
   assert.doesNotMatch(html, /Date not announced|No US digital or subscription date is listed yet/);
 });

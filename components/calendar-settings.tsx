@@ -94,7 +94,7 @@ export function CalendarSettings({
       </p>
       <label className="preference-row">
         <span>
-          <strong>Include reported dates</strong>
+          <strong>Include unconfirmed dates</strong>
           <small>Unconfirmed dates appear as tentative events.</small>
         </span>
         <input
@@ -176,8 +176,8 @@ export function CalendarSettings({
                   {calendarRelease(m, includeRumors)
                     ? fullDate(calendarRelease(m, includeRumors)!.date)
                     : m.releases.length
-                      ? 'Reported dates excluded'
-                      : 'Waiting for a date'}
+                      ? 'Unconfirmed dates excluded'
+                      : 'TBA'}
                 </small>
               </span>
             </div>

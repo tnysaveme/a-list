@@ -46,8 +46,8 @@ export function AboutContent({ onClose }: { onClose: () => void }) {
       <p>
         Release sources are checked in the background. Saved film dates are scheduled for refresh
         about every six hours, and your calendar receives the latest stored dates whenever it checks
-        for updates. Unknown dates stay out of the calendar until a date is listed. Reported dates
-        are optional and marked tentative. Apple decides when to fetch updates.
+        for updates. Unknown dates stay out of the calendar until a date is listed. Unconfirmed
+        dates are optional and marked tentative. Apple decides when to fetch updates.
       </p>
       <h3>Your own little collection</h3>
       <p>

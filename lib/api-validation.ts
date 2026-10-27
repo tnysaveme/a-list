@@ -2,7 +2,7 @@ import { validMovieId } from './model';
 export class InvalidRequest extends Error {}
 export function settingsInput(body: Record<string, unknown>): boolean {
   if (typeof body.includeRumors !== 'boolean')
-    throw new InvalidRequest('Choose whether to include reported dates.');
+    throw new InvalidRequest('Choose whether to include unconfirmed dates.');
   return body.includeRumors;
 }
 export function libraryInput(body: Record<string, unknown>) {

@@ -1,4 +1,12 @@
 import { availableRelease, displayRelease, type Movie } from './model';
+import { releaseLabels } from './release-labels';
+
+const dateFormat = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
 
 export function searchMatches(
   catalogue: Movie[],
@@ -21,13 +29,8 @@ export function searchMatches(
 export function searchReleaseSummary(movie: Movie, today: string): string {
   const available = availableRelease(movie, today);
   const release = displayRelease(movie, today);
-  if (!release) return 'Home release date not listed';
-  const date = new Date(`${release.date}T12:00:00Z`).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
+  if (!release) return releaseLabels.unknown;
+  const date = dateFormat.format(new Date(`${release.date}T12:00:00Z`));
   const window =
     release.platform ||
     (release.kind === 'Subscription'
@@ -35,5 +38,11 @@ export function searchReleaseSummary(movie: Movie, today: string): string {
       : release.kind === 'PVOD'
         ? 'Premium rental/purchase'
         : 'Digital rental/purchase');
-  return `${window} · ${release.confidence === 'rumored' ? 'Reported ' : available ? 'Available since ' : ''}${date}`;
+  const status =
+    release.confidence === 'rumored'
+      ? releaseLabels.unconfirmed
+      : available
+        ? releaseLabels.available
+        : releaseLabels.soon;
+  return `${window} · ${status} · ${date}`;
 }

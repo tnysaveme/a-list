@@ -175,15 +175,15 @@ test('merging theatre and digital listings preserves sourced digital releases', 
   const merged = mergeMovies([sample, { ...sample, theatrical: '2026-09-01', releases: [] }]);
   assert.equal(merged[0].releases.length, 1);
 });
-test('calendar includes reported dates by default, labels them tentative, and preserves opt-out', () => {
+test('calendar includes unconfirmed dates by default, labels them tentative, and preserves opt-out', () => {
   const rumor = {
     ...sample,
     releases: sample.releases.map((r) => ({ ...r, confidence: 'rumored' as const })),
   };
   const tentative = makeCalendar([rumor]).replace(/\r\n /g, '');
   assert.match(tentative, /STATUS:TENTATIVE/);
-  assert.match(tentative, /SUMMARY:\[Rumored\]/);
-  assert.match(tentative, /Reported\\; not confirmed\./);
+  assert.match(tentative, /SUMMARY:\[Unconfirmed\]/);
+  assert.match(tentative, /Unconfirmed date\\; subject to change\./);
   assert.doesNotMatch(makeCalendar([rumor], { includeRumors: false }), /BEGIN:VEVENT|VALARM/);
   const confirmed = makeCalendar([sample]);
   assert.match(confirmed, /STATUS:CONFIRMED/);

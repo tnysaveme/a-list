@@ -2,7 +2,7 @@ import { calendarReleases, type Movie } from './model';
 // Keep the legacy UID namespace stable across the A-List rename.
 const EVENT_UID_NAMESPACE = 'afterlight';
 // Bump the format revision when existing subscribers need an event update.
-export const CALENDAR_FORMAT_UPDATED_AT = '2026-10-26T11:02:17.000Z';
+export const CALENDAR_FORMAT_UPDATED_AT = '2026-10-27T22:40:36.000Z';
 const escape = (s: string) =>
   s.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,');
 function fold(line: string): string {
@@ -51,7 +51,7 @@ export function makeCalendar(
       const modified = new Date(
         Math.max(Date.parse(contentUpdated) || 0, Date.parse(CALENDAR_FORMAT_UPDATED_AT)),
       ).toISOString();
-      const summary = `${release.confidence === 'rumored' ? '[Rumored] ' : ''}${movie.title} · ${release.platform || release.kind}`;
+      const summary = `${release.confidence === 'rumored' ? '[Unconfirmed] ' : ''}${movie.title} · ${release.platform || release.kind}`;
       lines.push(
         'BEGIN:VEVENT',
         `UID:movie-${movie.id}-${release.kind.toLowerCase()}@${EVENT_UID_NAMESPACE}`,
@@ -60,7 +60,7 @@ export function makeCalendar(
         `DTSTART:${day}T130000Z`,
         `DTEND:${day}T133000Z`,
         `SUMMARY:${escape(summary)}`,
-        `DESCRIPTION:${escape(`US ${release.kind} release${release.platform ? ` on ${release.platform}` : ''}. ${release.confidence === 'rumored' ? 'Reported; not confirmed.' : 'Date listed by source; subject to change.'}\nRelease-day reminder: 13:00–13:30 GMT (UTC). Actual availability time may vary.\nSource: ${release.sourceName}\n${release.source}`)}`,
+        `DESCRIPTION:${escape(`US ${release.kind} release${release.platform ? ` on ${release.platform}` : ''}. ${release.confidence === 'rumored' ? 'Unconfirmed date; subject to change.' : 'Date listed by source; subject to change.'}\nRelease-day reminder: 13:00–13:30 GMT (UTC). Actual availability time may vary.\nSource: ${release.sourceName}\n${release.source}`)}`,
         `URL:${release.source}`,
         `STATUS:${release.confidence === 'rumored' ? 'TENTATIVE' : 'CONFIRMED'}`,
         'TRANSP:TRANSPARENT',

@@ -118,7 +118,7 @@
 .film-availability.listed {
   color: var(--color-green);
 }
-.film-availability.reported {
+.film-availability.unconfirmed {
   color: var(--color-amber);
 }
 .film-theatrical {

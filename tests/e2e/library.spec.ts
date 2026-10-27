@@ -40,9 +40,8 @@ test('authenticated library pagination, search, save, remove and Undo cross the 
   await expect(page.locator('.movie-card')).toHaveCount(25);
   await page.getByRole('button', { name: 'More films' }).click();
   await expect(page.locator('.movie-card')).toHaveCount(27);
-  await page.getByRole('button', { name: 'Search films' }).click();
-  await page.getByRole('textbox', { name: 'Search movie titles' }).fill('Fixture Film 29');
-  await page.getByRole('button', { name: /Fixture Film 29/ }).click();
+  await page.getByRole('combobox', { name: 'Search films' }).fill('Fixture Film 29');
+  await page.getByRole('option', { name: /Fixture Film 29/ }).click();
   await page.getByRole('button', { name: 'Save to library', exact: true }).click();
   await expect(page.getByRole('button', { name: /Saved to library/ })).toBeVisible();
   await page.getByRole('button', { name: /Saved to library/ }).click();
@@ -50,7 +49,85 @@ test('authenticated library pagination, search, save, remove and Undo cross the 
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'restored' })).toBeVisible();
 });
-test('calendar preference excludes reported preview dates and updates the actual feed', async ({
+test('inline search keeps focus, navigates results by keyboard and returns focus after details close', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Your library', exact: true })).toBeVisible();
+  const search = page.getByRole('combobox', { name: 'Search films' });
+  await page.keyboard.press('Control+k');
+  await expect(search).toBeFocused();
+  await expect(search).toHaveAttribute('aria-expanded', 'true');
+  await search.fill('Fixture Film 29');
+  const result = page.getByRole('option', { name: /Fixture Film 29/ });
+  await expect(result).toBeVisible();
+  await search.press('ArrowUp');
+  await expect(result).toHaveAttribute('aria-selected', 'true');
+  await expect(search).toBeFocused();
+  await search.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Fixture Film 29', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(search).toBeFocused();
+  await search.fill('Fixture Film 29');
+  await page.getByRole('button', { name: 'Clear search', exact: true }).click();
+  await expect(search).toHaveValue('');
+  await expect(search).toBeFocused();
+  await expect(search).toHaveAttribute('aria-expanded', 'true');
+  await search.press('Escape');
+  await expect(search).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('listbox', { name: 'Film results' })).toHaveCount(0);
+  await search.click();
+  await page.getByRole('heading', { name: 'Your library', exact: true }).click();
+  await expect(search).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('search focus, typing and clearing preserve navbar geometry at narrow breakpoints', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Your library', exact: true })).toBeVisible();
+  const search = page.getByRole('combobox', { name: 'Search films' });
+  const geometry = () =>
+    page.locator('.app-header-inner').evaluate((nav) =>
+      ['.app-header-brand', '.app-header-search-field', '#film-search', '.app-header-actions'].map(
+        (selector) => {
+          const box = nav.querySelector(selector)!.getBoundingClientRect();
+          return [box.x, box.y, box.width, box.height];
+        },
+      ),
+    );
+  for (const width of [320, 375, 414, 600, 639, 640, 768]) {
+    await page.setViewportSize({ width, height: 812 });
+    const before = await geometry();
+    await search.click();
+    const focused = await geometry();
+    await search.fill('Fixture Film 29');
+    const typed = await geometry();
+    await page.getByRole('button', { name: 'Clear search', exact: true }).click();
+    const cleared = await geometry();
+    await search.press('Escape');
+    const closed = await geometry();
+    for (const state of [focused, typed, cleared, closed]) {
+      state.forEach((box, index) =>
+        box.forEach((value, dimension) => {
+          expect(
+            Math.abs(value - before[index][dimension]),
+            `Navbar moved at ${width}px`,
+          ).toBeLessThan(1);
+        }),
+      );
+    }
+    await expect(
+      page.getByRole('button', { name: 'Calendar settings', exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Open A-List menu', exact: true })).toBeVisible();
+  }
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await search.click();
+  await expect(page.locator('.app-search-panel')).toHaveCSS('animation-name', 'none');
+});
+
+test('calendar preference excludes unconfirmed preview dates and updates the actual feed', async ({
   page,
   request,
 }) => {
@@ -59,7 +136,7 @@ test('calendar preference excludes reported preview dates and updates the actual
   await page.getByRole('button', { name: 'Calendar settings', exact: true }).click();
   await page.getByRole('switch').click();
   await expect(page.getByRole('switch')).not.toBeChecked();
-  await expect(page.getByText('Reported dates excluded', { exact: true })).toBeVisible();
+  await expect(page.getByText('Unconfirmed dates excluded', { exact: true })).toBeVisible();
   await page.screenshot({ path: 'outputs/review/calendar-preferences.png' });
   const init = await page.request.post('/api/init', {
     data: {},
@@ -68,7 +145,7 @@ test('calendar preference excludes reported preview dates and updates the actual
   const data = await init.json();
   const feed = await request.get(data.feedPath);
   expect(feed.status()).toBe(200);
-  expect(await feed.text()).not.toContain('[Rumored]');
+  expect(await feed.text()).not.toContain('[Unconfirmed]');
 });
 test('Redis outage fails closed with a retryable response and recovers', async ({
   page,
@@ -110,7 +187,7 @@ test('malformed API writes make no partial change and fast filter changes ignore
     headers: { origin: 'http://127.0.0.1:4317' },
   });
   expect(mixed.status()).toBe(400);
-  await page.getByRole('button', { name: 'Available now', exact: true }).click();
+  await page.getByRole('button', { name: 'Available', exact: true }).click();
   await page.getByRole('button', { name: 'All films', exact: true }).click();
   await expect(page.locator('.movie-card')).toHaveCount(25);
   await expect(page.getByRole('button', { name: 'All films', exact: true })).toHaveAttribute(

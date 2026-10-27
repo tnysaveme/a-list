@@ -20,8 +20,8 @@ export default function Privacy() {
       <h2>What is saved</h2>
       <p>
         Your email is used to send sign-in links. Your account stores your saved movie IDs, the time
-        you saved them, your reported-date preference and a secret calendar link. Movie metadata and
-        release evidence are shared across the app; your personal library is separate.
+        you saved them, your unconfirmed-date preference and a secret calendar link. Movie metadata
+        and release evidence are shared across the app; your personal library is separate.
       </p>
       <h2>Your private calendar</h2>
       <p>

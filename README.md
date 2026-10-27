@@ -24,10 +24,10 @@ Configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `A
 
 - Live movie search and a persistent personal library.
 - Grid/list views; sorting by home release, title, theatrical release, or date saved.
-- Movie details with source links and listed, rumored, or unknown home release dates.
+- Movie details with source links and Available, Coming Soon, TBA, and Unconfirmed release labels.
 - Automatic calendar tracking for every saved film, including films waiting for a date.
 - Individual and batch removal, with a ten-second Undo.
-- Updating Apple Calendar subscription, reported dates included as tentative events by default, and downloadable `.ics` snapshots.
+- Updating Apple Calendar subscription, unconfirmed dates included as tentative events by default, and downloadable `.ics` snapshots.
 - Automatic When To Stream discovery, with conservative identity matching and one-click saving from Discover.
 - Account controls for JSON library export, private calendar-link reset and permanent account deletion.
 
@@ -35,7 +35,7 @@ Configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `A
 
 Dates and metadata come from [DVDs Release Dates](https://www.dvdsreleasedates.com/digital-releases/) and [When To Stream](https://whentostream.com/). Each release retains its source URL and last-check date. Catalogue ingestion includes the last twelve months of digital releases and next month, so already released films retain their dates. Opening film details checks missing or six-hour-old release data directly; the browser applies those results to cards and refreshes listings on focus and every five minutes while visible. `lib/catalogue.json` is the sourced initial snapshot collected on 2026-10-24; it is an explicitly marked fallback and never populates your library automatically.
 
-A listed date means a third-party source lists it. Reported dates remain tentative and are included in the calendar by default, with an opt-out in calendar settings. Generic digital listings do not imply PVOD pricing. DVD and theatrical dates are never substituted for digital releases, and missing dates remain unknown.
+A listed date means a third-party source lists it. Unconfirmed dates remain tentative and are included in the calendar by default, with an opt-out in calendar settings. Generic digital listings do not imply PVOD pricing. DVD and theatrical dates are never substituted for digital releases, and missing dates remain unknown.
 
 Sources are checked on demand with a six-hour cache. The scheduled ingestion job refreshes saved films even while the app is closed; calendar requests read those saved results. Source failures retain the last saved data. Apple's refresh interval controls when changed events appear. Coverage and availability depend on the source sites and their HTML/RSS formats. Posters and Google Fonts are fetched from their respective providers.
 
@@ -77,7 +77,7 @@ Discovery computes release dates once per film before sorting and uses indexed l
 
 ## Reminders
 
-Every dated calendar event is a **30-minute reminder block from 13:00–13:30 GMT (UTC) on its release day**, with a display alarm at the start. Start and end timestamps use UTC, so daylight-saving changes cannot move the GMT reminder time. The event description distinguishes the reminder block from the film's actual availability time. When a date changes, its block and alert follow it. Reported, rumored, and unconfirmed dates are included by default as labelled tentative events with the same reminders. Calendar settings still allow opting out. Downloads include the same blocks and alarms. The format revision advances existing subscriptions while retaining event UIDs.
+Every dated calendar event is a **30-minute reminder block from 13:00–13:30 GMT (UTC) on its release day**, with a display alarm at the start. Start and end timestamps use UTC, so daylight-saving changes cannot move the GMT reminder time. The event description distinguishes the reminder block from the film's actual availability time. When a date changes, its block and alert follow it. Unconfirmed dates are included by default as labelled tentative events with the same reminders. Calendar settings still allow opting out. Downloads include the same blocks and alarms. The format revision advances existing subscriptions while retaining event UIDs.
 
 Apple Calendar can suppress alerts from subscriptions. In its subscription settings, leave **Alerts** unchecked under **Remove** and turn **Ignore alerts** off. Calendar notifications must also be enabled on the device. Existing subscriptions pick up the alarms on their next refresh; notification delivery is controlled by the calendar client. See [Apple’s subscription instructions](https://support.apple.com/guide/calendar/subscribe-to-calendars-icl1022/mac). GMT stays UTC+0 throughout the year.
 
@@ -117,7 +117,7 @@ The final email sign-in and Apple Calendar subscription acceptance require the o
 
 Primary listings and existing WTS reports refresh independently within the same deadline. Unexpected native page markup retains previous dates; a recognised film subject is required before removing a legacy primary date. Partial failures retry after fifteen minutes. Saved films with a missing listed rental/purchase or subscription window also get a separately scheduled, cached title search, at most one actual lookup per job. Cached/busy entries do not use that request allowance, and the due batch is bounded to eight candidates. Empty results retry after a day; title-lookup availability failures retry after ten minutes. Recent-report availability failures retry after fifteen minutes, while insufficient identity evidence retains its daily retry.
 
-The owner health endpoint reports source-specific success, failure and stale feed/catalogue checks. It remains private and uses the existing job and database. Coming soon cards select and sort by their upcoming window; Available and unfiltered cards retain their availability view.
+The owner health endpoint reports source-specific success, failure and stale feed/catalogue checks. It remains private and uses the existing job and database. Coming Soon cards select and sort by their upcoming window; Available and unfiltered cards retain their availability view.
 
 ## Checks and source recovery
 

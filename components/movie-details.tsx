@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { availableRelease, displayRelease, type Movie } from '../lib/model';
+import { releaseLabels } from '../lib/release-labels';
 import { FilmPoster } from './film-poster';
 import './movie-details.css';
 import { releaseStatusNotice } from '../lib/release-status';
@@ -77,16 +78,16 @@ export function MovieDetails({
           <p className="film-metadata">{[movie.year, movie.rating].filter(Boolean).join(' · ')}</p>
           <h2>{movie.title}</h2>
           <span
-            className={`film-availability ${!release ? 'unknown' : release.confidence === 'rumored' ? 'reported' : 'listed'}`}
+            className={`film-availability ${!release ? 'unknown' : release.confidence === 'rumored' ? 'unconfirmed' : 'listed'}`}
           >
             <span aria-hidden="true" />
             {!release
-              ? 'No home release date'
+              ? releaseLabels.unknown
               : release.confidence === 'rumored'
-                ? 'Reported date'
+                ? releaseLabels.unconfirmed
                 : available
-                  ? 'Available at home'
-                  : 'Coming home'}
+                  ? releaseLabels.available
+                  : releaseLabels.soon}
           </span>
           {movie.theatrical && (
             <p className="film-theatrical">
@@ -182,7 +183,7 @@ export function MovieDetails({
                 <div className="film-release-date">
                   <time dateTime={r.date}>{fullDate(r.date)}</time>
                   <span className={`film-release-confidence ${r.confidence}`}>
-                    {r.confidence === 'rumored' ? 'Reported · unconfirmed' : 'Date listed'}
+                    {r.confidence === 'rumored' ? releaseLabels.unconfirmed : 'Date listed'}
                   </span>
                 </div>
                 <a
@@ -202,9 +203,7 @@ export function MovieDetails({
           <div className="film-no-release">
             <CalendarDays size={24} aria-hidden="true" />
             <div>
-              <strong>
-                {movie.releaseLookupStatus ? 'Date not verified' : 'Date not announced'}
-              </strong>
+              <strong>{releaseLabels.unknown}</strong>
               <p>
                 {movie.releaseLookupStatus
                   ? 'We’re checking sources for a verifiable US home release date. Save the film and its sourced dates will join your calendar when verified.'

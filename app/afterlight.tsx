@@ -21,7 +21,6 @@ import {
   CircleHelp,
 } from 'lucide-react';
 import { calendarRelease, type Movie } from '../lib/model';
-import { searchMatches } from '../lib/search-results';
 import { releaseForView, type CataloguePage } from '../lib/catalogue-view';
 import { useCatalogue } from '../hooks/use-catalogue';
 import { useMovieDetails } from '../hooks/use-movie-details';
@@ -31,13 +30,12 @@ import { MovieCardPoster } from '../components/movie-card-poster';
 import { MovieDetails } from '../components/movie-details';
 import { AppHeader } from '../components/app-header';
 import { useLibrary } from '../hooks/use-library';
-import { useFilmSearch } from '../hooks/use-film-search';
 import { useMovieCalendar } from '../hooks/use-movie-calendar';
 import { Dialog } from '../components/dialog';
 import { Wordmark } from '../components/wordmark';
 import { CalendarSettings } from '../components/calendar-settings';
-import { MovieSearch } from '../components/movie-search';
 import { AboutContent } from '../components/about-content';
+import { releaseLabels } from '../lib/release-labels';
 const AccountSettings = dynamic(() => import('../components/account-settings'));
 const shortDate = (date: string) =>
   new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', {
@@ -87,9 +85,6 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
     loadLibrary,
     mutate: runMutation,
   } = useLibrary(sort, filter, notify);
-  const searchState = useFilmSearch();
-  const { searching, setSearching, query, results, setResults, resultsQuery, closeSearch } =
-    searchState;
   const calendarState = useMovieCalendar(notify, loadLibrary);
   const {
     calendar,
@@ -106,12 +101,11 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
       rememberMovie(value);
       const update = (list: Movie[]) => list.map((item) => (item.id === value.id ? value : item));
       setCatalogue(update);
-      setResults(update);
       setLibrary(update);
       setTracked(update);
       if (value.saved) void loadLibrary();
     },
-    [setCatalogue, setResults, setLibrary, setTracked, loadLibrary, rememberMovie],
+    [setCatalogue, setLibrary, setTracked, loadLibrary, rememberMovie],
   );
   const {
     movie,
@@ -141,16 +135,6 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
     };
   }, [initialize, loadCatalogue]);
   useEffect(() => {
-    function key(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        if (!movie && !calendar && !about && !accountOpen) setSearching((s) => !s);
-      }
-    }
-    document.addEventListener('keydown', key);
-    return () => document.removeEventListener('keydown', key);
-  }, [movie, calendar, about, accountOpen, setSearching]);
-  useEffect(() => {
     if (!ready) return;
     const controller = new AbortController();
     const refresh = refreshGate(async () => {
@@ -176,22 +160,15 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
   const savedIds = useMemo(
     () =>
       new Set(
-        [
-          ...library,
-          ...catalogue.filter((m) => m.saved),
-          ...results.filter((m) => m.saved),
-          ...(movie?.saved ? [movie] : []),
-        ].map((m) => m.id),
+        [...library, ...catalogue.filter((m) => m.saved), ...(movie?.saved ? [movie] : [])].map(
+          (m) => m.id,
+        ),
       ),
-    [library, catalogue, results, movie],
+    [library, catalogue, movie],
   );
   const libraryById = useMemo(() => new Map(library.map((m) => [m.id, m])), [library]);
   const currentDay = today();
   const movies = view === 'library' ? library : catalogue;
-  const searchResults = useMemo(
-    () => searchMatches(catalogue, resultsQuery === query.trim() ? results : [], query, currentDay),
-    [catalogue, results, resultsQuery, query, currentDay],
-  );
   function changeView(next: 'discover' | 'library') {
     const nextSort = next === 'discover' && sort === 'added' ? 'release' : sort;
     setView(next);
@@ -224,7 +201,6 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
         ? { ...m, saved: result.membership[m.id], tracked: result.membership[m.id] }
         : m;
     setCatalogue((list) => list.map(update));
-    setResults((list) => list.map(update));
     setMovie((current) => (current ? update(current) : current));
     if (calendar) await loadTracked();
     return result;
@@ -237,7 +213,7 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
   async function remove(ids: string[]) {
     const snapshots = [
       ...new Map(
-        [...library, ...catalogue, ...results, ...(movie ? [movie] : [])]
+        [...library, ...catalogue, ...(movie ? [movie] : [])]
           .filter((m) => ids.includes(m.id))
           .map((m) => [m.id, m]),
       ).values(),
@@ -302,7 +278,9 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
       <AppHeader
         ready={ready}
         onHome={() => changeView('discover')}
-        onSearch={() => setSearching(true)}
+        catalogue={catalogue}
+        savedIds={savedIds}
+        onSelectMovie={openMovie}
         onCalendar={openCalendar}
         onAccount={() => setAccountOpen(true)}
         onAbout={() => setAbout(true)}
@@ -380,12 +358,12 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
           <div className="toolbar">
             <div className="filter-list" aria-label="Filter films">
               {[
-                ['all', 'All films', 'All'],
-                ['soon', 'Coming soon', 'Soon'],
-                ['available', 'Available now', 'Now'],
-                ['unknown', 'No date yet', 'No date'],
-                ['rumored', 'Reported', 'Reports'],
-              ].map(([id, label, shortLabel]) => (
+                ['all', 'All films'],
+                ['soon', releaseLabels.soon],
+                ['available', releaseLabels.available],
+                ['unknown', releaseLabels.unknown],
+                ['rumored', releaseLabels.unconfirmed],
+              ].map(([id, label]) => (
                 <button
                   key={id}
                   aria-label={label}
@@ -394,9 +372,6 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                   onClick={() => changeFilter(id)}
                 >
                   <span className="filter-label">{label}</span>
-                  <span className="filter-label-short" aria-hidden="true">
-                    {shortLabel}
-                  </span>
                 </button>
               ))}
             </div>
@@ -499,7 +474,11 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
               </p>
               <button
                 className="button primary"
-                onClick={() => (page.total ? changeFilter('all') : setSearching(true))}
+                onClick={() =>
+                  page.total
+                    ? changeFilter('all')
+                    : document.querySelector<HTMLInputElement>('#film-search')?.focus()
+                }
               >
                 {page.total ? 'Show all films' : 'Find your first film'}
                 <ArrowRight aria-hidden="true" size={16} />
@@ -575,12 +554,14 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                               <span className="release-confidence" aria-hidden="true" />
                               <span className="release-timing">
                                 {release.confidence === 'rumored' ? (
-                                  <span className="release-reported">Reported </span>
+                                  <span className="release-unconfirmed">
+                                    {releaseLabels.unconfirmed}{' '}
+                                  </span>
                                 ) : (
                                   <span className="sr-only">
                                     {release.date <= currentDay
-                                      ? 'Available since '
-                                      : 'Listed for '}
+                                      ? `${releaseLabels.available} · `
+                                      : `${releaseLabels.soon} · `}
                                   </span>
                                 )}
                                 <time className="release-date" dateTime={release.date}>
@@ -594,7 +575,7 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
                               </span>
                             </>
                           ) : (
-                            <span className="unknown-date">Release date TBA</span>
+                            <span className="unknown-date">{releaseLabels.unknown}</span>
                           )}
                         </span>
                       </div>
@@ -632,10 +613,10 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
               <span /> Listed by a source
             </span>
             <span className="status rumored">
-              <span /> Reported, not confirmed
+              <span /> {releaseLabels.unconfirmed}
             </span>
             <span className="status unknown">
-              <span /> Still waiting for news
+              <span /> {releaseLabels.unknown}
             </span>
           </div>
           <button className="text-link" onClick={() => setAbout(true)}>
@@ -688,19 +669,6 @@ export default function AList({ initialCatalogue }: { initialCatalogue: Catalogu
             <X aria-hidden="true" size={16} />
           </button>
         </div>
-      )}
-      {searching && (
-        <Dialog label="Find a film" className="search-dialog" onClose={closeSearch}>
-          <MovieSearch
-            search={searchState}
-            searchResults={searchResults}
-            savedIds={savedIds}
-            onSelect={(m) => {
-              openMovie(m);
-              closeSearch();
-            }}
-          />
-        </Dialog>
       )}
       {movie && (
         <Dialog
