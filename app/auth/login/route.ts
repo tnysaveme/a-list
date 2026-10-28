@@ -29,11 +29,16 @@ async function login(request: Request) {
     email: email.trim().toLowerCase(),
     options: { emailRedirectTo: `${origin}/auth/callback`, shouldCreateUser: true },
   });
-  if (error)
+  if (error) {
+    console.warn(JSON.stringify({ event: 'sign_in_email_failed', status: error.status || 503 }));
     return Response.json(
       { error: 'The sign-in link could not be sent. Please try again shortly.' },
-      { status: 429 },
+      {
+        status: error.status === 429 ? 429 : 503,
+        headers: { 'Cache-Control': 'private, no-store', 'Retry-After': '30' },
+      },
     );
+  }
   after(() => metric('sign_in_emails'));
   return Response.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
 }

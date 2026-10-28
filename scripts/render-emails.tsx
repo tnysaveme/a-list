@@ -11,8 +11,11 @@ for (const [name, firstVisit] of [
   ['confirmation', true],
   ['magic_link', false],
 ] as const) {
-  // Supabase substitutes the existing verification URL; this preserves the PKCE flow.
-  const props = { verificationUrl: '{{ .ConfirmationURL }}', firstVisit };
+  // Redeem only after the recipient confirms on our page, without a browser-bound PKCE verifier.
+  const props = {
+    verificationUrl: '{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email',
+    firstVisit,
+  };
   const html = await render(<SignInEmail {...props} />, { pretty: true });
   const text = await render(<SignInEmail {...props} />, { plainText: true });
   const preview = await render(

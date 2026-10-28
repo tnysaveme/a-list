@@ -6,3 +6,11 @@ additional_redirect_urls = [
   "https://a-list-nine.vercel.app/auth/callback",
   "http://127.0.0.1:3000/auth/callback"
 ]
+
+[auth.email.template.confirmation]
+subject = "Welcome to A-List — confirm your email"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.magic_link]
+subject = "Your A-List sign-in link"
+content_path = "./supabase/templates/magic_link.html"

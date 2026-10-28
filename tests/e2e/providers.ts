@@ -39,6 +39,8 @@ let saved = new Set<string>(),
   deleted = false,
   flags: Record<string, unknown> = {};
 const redis = new Map<string, string>();
+const usedEmailTokens = new Set<string>();
+let emailVerifications = 0;
 function reset() {
   films.splice(0, films.length, ...JSON.parse(JSON.stringify(initialFilms)));
   saved = new Set(films.slice(0, 27).map((m) => m.id));
@@ -46,6 +48,8 @@ function reset() {
   feedToken = initialToken;
   deleted = false;
   flags = {};
+  usedEmailTokens.clear();
+  emailVerifications = 0;
   redis.clear();
   refreshAfter.clear();
   for (const m of films) {
@@ -139,6 +143,7 @@ export const server = createServer(async (req, res) => {
     }
     return json({ ok: true });
   }
+  if (url.pathname === '/_auth-observation') return json({ emailVerifications });
   if (url.pathname.startsWith('/redis')) {
     if (flags.redisUnavailable) return json({ error: 'fixture unavailable' }, 503);
     try {
@@ -177,6 +182,24 @@ export const server = createServer(async (req, res) => {
     if (url.pathname.endsWith('/logout')) return json({});
     if (flags.authExpired || deleted)
       return json({ message: 'Session expired', code: 'session_not_found' }, 401);
+    if (url.pathname.endsWith('/verify')) {
+      emailVerifications++;
+      const args = body as { token_hash?: string; type?: string };
+      const token = args.token_hash || '';
+      if (token !== 'a'.repeat(64) || usedEmailTokens.has(token) || args.type !== 'email')
+        return json({ message: 'Expired token', code: 'otp_expired' }, 403);
+      usedEmailTokens.add(token);
+      const en = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
+      const accessToken = `${en({ alg: 'HS256', typ: 'JWT' })}.${en({ sub: user.id, aud: 'authenticated', exp: 4102444800, iat: 1792972800, role: 'authenticated' })}.fixture-signature`;
+      return json({
+        access_token: accessToken,
+        refresh_token: 'fixture-refresh',
+        expires_in: 3600,
+        expires_at: 4102444800,
+        token_type: 'bearer',
+        user,
+      });
+    }
     if (url.pathname.endsWith('/user')) return json(user);
     return json({});
   }

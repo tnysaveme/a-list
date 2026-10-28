@@ -8,7 +8,15 @@ test('both auth templates retain Supabase verification links and an accessible e
       new URL(`../supabase/templates/${name}.html`, import.meta.url),
       'utf8',
     );
-    assert.equal((html.match(/href="\{\{ \.ConfirmationURL \}\}"/g) || []).length, 2);
+    assert.equal(
+      (
+        html.match(
+          /href="\{\{ \.SiteURL \}\}\/auth\/confirm\?token_hash=\{\{ \.TokenHash \}\}&amp;type=email"/g,
+        ) || []
+      ).length,
+      2,
+    );
+    assert.doesNotMatch(html, /ConfirmationURL|browser where you requested/);
     assert.equal((html.match(/<h1[\s>]/g) || []).length, 1);
     assert.match(html, /<html[^>]+lang="en"/);
     assert.match(html, /If you didn’t request this email/);

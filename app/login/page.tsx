@@ -9,5 +9,11 @@ export default async function Login({
 }) {
   if (await getUser()) redirect('/');
   const query = await searchParams;
-  return <SignIn expired={query.error === 'expired-link'} deleted={query.deleted === '1'} />;
+  return (
+    <SignIn
+      expired={query.error === 'expired-link'}
+      deleted={query.deleted === '1'}
+      authError={query.error}
+    />
+  );
 }

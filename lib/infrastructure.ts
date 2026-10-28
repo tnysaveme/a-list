@@ -55,6 +55,7 @@ const policies = {
   search: [15, '1 m'],
   loginIp: [8, '15 m'],
   loginEmail: [3, '15 m'],
+  verifyIp: [15, '15 m'],
   privacy: [10, '1 h'],
   feed: [30, '5 m'],
   feedIp: [120, '1 m'],

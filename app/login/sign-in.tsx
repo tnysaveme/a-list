@@ -5,16 +5,22 @@ import { ArrowRight, Mail, LoaderCircle, Check } from 'lucide-react';
 export default function SignIn({
   expired = false,
   deleted = false,
+  authError,
 }: {
   expired?: boolean;
   deleted?: boolean;
+  authError?: string;
 }) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
   const [error, setError] = useState(
     expired
-      ? 'That sign-in link has expired or was opened in another browser. Request a new one below.'
-      : '',
+      ? 'That sign-in link has expired or was already used. Request a new one below.'
+      : authError === 'service-unavailable'
+        ? 'Sign-in is temporarily unavailable. Please try the email link again shortly.'
+        : authError === 'rate-limit'
+          ? 'Too many sign-in attempts. Please wait a few minutes, then try again.'
+          : '',
   );
   const [invalidEmail, setInvalidEmail] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -59,7 +65,10 @@ export default function SignIn({
           <div className="login-success" role="status">
             <Check aria-hidden="true" size={24} />
             <h2>Check your inbox.</h2>
-            <p>We sent you a sign-in link. Open it in this browser to return to your library.</p>
+            <p>
+              We sent you a sign-in link. Open it on the device where you want to use A-List. Check
+              Spam if it hasn’t arrived.
+            </p>
             <button className="text-link" onClick={() => setState('idle')}>
               Use another email <ArrowRight aria-hidden="true" size={14} />
             </button>

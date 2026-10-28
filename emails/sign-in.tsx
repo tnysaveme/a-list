@@ -165,8 +165,8 @@ export default function SignInEmail({ verificationUrl, firstVisit = false }: Sig
                   margin: '20px 0 28px',
                 }}
               >
-                Open this link in the browser where you requested it. It works once, so keep it to
-                yourself.
+                Open this link on the device where you want to use A-List, then confirm the sign-in.
+                It works once, so keep it to yourself.
               </Text>
               <Hr style={{ border: 'none', borderTop: `1px solid ${colors.rule}`, margin: 0 }} />
               <Text

@@ -134,7 +134,7 @@
                               releases.
                             </p>
                             <a
-                              href="{{ .ConfirmationURL }}"
+                              href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email"
                               style="line-height:22px;text-decoration:none;display:inline-block;max-width:100%;mso-padding-alt:0px;box-sizing:border-box;background-color:#252525;color:#ffffff;font-family:Inter, Arial, Helvetica, sans-serif;font-size:15px;font-weight:500;padding:14px 24px;border-radius:8px;text-align:center;padding-top:14px;padding-right:24px;padding-bottom:14px;padding-left:24px"
                               target="_blank"
                               ><span
@@ -148,8 +148,9 @@
                             >
                             <p
                               style="font-size:13px;line-height:22px;font-family:Inter, Arial, Helvetica, sans-serif;color:#626262;margin:20px 0 28px;margin-top:20px;margin-right:0;margin-bottom:28px;margin-left:0">
-                              Open this link in the browser where you requested
-                              it. It works once, so keep it to yourself.
+                              Open this link on the device where you want to use
+                              A-List, then confirm the sign-in. It works once,
+                              so keep it to yourself.
                             </p>
                             <hr
                               style="width:100%;border:none;border-color:transparent;border-top:1px solid #dedede;margin:0" />
@@ -157,7 +158,7 @@
                               style="font-size:13px;line-height:22px;font-family:Inter, Arial, Helvetica, sans-serif;color:#626262;margin:24px 0 12px;margin-top:24px;margin-right:0;margin-bottom:12px;margin-left:0">
                               Button not opening?<!-- -->
                               <a
-                                href="{{ .ConfirmationURL }}"
+                                href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email"
                                 style="color:#202020;text-decoration-line:none;font-family:Inter, Arial, Helvetica, sans-serif;text-decoration:underline"
                                 target="_blank"
                                 >Use your sign-in link</a

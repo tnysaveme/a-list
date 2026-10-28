@@ -296,3 +296,55 @@ test('catalogue fallback preserves confirmed membership changes in a library lar
   ).toBeVisible();
   await expect(page.locator('.movie-card')).toHaveCount(25);
 });
+
+test('email confirmation survives mobile cross-browser opens and link prefetch without a PKCE cookie', async ({
+  browser,
+  request,
+}) => {
+  const fresh = await browser.newContext({
+    viewport: { width: 375, height: 812 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await fresh.newPage();
+  const url = 'http://127.0.0.1:4317/auth/confirm?token_hash=' + 'a'.repeat(64) + '&type=email';
+  // A scanner GET and the recipient GET must both leave the token unused.
+  const scan = await request.get(url);
+  expect(scan.status()).toBe(200);
+  expect(scan.headers()['cache-control']).toContain('no-store');
+  await page.goto(url);
+  expect(
+    (await (await request.get('http://127.0.0.1:4318/_auth-observation')).json())
+      .emailVerifications,
+  ).toBe(0);
+  expect((await fresh.cookies()).some((cookie) => cookie.name.includes('code-verifier'))).toBe(
+    false,
+  );
+  await page.getByRole('button', { name: 'Confirm & sign in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Your library', exact: true })).toBeVisible();
+  expect((await fresh.cookies()).some((cookie) => cookie.name.includes('auth-token'))).toBe(true);
+  const replay = await request.post('/auth/verify', {
+    form: { token_hash: 'a'.repeat(64) },
+    headers: { origin: 'http://127.0.0.1:4317' },
+    maxRedirects: 0,
+  });
+  expect(replay.headers()['location']).toContain('error=expired-link');
+  const crossOrigin = await request.post('/auth/verify', {
+    form: { token_hash: 'a'.repeat(64) },
+    headers: { origin: 'https://example.invalid' },
+  });
+  expect(crossOrigin.status()).toBe(403);
+  await request.post('http://127.0.0.1:4318/_control', { data: { authUnavailable: true } });
+  const outage = await request.post('/auth/verify', {
+    form: { token_hash: 'b'.repeat(64) },
+    headers: { origin: 'http://127.0.0.1:4317' },
+    maxRedirects: 0,
+  });
+  expect(outage.headers()['location']).toContain('error=service-unavailable');
+  const deliveryOutage = await request.post('/auth/login', {
+    data: { email: 'fixture@example.invalid' },
+    headers: { origin: 'http://127.0.0.1:4317' },
+  });
+  expect(deliveryOutage.status()).toBe(503);
+  await fresh.close();
+});
