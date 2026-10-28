@@ -21,7 +21,7 @@ Every other piece of interface text uses Inter: headings, metadata, forms, contr
 
 ## Theme
 
-Light: pure white canvas and surfaces, charcoal text and neutral grey secondary text. Very light neutral grey separates secondary controls and hover states. Dark: graphite canvas, slightly raised graphite surfaces, near-white text. Appearance follows the device. Film posters supply visual colour; interface primary actions are monochrome. Blue is reserved for keyboard focus. Semantic green, amber and red distinguish success, uncertainty and destructive actions, always with text.
+Light: pure white canvas and surfaces, charcoal text and neutral grey secondary text. Very light neutral grey separates secondary controls and hover states. Dark: graphite canvas, slightly raised graphite surfaces, near-white text. Appearance defaults to System and follows the device. A Light / Dark / System segmented pill in Account settings overrides it for this browser. The preference persists locally, syncs between tabs, and applies before the first paint on every route; explicit choices also set native controls and browser chrome to the selected palette. Film posters supply visual colour; interface primary actions are monochrome. Blue is reserved for keyboard focus. Semantic green, amber and red distinguish success, uncertainty and destructive actions, always with text.
 
 All web colours and font families reference named tokens from `tokens.css`. Framework aliases in `app/globals.css` map to those tokens. Email uses sRGB equivalents and font-stack fallbacks because email clients cannot consistently resolve CSS variables or web fonts.
 

@@ -348,3 +348,86 @@ test('email confirmation survives mobile cross-browser opens and link prefetch w
   expect(deliveryOutage.status()).toBe(503);
   await fresh.close();
 });
+
+test('appearance overrides the device, persists across routes and tabs, and follows live system changes', async ({
+  page,
+  context,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/');
+  const html = page.locator('html');
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  const openSettings = async () => {
+    await page.getByRole('button', { name: 'Open A-List menu' }).click();
+    await page.getByRole('menuitem', { name: 'Account settings', exact: true }).click();
+  };
+  await openSettings();
+  await expect(page.getByRole('radio', { name: 'System', exact: true })).toBeChecked();
+  await page.getByRole('radio', { name: 'Light', exact: true }).check();
+  await expect(html).toHaveCSS('color-scheme', 'light');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'oklch(1 0 0)');
+  await page.reload();
+  await openSettings();
+  await expect(page.getByRole('radio', { name: 'Light', exact: true })).toBeChecked();
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.getByRole('radio', { name: 'Dark', exact: true }).check();
+  await expect(html).toHaveCSS('color-scheme', 'dark');
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#161719');
+  const other = await context.newPage();
+  await other.emulateMedia({ colorScheme: 'light' });
+  await other.goto('/privacy');
+  await expect(other.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('radio', { name: 'System', exact: true }).check();
+  await expect(html).toHaveAttribute('data-theme', 'light');
+  await expect(other.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.getByRole('button', { name: 'Close account settings' }).click();
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  await page.setViewportSize({ width: 320, height: 812 });
+  await openSettings();
+  const pill = page.getByRole('group', { name: 'Color theme', exact: true });
+  await expect(pill).toBeVisible();
+  expect(await pill.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await page.getByRole('radio', { name: 'System', exact: true }).focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('radio', { name: 'Dark', exact: true })).toBeChecked();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('radio', { name: 'Light', exact: true })).toBeChecked();
+  await expect(html).toHaveCSS('color-scheme', 'light');
+  expect(errors).toEqual([]);
+  await other.close();
+});
+
+test('saved appearance applies before hydration and restricted storage still allows theme changes', async ({
+  page,
+  context,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Open A-List menu' }).click();
+  await page.getByRole('menuitem', { name: 'Account settings', exact: true }).click();
+  await page.getByRole('radio', { name: 'Dark', exact: true }).check();
+  const beforeHydration = await context.newPage();
+  await beforeHydration.emulateMedia({ colorScheme: 'light' });
+  await beforeHydration.route('**/_next/**/*.js*', (route) => route.abort());
+  await beforeHydration.goto('/login');
+  await expect(beforeHydration.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(beforeHydration.locator('html')).toHaveCSS('color-scheme', 'dark');
+  await beforeHydration.close();
+  await page.addInitScript(() => {
+    Storage.prototype.getItem = () => {
+      throw new DOMException('Storage blocked', 'SecurityError');
+    };
+    Storage.prototype.setItem = () => {
+      throw new DOMException('Storage blocked', 'SecurityError');
+    };
+  });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.reload();
+  await page.getByRole('button', { name: 'Open A-List menu' }).click();
+  await page.getByRole('menuitem', { name: 'Account settings', exact: true }).click();
+  await page.getByRole('radio', { name: 'Dark', exact: true }).check();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.getByRole('radio', { name: 'Dark', exact: true })).toBeChecked();
+});

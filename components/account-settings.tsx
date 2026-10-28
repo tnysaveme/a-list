@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowDownToLine, CalendarDays, LoaderCircle, Trash2, X } from 'lucide-react';
+import { AppearanceSetting } from './appearance-setting';
 import './account-settings.css';
 
 export default function AccountSettings({
@@ -129,6 +130,7 @@ export default function AccountSettings({
         </button>
         <h2 id="account-title">Your account</h2>
         <p className="account-intro">A few simple controls for your collection and calendar.</p>
+        <AppearanceSetting />
         <section className="account-section">
           <h3>Your library, to keep.</h3>
           <p>

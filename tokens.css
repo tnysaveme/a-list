@@ -2,7 +2,7 @@
  * theme: A-List neutral · nav: N5 · footer: Ft1 · enrichment: none; film artwork is product content
  * audience: owner and friends · use: follow sourced US home releases · pre-emit critique: P5 H5 E4 S5 R5 V4 */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --color-paper: oklch(100% 0 0);
   --color-surface: oklch(100% 0 0);
   --color-paper-2: oklch(97% 0 0);
@@ -71,8 +71,33 @@
   --dur-medium: 180ms;
   --z-dropdown: 40;
 }
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-paper: oklch(20% 0.004 250);
+  --color-surface: oklch(24% 0.004 250);
+  --color-paper-2: oklch(28% 0.004 250);
+  --color-ink: oklch(94% 0.002 250);
+  --color-text-secondary: oklch(72% 0.006 250);
+  --color-rule: oklch(34% 0.004 250);
+  --color-rule-strong: oklch(54% 0.006 250);
+  --color-action: oklch(94% 0.002 250);
+  --color-accent-hover: oklch(83% 0.003 250);
+  --color-accent-ink: oklch(21% 0.004 250);
+  --color-accent-wash: oklch(30% 0.004 250);
+  --color-focus: oklch(73% 0.14 255);
+  --color-green: oklch(78% 0.1 155);
+  --color-green-wash: oklch(28% 0.03 155);
+  --color-amber: oklch(81% 0.1 80);
+  --color-amber-wash: oklch(29% 0.025 80);
+  --color-danger: oklch(77% 0.13 25);
+  --color-danger-wash: oklch(28% 0.035 25);
+  --color-overlay: oklch(8% 0.003 250 / 0.66);
+  --color-shadow: oklch(5% 0.002 250 / 0.4);
+}
+/* System appearance also works before JavaScript, or with JavaScript disabled. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
+    color-scheme: dark;
     --color-paper: oklch(20% 0.004 250);
     --color-surface: oklch(24% 0.004 250);
     --color-paper-2: oklch(28% 0.004 250);
