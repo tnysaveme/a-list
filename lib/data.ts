@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { interactiveResult } from './interactive-refresh';
 import { singleFlight } from './single-flight';
+import { sharedSearch } from './shared-search';
 import { getDb } from '../db';
 import type { AccountRow, LibraryRow } from '../db/schema';
 import snapshot from './catalogue.json';
@@ -106,17 +107,16 @@ export async function getCatalogue(
 }
 async function searchUpstream(ctx: DataContext, query: string): Promise<Movie[]> {
   const key = `search:v5:${privateKey(query.trim().toLowerCase())}`;
-  let found = await cached<Movie[]>(key);
-  if (!found) {
-    const loaded = await withLease(key, 20, async () => {
-      const again = await cached<Movie[]>(key);
-      if (again) return again;
+  const found = await sharedSearch<Movie[]>(key, {
+    read: () => cached<Movie[]>(key),
+    lease: (work) => withLease(key, 20, work),
+    load: async () => {
       const { movies, metadata, degraded } = await searchProviders(query);
       // Keep existing stable IDs when a previously linked film is returned only by metadata.
       if (metadata.length) {
         const linked =
           checked(
-            await ctx.db
+            await adminDb()
               .from('a_list_movies')
               .select('id,movie')
               .in(
@@ -144,10 +144,8 @@ async function searchUpstream(ctx: DataContext, query: string): Promise<Movie[]>
         );
       await remember(key, unique, degraded ? 60 : 3600);
       return unique;
-    });
-    if (!loaded) throw new Error('Search is already refreshing; try again shortly');
-    found = loaded;
-  }
+    },
+  });
   if (!found.length) return [];
   const fresh =
     checked(
@@ -346,20 +344,24 @@ async function refreshStoredMovie(ctx: DataContext, id: string): Promise<Movie |
   return (await membership(ctx, [movie]))[0];
 }
 export async function account(ctx: DataContext, signal?: AbortSignal): Promise<AccountRow> {
+  const read = () =>
+    ctx.db
+      .from('a_list_accounts')
+      .select('id,feed_token,include_rumors')
+      .eq('id', ctx.userId)
+      .abortSignal(signal || AbortSignal.timeout(10000))
+      .maybeSingle();
+  const existing = checked(await read());
+  if (existing) return existing as AccountRow;
   checked(
     await ctx.db
       .from('a_list_accounts')
       .upsert({ id: ctx.userId }, { onConflict: 'id', ignoreDuplicates: true })
       .abortSignal(signal || AbortSignal.timeout(10000)),
   );
-  return checked(
-    await ctx.db
-      .from('a_list_accounts')
-      .select('*')
-      .eq('id', ctx.userId)
-      .abortSignal(signal || AbortSignal.timeout(10000))
-      .single(),
-  ) as AccountRow;
+  const created = checked(await read());
+  if (!created) throw new Error('Account initialization did not complete');
+  return created as AccountRow;
 }
 export async function getLibraryPage(
   ctx: DataContext,
@@ -393,16 +395,13 @@ export async function getLibraryPage(
   };
 }
 export async function updateLibrary(ctx: DataContext, action: string, ids: string[]) {
-  await account(ctx);
   await writeLibrary(ctx.db, ctx.userId, action, ids);
 }
 export async function updateSettings(ctx: DataContext, includeRumors: boolean) {
-  await account(ctx);
   checked(
     await ctx.db
       .from('a_list_accounts')
-      .update({ include_rumors: includeRumors })
-      .eq('id', ctx.userId),
+      .upsert({ id: ctx.userId, include_rumors: includeRumors }, { onConflict: 'id' }),
   );
 }
 type FeedState = {

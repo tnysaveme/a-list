@@ -8,13 +8,30 @@ import {
   type ReviewedReportIdentity,
 } from './reviewed-report-identities';
 import type { Movie } from './model';
+import { versionedCache } from './versioned-cache';
 
 // Old previews and production share Redis. Their supported matching rules can differ.
-const identityCacheKey = `release-identities:v3:rule${MATCH_RULE_VERSION}`;
+const identityCacheKey = `release-identities:v4:rule${MATCH_RULE_VERSION}`;
 
 export async function releaseIdentities(): Promise<ReviewedReportIdentity[]> {
-  const hit = await cached<ReviewedReportIdentity[]>(identityCacheKey);
-  if (hit) return hit;
+  return versionedCache(identityCacheKey, {
+    version: async () => {
+      const row = checked(
+        await adminDb()
+          .from('a_list_source_status')
+          .select('identity_version')
+          .eq('id', true)
+          .single(),
+      );
+      if (!row?.identity_version) throw new Error('Release identity version unavailable');
+      return row.identity_version as string;
+    },
+    read: (key) => cached<ReviewedReportIdentity[]>(key),
+    write: (key, value) => remember(key, value, 3600),
+    load: loadReleaseIdentities,
+  });
+}
+async function loadReleaseIdentities(): Promise<ReviewedReportIdentity[]> {
   const rows: MatchRow[] = [];
   const db = adminDb();
   for (let offset = 0; ; offset += 500) {
@@ -30,9 +47,7 @@ export async function releaseIdentities(): Promise<ReviewedReportIdentity[]> {
     rows.push(...page);
     if (page.length < 500) break;
   }
-  const identities = activeReleaseIdentities(rows, reviewedReportIdentities);
-  await remember(identityCacheKey, identities, 60);
-  return identities;
+  return activeReleaseIdentities(rows, reviewedReportIdentities);
 }
 export type ReleaseImportRow = { id: string; movie: Movie; updated_at: string };
 export async function releaseImports(): Promise<ReleaseImportRow[]> {
@@ -56,7 +71,7 @@ export async function releaseImports(): Promise<ReleaseImportRow[]> {
 export async function invalidateReleaseCaches() {
   try {
     await cache().del(
-      `alist:${identityCacheKey}`,
+      `alist:release-identities:v3:rule${MATCH_RULE_VERSION}`,
       'alist:release-identities:v2',
       'alist:approved-identities:v1',
       'alist:catalogue',

@@ -295,7 +295,7 @@ export const server = createServer(async (req, res) => {
     return json(req.headers.accept?.includes('vnd.pgrst.object') ? selected[0] || null : selected);
   }
   if (name === 'a_list_accounts') {
-    if (req.method === 'PATCH' && typeof args.include_rumors === 'boolean')
+    if (['PATCH', 'POST'].includes(req.method || '') && typeof args.include_rumors === 'boolean')
       includeRumors = args.include_rumors;
     return json(req.method === 'GET' ? account() : null);
   }

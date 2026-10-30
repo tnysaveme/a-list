@@ -19,6 +19,7 @@ import { sourceHealthSummary } from './source-health';
 import { cached } from './infrastructure';
 import { TRANSIENT_RETRY_MS } from './source-health';
 import { movieRows } from './movie-rows';
+import { ingestionPayload } from './ingestion-state';
 import { failedRefreshMovie } from './source-errors';
 import {
   indexWtsProfiles,
@@ -34,10 +35,20 @@ export async function refreshSources() {
       signal = AbortSignal.timeout(45000),
       db = adminDb(),
       now = new Date().toISOString();
-    const [identities, status] = await Promise.all([
-      releaseIdentities(),
-      db.from('a_list_source_status').select('*').eq('id', true).single().then(checked),
-    ]);
+    const status = checked(
+      await db
+        .from('a_list_source_status')
+        .select(
+          'catalogue_success_at,failures,wts_profile_page,wts_profile_after,wts_profile_changes',
+        )
+        .eq('id', true)
+        .abortSignal(signal)
+        .single(),
+    );
+    if (!status) throw new Error('Source status unavailable');
+    const payload = ingestionPayload(db, signal);
+    let identitySnapshot: ReturnType<typeof releaseIdentities> | undefined;
+    const identities = () => (identitySnapshot ??= releaseIdentities());
     checked(
       await db
         .from('a_list_source_status')
@@ -48,7 +59,7 @@ export async function refreshSources() {
     let catalogueUpdated = false,
       refreshed = 0,
       failed = 0,
-      feed: FeedEntry[] = status.wts_feed || [],
+      feed: FeedEntry[] = [],
       feedLoaded = false;
     const checks = new Map<string, boolean>();
     try {
@@ -75,15 +86,19 @@ export async function refreshSources() {
     type Candidate = { id: string; movie: Movie; refresh_failures: number; updated_at: string };
     // Personal date updates get first use of the existing job, ahead of catalogue expansion.
     await drainDue<Candidate>(
-      async () =>
-        checked(
+      async () => {
+        const rows = checked(
           await db.rpc('a_list_refresh_candidates', { p_limit: 8 }).abortSignal(signal),
-        ) as Candidate[],
+        ) as Candidate[];
+        // A metadata-store outage must not be recorded as a provider failure for each film.
+        if (rows.length) await identities();
+        return rows;
+      },
       async (row) => {
         try {
           let partial = false;
           const movie = await refreshMovie(row.movie, {
-            identities,
+            identities: await identities(),
             signal,
             onSourceResult: (result) => {
               onSourceResult(result);
@@ -159,9 +174,11 @@ export async function refreshSources() {
     async function getFeed() {
       if (feedLoaded) return;
       feedLoaded = true;
+      const snapshot = await payload();
+      feed = snapshot.wts_feed;
       try {
         feed = await expansionFeed(
-          status,
+          snapshot,
           AbortSignal.any([signal, AbortSignal.timeout(10000)]),
           db,
         );
@@ -180,7 +197,7 @@ export async function refreshSources() {
         // One feed snapshot supplies both enrichment and new-film discovery.
         await getFeed();
         const [listing, importRows] = await Promise.all([
-          loadCatalogue(new Date(), identities, undefined, { enrichReports: false, signal }),
+          loadCatalogue(new Date(), undefined, undefined, { enrichReports: false, signal }),
           releaseImports(),
         ]);
         const existing = await movieRows(
@@ -202,7 +219,7 @@ export async function refreshSources() {
         const { movies } = await enrichCatalogueReports(
           combined,
           feed.map((entry) => entry.report),
-          identities,
+          await identities(),
           signal,
         );
         const versions = Object.fromEntries(
@@ -257,7 +274,7 @@ export async function refreshSources() {
             budgetMs,
             signal,
             db,
-            knownMovies: status.catalogue || [],
+            knownMovies: (await payload()).catalogue,
           });
           await checkpointWtsProfiles(inventory, result.decisions, db, signal);
           if (result.processed) {
