@@ -16,7 +16,7 @@ The pre-existing checkout was saved as `c29ed2e` after the review's passing chec
 | collection_revision               | 20261029221153       | 20261029222520              |
 | grouped_calendar_events           | 20261030095442       | 20261030100802              |
 
-All 25 recorded production versions now have matching local filenames. The only new pending migration is `20261030115759_available_releases_newest_first.sql`, generated with the Supabase CLI. It replaces the library page function to sort Available by descending release date. Counts, ownership checks, function privileges, calendar UIDs, and stored rows are unchanged. Discover uses the corresponding application sort. Apply the pending migration through the linked CLI workflow when releasing this application change.
+All 25 earlier production versions have matching local filenames. The new migration, `20261030115759_available_releases_newest_first.sql`, was generated with the Supabase CLI and applied to production through the CLI on 30 October 2026, preserving its version. It replaces the library page function to sort Available by descending release date. Counts, ownership checks, function privileges, calendar UIDs, and stored rows are unchanged. Discover uses the corresponding application sort.
 
 ## Calendar behavior
 
@@ -36,4 +36,4 @@ The regression coverage checks mixed release windows, equal-date ties, paginatio
 
 `npm run check` passes formatting, lint, types, all 225 unit/database tests, and the backup self-test. The isolated production build passes. The final full browser run passed 58 of 59 tests; the remaining failure was an ambiguous alert selector in the new setup test, matching Next.js's hidden route announcer as well as the expected error. After narrowing that selector, the targeted setup test passed, covering all 59 scenarios. The earlier initial-load layout regression was fixed and its existing layout-shift check passes. Fresh desktop and 320px dark screenshots, plus the 375px light calendar dialog, were visually inspected. Test servers were stopped by the harness.
 
-This change is prepared locally. Production migration application and deployment are separate release steps.
+The production migration is applied. The application release uses the existing `main` branch integration for Vercel project `a-list`; Vercel records the build status and deployed commit. The release includes implementation commit `3834d80`.
