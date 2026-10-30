@@ -95,7 +95,7 @@ Supabase’s default SMTP service only sends to the project team’s email addre
 
 ## Account controls
 
-Backend request reductions are documented in [backend efficiency](docs/backend-efficiency-2026-10-30.md). Apply `20261030160244_backend_read_efficiency.sql` before deploying that application change: it makes missing-account recovery atomic with a save and versions cached release identities when evidence changes.
+Backend request reductions are documented in [backend efficiency](docs/backend-efficiency-2026-10-30.md). Apply `20261030160244_backend_read_efficiency.sql` before deploying that application change: it makes missing-account recovery atomic with a save and versions cached release identities when evidence changes. Full consistency audits run on the first worker pass at least an hour after their last success; failures retry on the next ten-minute pass. Normal release updates retain their existing schedule.
 
 Open **Account settings** in the header to export your complete library, reset a leaked calendar link, or delete your account after typing DELETE. Resetting a link revokes the old one immediately; remove the old subscription from your calendar app and subscribe again. Account deletion revokes sessions first, removes private account/library/cache rows, and leaves shared movie data available to friends. Calendar downloads already on a device must be removed there. `/privacy` explains the data involved without a support workflow.
 

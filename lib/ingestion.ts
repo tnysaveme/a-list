@@ -20,6 +20,7 @@ import { cached } from './infrastructure';
 import { TRANSIENT_RETRY_MS } from './source-health';
 import { movieRows } from './movie-rows';
 import { ingestionPayload } from './ingestion-state';
+import { auditCoverageWhenDue } from './coverage-audit';
 import { failedRefreshMovie } from './source-errors';
 import {
   indexWtsProfiles,
@@ -39,7 +40,7 @@ export async function refreshSources() {
       await db
         .from('a_list_source_status')
         .select(
-          'catalogue_success_at,failures,wts_profile_page,wts_profile_after,wts_profile_changes',
+          'catalogue_success_at,failures,wts_profile_page,wts_profile_after,wts_profile_changes,wts_coverage',
         )
         .eq('id', true)
         .abortSignal(signal)
@@ -63,9 +64,7 @@ export async function refreshSources() {
       feedLoaded = false;
     const checks = new Map<string, boolean>();
     try {
-      const audit = checked(
-        await db.rpc('a_list_reconcile_wts_coverage', { p_limit: 16 }).abortSignal(signal),
-      );
+      const audit = await auditCoverageWhenDue(db, status.wts_coverage, signal, started);
       if (audit?.queued)
         console.info(
           JSON.stringify({ event: 'wts_consistency_repair_queued', count: audit.queued }),
