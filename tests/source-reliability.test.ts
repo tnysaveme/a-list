@@ -4,6 +4,7 @@ import { refreshMovie, type SourceResult } from '../lib/movie-refresh';
 import { parseDetail } from '../lib/sources';
 import { sourceHealthSummary } from '../lib/source-health';
 import type { Movie } from '../lib/model';
+import { profileFingerprint } from '../lib/release-profile';
 const stamp = '2026-10-25T00:00:00Z',
   padding = '<!--' + '.'.repeat(600) + '-->';
 const film: Movie = {
@@ -97,6 +98,122 @@ test('a successful WTS withdrawal still applies when the primary is unavailable'
     globalThis.fetch = original;
   }
 });
+
+test('an unavailable crosswalk keeps a previously verified WTS window and schedules a partial retry', async () => {
+  const original = globalThis.fetch;
+  const saved = {
+    ...film,
+    releases: [
+      film.releases[0],
+      {
+        ...film.releases[1],
+        filmIdentityMethod: 'corroborated' as const,
+        filmIdentitySource: 'https://whentostream.com/a-film-2026/',
+      },
+    ],
+  };
+  const checks: SourceResult[] = [];
+  try {
+    globalThis.fetch = async (url) =>
+      new Response(
+        String(url).includes('whentostream.com')
+          ? '<div itemprop="articleBody"><p>A Film is arriving on Netflix on November 3, 2026.</p></div>' +
+              padding
+          : '<h2>Digital HD on October 1, 2026.</h2><a href="https://www.imdb.com/title/tt1234567/" itemprop="sameAs">IMDb</a>' +
+              padding,
+      );
+    const result = await refreshMovie(saved, {
+      identities: [],
+      onSourceResult: (r) => checks.push(r),
+    });
+    assert.equal(
+      result.releases.find((r) => r.sourceName === 'When To Stream')?.date,
+      '2026-11-01',
+    );
+    assert.equal(result.releaseCheck?.status, 'partial');
+    assert.equal(result.releaseCheckedAt, stamp);
+    assert.ok(checks.some((r) => r.source === 'wts' && !r.success));
+    globalThis.fetch = async (url) =>
+      new Response(
+        String(url).includes('whentostream.com')
+          ? article.replace('tt1234567', 'tt7654321')
+          : '<h2>Digital HD on October 1, 2026.</h2><a href="https://www.imdb.com/title/tt1234567/" itemprop="sameAs">IMDb</a>' +
+              padding,
+      );
+    assert.ok(
+      !(await refreshMovie(saved, { identities: [] })).releases.some(
+        (r) => r.sourceName === 'When To Stream',
+      ),
+      'An explicit different IMDb subject must still withhold the window',
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+test('edited profile evidence retains a verified date until rematched, while explicit withdrawals and changed native IDs still remove it', async () => {
+  const original = globalThis.fetch,
+    url = 'https://whentostream.com/a-film-2026/';
+  const profile = {
+    sourceFilmId: '7001',
+    sourceFilmUrl: url,
+    title: film.title,
+    year: film.year,
+    directors: ['A Director'],
+    cast: ['First Actor', 'Second Actor'],
+    overview: 'A synopsis.',
+  };
+  const identity = {
+    ...profile,
+    imdbId: film.imdbId!,
+    method: 'corroborated' as const,
+    reviewedAt: stamp,
+    profileFingerprint: profileFingerprint(profile),
+    evidence: { metadata: film.source, releaseSource: url, corroboration: 'Verified fixture' },
+  };
+  const saved = {
+    ...film,
+    releases: [
+      film.releases[0],
+      {
+        ...film.releases[1],
+        source: url,
+        filmIdentityMethod: 'corroborated' as const,
+        filmIdentitySource: url,
+      },
+    ],
+  };
+  let page = `<link rel="canonical" href="${url}"><article id="post-7001"><h1>A Film (2026)</h1><p>Director: A Director</p><p>Cast: First Actor, Second Actor</p><p>Synopsis: An edited synopsis.</p><p>SVOD Release Date: November 3, 2026 (Netflix)</p></article>${padding}`;
+  try {
+    globalThis.fetch = async (input) =>
+      new Response(
+        String(input).includes('whentostream.com')
+          ? page
+          : '<h2>Digital HD on October 1, 2026.</h2><a href="https://www.imdb.com/title/tt1234567/" itemprop="sameAs">IMDb</a>' +
+              padding,
+      );
+    const result = await refreshMovie(saved, { identities: [identity] });
+    assert.equal(
+      result.releases.find((r) => r.sourceName === 'When To Stream')?.date,
+      '2026-11-01',
+    );
+    assert.equal(result.releaseCheck?.status, 'partial');
+    page = page.replace('November 3, 2026 (Netflix)', 'TBA');
+    assert.ok(
+      !(await refreshMovie(saved, { identities: [identity] })).releases.some(
+        (r) => r.sourceName === 'When To Stream',
+      ),
+    );
+    page = page.replace('post-7001', 'post-7002').replace('TBA', 'November 3, 2026 (Netflix)');
+    assert.ok(
+      !(await refreshMovie(saved, { identities: [identity] })).releases.some(
+        (r) => r.sourceName === 'When To Stream',
+      ),
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 test('unexpected headings and unrelated native subjects cannot withdraw a legacy primary date', () => {
   const legacy = {
     ...film,
@@ -154,4 +271,61 @@ test('source health detects individual failures and stale feed/catalogue data de
       now,
     ).issues.includes('wts_reports_failed'),
   );
+});
+
+test('approved director-credit titles refresh against the bound native subject and retain the canonical film ID', async () => {
+  const original = globalThis.fetch,
+    source = 'https://whentostream.com/a-directors-a-film-2026/';
+  const profile = {
+    sourceFilmId: '7001',
+    sourceFilmUrl: source,
+    title: 'A Director’s A Film',
+    year: '2026',
+    directors: ['A Director'],
+    cast: ['First Actor', 'Second Actor'],
+    overview: 'A synopsis.',
+  };
+  const identity = {
+    ...profile,
+    imdbId: film.imdbId!,
+    method: 'corroborated' as const,
+    reviewedAt: stamp,
+    profileFingerprint: profileFingerprint(profile),
+    evidence: {
+      metadata: film.source,
+      releaseSource: source,
+      corroboration: 'Independent credits',
+    },
+  };
+  const saved = {
+    ...film,
+    releases: [
+      film.releases[0],
+      {
+        ...film.releases[1],
+        source,
+        filmIdentityMethod: 'corroborated' as const,
+        filmIdentitySource: source,
+      },
+    ],
+  };
+  const html = `<link rel="canonical" href="${source}"><article id="post-7001"><h1>A Director’s A Film (2026)</h1><p>Director: A Director</p><p>Cast: First Actor, Second Actor</p><p>Synopsis: A synopsis.</p><p>SVOD Release Date: November 3, 2026 (Netflix)</p></article>${padding}`;
+  try {
+    globalThis.fetch = async (url) =>
+      new Response(
+        String(url) === source
+          ? html
+          : '<h2>Digital HD on October 1, 2026.</h2><a href="https://www.imdb.com/title/tt1234567/" itemprop="sameAs">IMDb</a>' +
+              padding,
+      );
+    const result = await refreshMovie(saved, { identities: [identity] });
+    assert.equal(result.id, film.id);
+    assert.equal(
+      result.releases.find((r) => r.sourceName === 'When To Stream')?.date,
+      '2026-11-03',
+    );
+    assert.equal(result.releaseCheck?.status, 'fresh');
+  } finally {
+    globalThis.fetch = original;
+  }
 });

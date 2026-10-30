@@ -6,6 +6,7 @@ export type LibraryPage = {
   trackedCount: number;
   knownCount: number;
   listedEvents: number;
+  /** Additional days with only unconfirmed releases; mixed days already count as listed. */
   rumoredEvents: number;
   upcoming: Movie | null;
   upcomingRelease?: Release | null;

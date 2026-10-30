@@ -2,15 +2,18 @@ import 'server-only';
 import { adminDb } from './supabase/admin';
 import { checked } from './db-result';
 import { cached, remember, cache } from './infrastructure';
-import { activeReleaseIdentities, type MatchRow } from './release-automation';
+import { activeReleaseIdentities, MATCH_RULE_VERSION, type MatchRow } from './release-automation';
 import {
   reviewedReportIdentities,
   type ReviewedReportIdentity,
 } from './reviewed-report-identities';
 import type { Movie } from './model';
 
+// Old previews and production share Redis. Their supported matching rules can differ.
+const identityCacheKey = `release-identities:v3:rule${MATCH_RULE_VERSION}`;
+
 export async function releaseIdentities(): Promise<ReviewedReportIdentity[]> {
-  const hit = await cached<ReviewedReportIdentity[]>('release-identities:v2');
+  const hit = await cached<ReviewedReportIdentity[]>(identityCacheKey);
   if (hit) return hit;
   const rows: MatchRow[] = [];
   const db = adminDb();
@@ -28,7 +31,7 @@ export async function releaseIdentities(): Promise<ReviewedReportIdentity[]> {
     if (page.length < 500) break;
   }
   const identities = activeReleaseIdentities(rows, reviewedReportIdentities);
-  await remember('release-identities:v2', identities, 60);
+  await remember(identityCacheKey, identities, 60);
   return identities;
 }
 export type ReleaseImportRow = { id: string; movie: Movie; updated_at: string };
@@ -53,6 +56,7 @@ export async function releaseImports(): Promise<ReleaseImportRow[]> {
 export async function invalidateReleaseCaches() {
   try {
     await cache().del(
+      `alist:${identityCacheKey}`,
       'alist:release-identities:v2',
       'alist:approved-identities:v1',
       'alist:catalogue',

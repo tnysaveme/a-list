@@ -8,20 +8,23 @@ export type LibraryInit = LibraryPage & {
 };
 export type MovieResponse = { movie: Movie };
 export type GetPath =
+  | 'revision'
   | `movie/${string}`
   | `library${'' | `?${string}`}`
   | `catalogue${'' | `?${string}`}`
   | `search?${string}`
   | `library/membership?${string}`;
-export type GetResponse<P extends GetPath> = P extends `movie/${string}`
-  ? MovieResponse
-  : P extends `catalogue${string}`
-    ? CataloguePage
-    : P extends `library/membership?${string}`
-      ? { membership: Record<string, boolean> }
-      : P extends `search?${string}`
-        ? { movies: Movie[] }
-        : LibraryPage;
+export type GetResponse<P extends GetPath> = P extends 'revision'
+  ? { revision: string }
+  : P extends `movie/${string}`
+    ? MovieResponse
+    : P extends `catalogue${string}`
+      ? CataloguePage
+      : P extends `library/membership?${string}`
+        ? { membership: Record<string, boolean> }
+        : P extends `search?${string}`
+          ? { movies: Movie[] }
+          : LibraryPage;
 export type PostRequests = {
   init: Record<string, never>;
   library: { action: 'add' | 'remove' | 'track'; ids: string[] };

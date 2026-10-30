@@ -19,12 +19,17 @@ import { useFilmSearch } from '../hooks/use-film-search';
 import { searchMatches } from '../lib/search-results';
 import type { Movie } from '../lib/model';
 import { MovieSearch } from './movie-search';
+import { useExitPresence } from '../hooks/use-exit-presence';
+import { ExitContent } from './feedback-surface';
+
+const emptyMembership: Record<string, { saved: boolean; at: number }> = {};
 
 type AppHeaderProps = {
   ready: boolean;
   onHome: () => void;
   catalogue: Movie[];
   savedIds: Set<string>;
+  membership?: Record<string, { saved: boolean; at: number }>;
   onSelectMovie: (movie: Movie) => void;
   onCalendar: () => void;
   onAccount: () => void;
@@ -36,12 +41,16 @@ export function AppHeader({
   onHome,
   catalogue,
   savedIds,
+  membership = emptyMembership,
   onSelectMovie,
   onCalendar,
   onAccount,
   onAbout,
 }: AppHeaderProps) {
   const [signingOut, setSigningOut] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [dialogHandoff, setDialogHandoff] = useState(false);
+  const [keyboardInput, setKeyboardInput] = useState(true);
   const menuTrigger = useRef<HTMLButtonElement>(null);
   const search = useFilmSearch();
   const {
@@ -50,19 +59,34 @@ export function AppHeader({
     query,
     results,
     resultsQuery,
+    resultsAt,
     searchRef,
     changeQuery,
     closeSearch,
   } = search;
+  const { ref: menuRef, mounted: menuMounted } = useExitPresence<HTMLDivElement>(menuOpen);
+  const { ref: searchPanelRef, mounted: searchMounted } =
+    useExitPresence<HTMLDivElement>(searching);
   const resultsId = useId();
   const [activeIndex, setActiveIndex] = useState(-1);
   const currentDay = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   const matches = useMemo(
     () =>
       searching
-        ? searchMatches(catalogue, resultsQuery === query.trim() ? results : [], query, currentDay)
+        ? searchMatches(
+            catalogue,
+            resultsQuery === query.trim().toLowerCase() ? results : [],
+            query,
+            currentDay,
+          ).map((movie) =>
+            membership[movie.id] &&
+            membership[movie.id].at >= resultsAt &&
+            results.some((result) => result.id === movie.id)
+              ? { ...movie, saved: membership[movie.id].saved, tracked: membership[movie.id].saved }
+              : movie,
+          )
         : [],
-    [catalogue, results, resultsQuery, query, currentDay, searching],
+    [catalogue, results, resultsQuery, resultsAt, query, currentDay, searching, membership],
   );
   const active = activeIndex >= 0 && activeIndex < matches.length ? activeIndex : -1;
   useEffect(() => {
@@ -73,6 +97,7 @@ export function AppHeader({
   }, [active, matches, resultsId]);
   useEffect(() => {
     function key(event: KeyboardEvent) {
+      setKeyboardInput(true);
       if (
         (event.metaKey || event.ctrlKey) &&
         event.key.toLowerCase() === 'k' &&
@@ -83,8 +108,15 @@ export function AppHeader({
         setSearching(true);
       }
     }
-    document.addEventListener('keydown', key);
-    return () => document.removeEventListener('keydown', key);
+    function pointer() {
+      setKeyboardInput(false);
+    }
+    document.addEventListener('keydown', key, true);
+    document.addEventListener('pointerdown', pointer, true);
+    return () => {
+      document.removeEventListener('keydown', key, true);
+      document.removeEventListener('pointerdown', pointer, true);
+    };
   }, [searchRef, setSearching]);
   function selectMovie(movie: Movie) {
     closeSearch();
@@ -95,6 +127,9 @@ export function AppHeader({
   function openDialog(action: () => void) {
     // Native dialogs restore focus to this persistent control when they close.
     menuTrigger.current?.focus({ preventScroll: true });
+    // A retained Radix layer would capture Escape ahead of the new native modal.
+    setDialogHandoff(true);
+    setMenuOpen(false);
     action();
   }
 
@@ -201,7 +236,14 @@ export function AppHeader({
                 <CalendarDays size={18} aria-hidden="true" />
                 <span>Calendar</span>
               </button>
-              <DropdownMenu.Root modal={false}>
+              <DropdownMenu.Root
+                modal={false}
+                open={menuOpen}
+                onOpenChange={(open) => {
+                  if (open) setDialogHandoff(false);
+                  setMenuOpen(open);
+                }}
+              >
                 <DropdownMenu.Trigger
                   ref={menuTrigger}
                   className="app-header-control app-header-menu-trigger"
@@ -209,100 +251,132 @@ export function AppHeader({
                 >
                   <UserRound size={18} aria-hidden="true" />
                 </DropdownMenu.Trigger>
-                <DropdownMenu.Portal>
-                  <DropdownMenu.Content
-                    className="app-header-menu"
-                    align="end"
-                    sideOffset={8}
-                    collisionPadding={12}
-                    aria-label="A-List menu"
-                    onCloseAutoFocus={(event) => {
-                      if (document.querySelector('dialog[open]')) event.preventDefault();
-                    }}
-                  >
-                    <DropdownMenu.Label className="app-header-menu-label">
-                      Settings & help
-                    </DropdownMenu.Label>
-                    <DropdownMenu.Item
-                      className="app-header-menu-item"
-                      disabled={!ready}
-                      onSelect={() => openDialog(onAccount)}
+                {menuMounted && !dialogHandoff && (
+                  <DropdownMenu.Portal forceMount>
+                    <DropdownMenu.Content
+                      forceMount
+                      ref={menuRef}
+                      data-instant={keyboardInput}
+                      inert={!menuOpen}
+                      className="app-header-menu"
+                      align="end"
+                      sideOffset={8}
+                      collisionPadding={12}
+                      aria-label="A-List menu"
+                      onInteractOutside={(event) => {
+                        // The trigger owns toggling. A retained closing layer must not
+                        // dismiss the same pointer event again after it reopens the menu.
+                        if (!menuOpen || menuTrigger.current?.contains(event.target as Node))
+                          event.preventDefault();
+                      }}
+                      onCloseAutoFocus={(event) => {
+                        const focused = document.activeElement;
+                        if (
+                          document.querySelector('dialog[open]') ||
+                          (focused instanceof HTMLElement &&
+                            focused !== document.body &&
+                            focused !== menuTrigger.current &&
+                            !focused.closest('[data-radix-menu-content]'))
+                        )
+                          event.preventDefault();
+                      }}
                     >
-                      <UserRound size={17} aria-hidden="true" />
-                      Account settings
-                    </DropdownMenu.Item>
-                    <DropdownMenu.Item
-                      className="app-header-menu-item"
-                      onSelect={() => openDialog(onAbout)}
-                    >
-                      <CircleHelp size={17} aria-hidden="true" />
-                      How A-List works
-                    </DropdownMenu.Item>
-                    <DropdownMenu.Item className="app-header-menu-item" asChild>
-                      <Link href="/privacy">
-                        <ShieldCheck size={17} aria-hidden="true" />
-                        Privacy & your data
-                      </Link>
-                    </DropdownMenu.Item>
-                    <DropdownMenu.Separator className="app-header-menu-rule" />
-                    <form action="/auth/signout" method="post" onSubmit={() => setSigningOut(true)}>
+                      <DropdownMenu.Label className="app-header-menu-label">
+                        Settings & help
+                      </DropdownMenu.Label>
                       <DropdownMenu.Item
-                        asChild
-                        disabled={signingOut}
-                        onSelect={(event) => event.preventDefault()}
+                        className="app-header-menu-item"
+                        disabled={!ready}
+                        onSelect={() => openDialog(onAccount)}
                       >
-                        <button
-                          type="submit"
-                          className="app-header-control app-header-signout"
-                          disabled={signingOut}
-                          aria-busy={signingOut}
-                          data-state={signingOut ? 'loading' : undefined}
-                        >
-                          {signingOut ? (
-                            <LoaderCircle size={17} className="spin" aria-hidden="true" />
-                          ) : (
-                            <LogOut size={17} aria-hidden="true" />
-                          )}
-                          {signingOut ? 'Signing out…' : 'Sign out'}
-                        </button>
+                        <UserRound size={17} aria-hidden="true" />
+                        Account settings
                       </DropdownMenu.Item>
-                    </form>
-                  </DropdownMenu.Content>
-                </DropdownMenu.Portal>
+                      <DropdownMenu.Item
+                        className="app-header-menu-item"
+                        onSelect={() => openDialog(onAbout)}
+                      >
+                        <CircleHelp size={17} aria-hidden="true" />
+                        How A-List works
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item className="app-header-menu-item" asChild>
+                        <Link href="/privacy">
+                          <ShieldCheck size={17} aria-hidden="true" />
+                          Privacy & your data
+                        </Link>
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Separator className="app-header-menu-rule" />
+                      <form
+                        action="/auth/signout"
+                        method="post"
+                        onSubmit={() => setSigningOut(true)}
+                      >
+                        <DropdownMenu.Item
+                          asChild
+                          disabled={signingOut}
+                          onSelect={(event) => event.preventDefault()}
+                        >
+                          <button
+                            type="submit"
+                            className="app-header-control app-header-signout"
+                            disabled={signingOut}
+                            aria-busy={signingOut}
+                            data-state={signingOut ? 'loading' : undefined}
+                          >
+                            {signingOut ? (
+                              <LoaderCircle size={17} className="spin" aria-hidden="true" />
+                            ) : (
+                              <LogOut size={17} aria-hidden="true" />
+                            )}
+                            {signingOut ? 'Signing out…' : 'Sign out'}
+                          </button>
+                        </DropdownMenu.Item>
+                      </form>
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                )}
               </DropdownMenu.Root>
             </nav>
           </div>
         </Popover.Anchor>
-        <Popover.Portal>
-          <Popover.Content
-            className="app-search-panel"
-            aria-label="Film search"
-            sideOffset={10}
-            collisionPadding={16}
-            align="center"
-            onOpenAutoFocus={(event) => event.preventDefault()}
-            onCloseAutoFocus={(event) => event.preventDefault()}
-            onInteractOutside={(event) => {
-              if (searchRef.current?.parentElement?.contains(event.target as Node))
-                event.preventDefault();
-            }}
-            onEscapeKeyDown={() => {
-              closeSearch();
-              setActiveIndex(-1);
-            }}
-          >
-            <MovieSearch
-              search={search}
-              searchResults={matches}
-              savedIds={savedIds}
-              onSelect={selectMovie}
-              resultsId={resultsId}
-              activeIndex={active}
-              onActiveIndex={setActiveIndex}
-              currentDay={currentDay}
-            />
-          </Popover.Content>
-        </Popover.Portal>
+        {searchMounted && (
+          <Popover.Portal forceMount>
+            <Popover.Content
+              forceMount
+              ref={searchPanelRef}
+              data-instant={keyboardInput}
+              inert={!searching}
+              className="app-search-panel"
+              aria-label="Film search"
+              sideOffset={10}
+              collisionPadding={16}
+              align="center"
+              onOpenAutoFocus={(event) => event.preventDefault()}
+              onCloseAutoFocus={(event) => event.preventDefault()}
+              onInteractOutside={(event) => {
+                if (searchRef.current?.parentElement?.contains(event.target as Node))
+                  event.preventDefault();
+              }}
+              onEscapeKeyDown={() => {
+                closeSearch();
+                setActiveIndex(-1);
+              }}
+            >
+              <ExitContent open={searching}>
+                <MovieSearch
+                  search={search}
+                  searchResults={matches}
+                  savedIds={savedIds}
+                  onSelect={selectMovie}
+                  resultsId={resultsId}
+                  activeIndex={active}
+                  onActiveIndex={setActiveIndex}
+                  currentDay={currentDay}
+                />
+              </ExitContent>
+            </Popover.Content>
+          </Popover.Portal>
+        )}
       </Popover.Root>
     </header>
   );

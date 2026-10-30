@@ -5,6 +5,9 @@ import {
   parseMetadataSearch,
   mergeSearchProviders,
   getMetadata,
+  getMetadataEvidence,
+  parseListingEvidence,
+  findListingEvidence,
 } from '../lib/metadata';
 import { parseSynopsis, parseDetail } from '../lib/sources';
 import { refreshMovie } from '../lib/movie-refresh';
@@ -164,6 +167,87 @@ test('either search provider can fail without disabling the other provider', asy
     assert.equal(existing.degraded, true);
     globalThis.fetch = async () => new Response('Unavailable', { status: 503 });
     await assert.rejects(searchProviders(raw.name), /unavailable/);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('full cast and director credits supplement the provider summary without treating crew as actors', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    Response.json({
+      meta: {
+        ...raw,
+        director: [],
+        cast: ['First Actor'],
+        credits_cast: [{ name: 'Second Actor' }],
+        credits_crew: [
+          { job: 'Director', name: 'A Director' },
+          { job: 'Writer', name: 'Someone Else' },
+        ],
+      },
+    });
+  try {
+    const result = await getMetadataEvidence(raw.id);
+    assert.deepEqual(result.cast, ['First Actor', 'Second Actor']);
+    assert.deepEqual(result.directors, ['A Director']);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('primary credit evidence requires its canonical subject and explicit matching IMDb identity', () => {
+  const movie = { ...dvd, imdbId: raw.id, identityVerifiedAt: film.checkedAt };
+  const person = (kind: string, name: string) =>
+    `<span itemprop='${kind}' itemscope><a href='/people/1'><span itemprop='name'>${name}</span></a></span>`;
+  const html = `<link rel='canonical' href='${movie.source}'><h1>${movie.title} (2026)</h1><a itemprop='sameAs' href='https://www.imdb.com/title/${raw.id}/'>IMDb</a>${person('director', 'A Director')}${person('actor', 'First Actor')}${person('actor', 'Second Actor')}<a href='/other-film'>Unrelated Name</a>`;
+  const result = parseListingEvidence(html, movie);
+  assert.deepEqual(result.directors, ['A Director']);
+  assert.deepEqual(result.cast, ['First Actor', 'Second Actor']);
+  for (const bad of [
+    html.replace(raw.id, 'tt9999999'),
+    html.replace(movie.title, 'An Unrelated Film'),
+    html.replace("rel='canonical'", "rel='alternate'"),
+  ])
+    assert.throws(() => parseListingEvidence(bad, movie), /identity/);
+});
+
+test('metadata-only films find primary credit evidence by explicit IMDb identity despite display-year drift', async () => {
+  const original = globalThis.fetch;
+  const source = 'https://www.dvdsreleasedates.com/movies/123/if-i-go-will-they-miss-me';
+  const person = (kind: string, name: string) =>
+    `<span itemprop='${kind}'><a href='/people/1'><span itemprop='name'>${name}</span></a></span>`;
+  const html = `<link rel='canonical' href='${source}'><h1>${film.title} (2025)</h1><a itemprop='sameAs' href='https://www.imdb.com/title/${film.id}/'>IMDb</a>${person('director', 'A Director')}${person('actor', 'First Actor')}${person('actor', 'Second Actor')}${'.'.repeat(600)}`;
+  try {
+    globalThis.fetch = async (_url, init) => {
+      assert.equal(init?.method, 'POST');
+      return new Response(html);
+    };
+    const result = await findListingEvidence(film, AbortSignal.timeout(1000));
+    assert.equal(result?.movie.id, film.id);
+    assert.equal(result?.movie.year, '2025');
+    assert.equal(result?.primaryIdentityVerified, true);
+    globalThis.fetch = async () => new Response(html.replace(film.id, 'tt9999999'));
+    assert.equal(await findListingEvidence(film, AbortSignal.timeout(1000)), undefined);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('primary refresh verifies a matching IMDb subject before rejecting a provider year difference', async () => {
+  const original = globalThis.fetch;
+  const source = 'https://www.dvdsreleasedates.com/movies/123/if-i-go-will-they-miss-me';
+  globalThis.fetch = async (url) =>
+    String(url).includes('cinemeta')
+      ? Response.json({ meta: raw })
+      : new Response(
+          `<link rel='canonical' href='${source}'><h1>${film.title} (2025)</h1><a itemprop='sameAs' href='https://www.imdb.com/title/${film.id}/'>IMDb</a><h2>Digital HD release on October 27, 2026</h2>${'.'.repeat(600)}`,
+        );
+  try {
+    const updated = await refreshMovie(film);
+    assert.equal(updated.source, source);
+    assert.equal(updated.releases[0].date, '2026-10-27');
+    assert.equal(updated.imdbId, film.id);
   } finally {
     globalThis.fetch = original;
   }

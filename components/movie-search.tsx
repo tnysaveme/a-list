@@ -55,7 +55,13 @@ export function MovieSearch({
       </div>
       {searchError && (
         <p className="search-error" role="status">
-          {searchError} Showing matches from the catalogue.
+          {searchError}{' '}
+          {searchResults.length
+            ? 'Showing available catalogue matches.'
+            : 'No catalogue matches are available for this title.'}
+          <button className="text-link" onClick={search.retrySearch} disabled={searchBusy}>
+            Try again
+          </button>
         </p>
       )}
       <div

@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "createdAt": "2026-10-28T16:22:27.669Z",
+        "reason": "Agent verified: app/globals.css's inherited Arial declaration is overridden by its later body font-family var(--font-body); tokens.css resolves that to Inter, as specified in design.md's approved typography."
+      }
+    ]
+  }
+}

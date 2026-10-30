@@ -1,0 +1,55 @@
+{
+  "deploymentId": "dpl_3926ecaJ4JH477g9G36Wq7K25pJi",
+  "target": "production",
+  "status": "READY",
+  "url": "https://a-list-nine.vercel.app",
+  "uniqueUrl": "https://a-list-n2ervlzqg-terence-yebuahs-projects.vercel.app",
+  "baseCommit": "c1de7fc",
+  "unitDataTests": 199,
+  "browserScenarios": 54,
+  "finalFocusScenarios": 2,
+  "smoke": {
+    "origin": "https://a-list-nine.vercel.app",
+    "endpoints": [
+      {
+        "path": "/login",
+        "status": 200
+      },
+      {
+        "path": "/privacy",
+        "status": 200
+      },
+      {
+        "path": "/api/status",
+        "status": 200,
+        "readiness": {
+          "status": "healthy"
+        }
+      },
+      {
+        "path": "/api/health",
+        "status": 401
+      }
+    ],
+    "browserErrors": [],
+    "performanceScript": {
+      "src": "https://a-list-nine.vercel.app/47bc2f98efe5e680/script.js",
+      "sampleRate": "0.5",
+      "status": 200
+    },
+    "horizontalOverflow": false
+  },
+  "runtimeScan": {
+    "type": "summary",
+    "recordsReturned": 0,
+    "timeRange": {
+      "start": "2026-10-29T07:27:41.041Z",
+      "end": "2026-10-29T07:37:41.041Z"
+    },
+    "pagination": {
+      "hasMore": false,
+      "next": null
+    },
+    "excludedIntervals": []
+  }
+}

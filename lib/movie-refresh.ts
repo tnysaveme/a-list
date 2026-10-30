@@ -128,9 +128,12 @@ export async function refreshMovie(
         body: new URLSearchParams({ searchStr: movie.title }).toString(),
       });
       const matches = parseSearchResults(html).filter(
-        (m) =>
-          titleKey(m.title) === titleKey(movie.title) &&
-          (!m.year || !movie.year || m.year === movie.year),
+        (m) => titleKey(m.title) === titleKey(movie.title),
+      );
+      matches.sort(
+        (a, b) =>
+          Math.abs(Number(a.year) - Number(movie.year)) -
+          Math.abs(Number(b.year) - Number(movie.year)),
       );
       result.primaryListingUnavailable = true;
       for (const match of matches.slice(0, 2)) {

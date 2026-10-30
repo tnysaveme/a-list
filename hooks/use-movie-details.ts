@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { waitForForeground } from '../lib/foreground';
 import { getApi } from '../lib/client-api';
 import { sanitizeMovie, type Movie } from '../lib/model';
 export function useMovieDetails(onUpdate: (movie: Movie) => void) {
@@ -19,18 +20,10 @@ export function useMovieDetails(onUpdate: (movie: Movie) => void) {
         attempt++
       ) {
         setMovie((current) => (current?.id === id ? data.movie : current));
-        await new Promise<void>((resolve, reject) => {
-          const done = () => {
-            controller.signal.removeEventListener('abort', abort);
-            resolve();
-          };
-          const timer = setTimeout(done, 1500);
-          const abort = () => {
-            clearTimeout(timer);
-            reject(new DOMException('Aborted', 'AbortError'));
-          };
-          controller.signal.addEventListener('abort', abort, { once: true });
-        });
+        await waitForForeground(controller.signal, 1500, () =>
+          setDetailError('You’re offline. Showing saved information until the connection returns.'),
+        );
+        setDetailError('');
         data = await getApi(`movie/${id}?cached=true`, controller.signal);
       }
       return data;

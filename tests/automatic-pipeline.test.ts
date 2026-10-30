@@ -4,6 +4,7 @@ import { registerHooks } from 'node:module';
 import { profileFingerprint, type SourceProfile } from '../lib/release-profile';
 import {
   mergeReleaseFeed,
+  cachedIdentity,
   SIX_HOURS,
   type MatchRow,
   type FeedEntry,
@@ -25,7 +26,7 @@ const { expandReleases } = await import('../lib/release-expansion');
 const { lookupReleaseReports } = await import('../lib/release-lookup');
 const { refreshMovie } = await import('../lib/movie-refresh');
 const { inferredIdentity } = await import('../lib/release-automation');
-const { parseProfileReports, text } = await import('../lib/sources');
+const { parseProfileReports, parseVerifiedReport, text } = await import('../lib/sources');
 const { profileReference } = await import('../lib/reviewed-report-identities');
 const padding = '<!--' + '.'.repeat(600) + '-->';
 const now = new Date().toISOString(),
@@ -188,7 +189,7 @@ test('profile publication corroborates a cold identity and stores all explicit w
       expectedImdbId: fixture.movie.id,
     });
     assert.equal(result.matched, 1);
-    assert.equal(metadataCalls, 2);
+    assert.equal(metadataCalls, 1);
     const stored = fake.movies.get(fixture.movie.id)!.movie;
     assert.deepEqual(
       stored.releases.map((r) => [r.kind, r.date, r.confidence]),
@@ -205,6 +206,56 @@ test('profile publication corroborates a cold identity and stores all explicit w
     const publication = fake.writes.find((w) => w.name === 'a_list_store_release_match')!;
     assert.equal((publication.args.p_reports as unknown[]).length, 2);
     assert.deepEqual(fake.state.feed, []);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+test('a newly edited profile publishes its date through incremental discovery without waiting for full catalogue or film refresh caches', async () => {
+  const fixture = film(0),
+    fake = store([fixture]),
+    original = globalThis.fetch,
+    { indexWtsProfileChanges, inventoryEntries } = await import('../lib/wts-inventory');
+  const modifiedAt = new Date(Date.now() - 60_000).toISOString(),
+    nativePage = fixture.page.replace(
+      '</article>',
+      '<p>VOD Release Date: November 12, 2026</p></article>',
+    );
+  let indexRequests = 0,
+    profileRequests = 0;
+  globalThis.fetch = async (input, init) => {
+    const url = new URL(String(input));
+    assert.equal(init?.cache, 'no-store');
+    if (url.pathname === '/wp-json/wp/v2/pages') {
+      indexRequests++;
+      return Response.json([
+        {
+          id: Number(fixture.profile.sourceFilmId),
+          link: fixture.profile.sourceFilmUrl,
+          title: { rendered: fixture.profile.title + ' (2026)' },
+          modified_gmt: modifiedAt.replace('Z', ''),
+        },
+      ]);
+    }
+    assert.equal(url.href, fixture.profile.sourceFilmUrl);
+    profileRequests++;
+    return new Response(nativePage);
+  };
+  try {
+    await indexWtsProfileChanges(
+      { wts_profile_after: new Date(Date.now() + SIX_HOURS).toISOString() },
+      fake.db,
+      AbortSignal.timeout(5000),
+    );
+    const queued = fake.writes.find((write) => write.name === 'a_list_queue_wts_profiles')!;
+    const entries = inventoryEntries(
+      queued.args.p_profiles as Parameters<typeof inventoryEntries>[0],
+    );
+    const result = await expandReleases(entries, { db: fake.db, publishUnknown: true });
+    assert.equal(result.matched, 1);
+    assert.equal(fake.movies.get(fixture.movie.id)?.movie.releases[0]?.date, '2026-11-12');
+    assert.equal(indexRequests, 1);
+    assert.equal(profileRequests, 1);
+    assert.equal(entries[0].revision, modifiedAt);
   } finally {
     globalThis.fetch = original;
   }
@@ -378,9 +429,19 @@ test('warm automatic processing is bounded to five films/two concurrent checks, 
     peak = Math.max(peak, active);
     await new Promise((resolve) => setTimeout(resolve, 5));
     active--;
-    const found = fixtures.find((f) => f.entry.report.release.source === String(url));
-    assert.ok(found, 'Known mappings must avoid metadata and profile lookups while fresh');
-    return new Response(found.article);
+    const found = fixtures.find(
+      (f) =>
+        f.entry.report.release.source === String(url) || f.profile.sourceFilmUrl === String(url),
+    );
+    assert.ok(found, 'Known mappings recheck their native profile without metadata searches');
+    return new Response(
+      String(url) === found.profile.sourceFilmUrl
+        ? found.page.replace(
+            '</article>',
+            '<p>SVOD Release Date: November 12, 2026 (Netflix)</p></article>',
+          )
+        : found.article,
+    );
   };
   try {
     const first = await expandReleases(
@@ -388,20 +449,26 @@ test('warm automatic processing is bounded to five films/two concurrent checks, 
       { db: fake.db, publishUnknown: true },
     );
     assert.equal(first.matched, 5);
-    assert.equal(requests, 5);
+    assert.equal(requests, 10);
     assert.ok(peak <= 2);
     assert.equal(fake.writes.length, 5);
     for (const write of fake.writes)
+      assert.ok(
+        Date.parse((write.args.p_match as { profile_checked_at: string }).profile_checked_at) >=
+          Date.parse(now),
+      );
+    for (const write of fake.writes)
       assert.equal(
-        (write.args.p_match as { profile_checked_at: string }).profile_checked_at,
-        profileTime,
+        (write.args.p_movie as Movie).releases.find((r) => r.kind === 'Subscription')?.date,
+        '2026-11-12',
+        'Current profile dates override an older announcement',
       );
     const repeated = await expandReleases(fake.state.feed.slice(0, 5), {
       db: fake.db,
       publishUnknown: true,
     });
     assert.equal(repeated.processed, 0);
-    assert.equal(requests, 5);
+    assert.equal(requests, 10);
     const shadow = await expandReleases([fixtures[0].entry], { db: fake.db, dryRun: true });
     assert.equal(shadow.matched, 1);
     assert.equal(fake.writes.length, 5);
@@ -568,7 +635,8 @@ test('targeted older reports preserve the shared feed checkpoint and reject a di
   const fixture = film(0),
     fake = store([fixture]),
     original = globalThis.fetch;
-  globalThis.fetch = async () => new Response(fixture.article);
+  globalThis.fetch = async (url) =>
+    new Response(String(url) === fixture.profile.sourceFilmUrl ? fixture.page : fixture.article);
   try {
     const different = await expandReleases([fixture.entry], {
       db: fake.db,
@@ -638,8 +706,28 @@ test('feed health detects malformed successful HTTP responses and retains the pr
     assert.equal(checks[0].p_success, false);
     assert.ok(Date.parse(String(writes[0].wts_feed_after)) - Date.now() <= 15 * 60_000);
     globalThis.fetch = async () => new Response('<rss><channel>' + padding + '</channel></rss>');
-    await expansionFeed({ wts_feed: [fixture.entry] }, AbortSignal.timeout(5000), db);
+    await expansionFeed(
+      {
+        wts_feed: [fixture.entry],
+        wts_feed_after: new Date(Date.now() + 6 * 3600_000).toISOString(),
+      },
+      AbortSignal.timeout(5000),
+      db,
+    );
     assert.equal(checks[1].p_success, true);
+    const delay = Date.parse(String(writes[1].wts_feed_after)) - Date.now();
+    assert.ok(delay > 8 * 60_000 && delay <= 9 * 60_000);
+    globalThis.fetch = async () => {
+      throw Error('a recent discovery snapshot must be reused');
+    };
+    const cached = await expansionFeed(
+      { wts_feed: [fixture.entry], wts_feed_after: String(writes[1].wts_feed_after) },
+      AbortSignal.timeout(5000),
+      db,
+    );
+    assert.deepEqual(cached, [fixture.entry]);
+    assert.equal(checks.length, 2);
+    assert.equal(writes.length, 2);
   } finally {
     globalThis.fetch = original;
   }
@@ -672,8 +760,11 @@ test('background incomplete profiles retain approved mappings with transient ret
 });
 
 test('native all-TBA publication withdraws only explicit windows with a row-version guard', async () => {
-  const fixture = film(0),
-    fake = store([fixture]);
+  const fixture = film(0);
+  fixture.movie.releases = [
+    { ...fixture.entry.report.release, source: fixture.profile.sourceFilmUrl },
+  ];
+  const fake = store([fixture]);
   const html = fixture.page.replace(
     '</article>',
     '<p>VOD Release Date: TBA</p><p>SVOD Release Date: TBA</p></article>',
@@ -689,6 +780,7 @@ test('native all-TBA publication withdraws only explicit windows with a row-vers
     sourcePages: new Map([[fixture.profile.sourceFilmUrl, html]]),
   });
   assert.equal(result.decisions[0].outcome, 'withheld');
+  assert.equal(result.decisions[0].audit?.withdrawn, 1);
   const write = fake.writes.find((w) => w.name === 'a_list_withdraw_release_windows')!;
   assert.ok(write);
   assert.deepEqual(write.args.p_kinds, ['Digital', 'Subscription']);
@@ -696,6 +788,41 @@ test('native all-TBA publication withdraws only explicit windows with a row-vers
   assert.equal(
     fake.writes.some((w) => w.name === 'a_list_withhold_release_report'),
     false,
+  );
+});
+
+test('inventory rejects a TV series before matching or publishing', async () => {
+  const fixture = film(0),
+    fake = store([fixture]);
+  const source = fixture.profile.sourceFilmUrl;
+  const entry = {
+    ...fixture.entry,
+    sourceId: fixture.profile.sourceFilmId,
+    report: {
+      ...fixture.entry.report,
+      inventory: true,
+      release: { ...fixture.entry.report.release, source },
+    },
+  };
+  const result = await expandReleases([entry], {
+    db: fake.db,
+    publishUnknown: true,
+    checkpoint: false,
+    sourcePages: new Map([
+      [
+        source,
+        fixture.page.replace(
+          '</article>',
+          '<p>Genre: TV Series</p><p>VOD Release Date: November 11, 2026</p></article>',
+        ),
+      ],
+    ]),
+  });
+  assert.equal(result.decisions[0].outcome, 'not_movie');
+  assert.ok(!fake.writes.some((w) => w.args.p_movie));
+  assert.ok(
+    fake.writes.some((w) => (w.args.p_match as { status?: string })?.status === 'pending'),
+    'A newly identified series invalidates an older approved movie mapping',
   );
 });
 
@@ -716,6 +843,218 @@ test('changed profile plus a metadata outage does not invalidate established ide
   try {
     const result = await expandReleases([fixture.entry], { db: fake.db, publishUnknown: true });
     assert.equal(result.decisions[0].outcome, 'source_unavailable');
+    assert.equal(fake.writes.length, 0);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('an independently identified target corroborates its exact metadata instead of rejecting a broad namesake search', async () => {
+  const fixture = film(0),
+    fake = store([fixture]),
+    original = globalThis.fetch;
+  fake.rows.clear();
+  const page = fixture.page.replace(
+    '</article>',
+    '<p>SVOD Release Date: November 11, 2026 (Netflix)</p></article>',
+  );
+  globalThis.fetch = async (url) => {
+    if (String(url) === fixture.profile.sourceFilmUrl) return new Response(page);
+    assert.equal(
+      String(url),
+      `https://v3-cinemeta.strem.io/meta/movie/${fixture.movie.id}.json`,
+      'Known targets do not use title search to rediscover their own ID',
+    );
+    return Response.json({
+      meta: {
+        type: 'movie',
+        id: fixture.movie.id,
+        name: fixture.movie.title,
+        releaseInfo: '2026',
+        director: ['A Director'],
+        cast: ['First Actor'],
+        credits_cast: [{ name: 'Second Actor' }],
+      },
+    });
+  };
+  try {
+    const reports = parseProfileReports(page, fixture.profile);
+    const result = await expandReleases(mergeReleaseFeed([], reports, now), {
+      db: fake.db,
+      publishUnknown: true,
+      expectedImdbId: fixture.movie.id,
+      expectedMovie: fixture.movie,
+    });
+    assert.equal(result.matched, 1);
+    assert.equal((fake.writes[0].args.p_movie as Movie).releases[0].date, '2026-11-11');
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('known native films use explicitly identified primary credits when metadata cast is incomplete, preserving native and calendar IDs', async () => {
+  const fixture = film(0),
+    fake = store([fixture]),
+    original = globalThis.fetch;
+  fake.rows.clear();
+  const native: Movie = {
+    ...fixture.movie,
+    id: '123',
+    source: 'https://www.dvdsreleasedates.com/movies/123/film-0',
+    identityVerifiedAt: now,
+  };
+  fake.movies.set(native.id, { id: native.id, movie: native, updated_at: now });
+  const page = fixture.page.replace(
+    '</article>',
+    '<p>SVOD Release Date: November 11, 2026 (Netflix)</p></article>',
+  );
+  const person = (kind: string, name: string) =>
+    `<span itemprop='${kind}'><a href='/people/1'><span itemprop='name'>${name}</span></a></span>`;
+  const primary = `<link rel='canonical' href='${native.source}'><h1>${native.title} (2026)</h1><a itemprop='sameAs' href='https://www.imdb.com/title/${fixture.movie.id}/'>IMDb</a>${person('director', 'A Director')}${person('actor', 'First Actor')}${person('actor', 'Second Actor')}${padding}`;
+  globalThis.fetch = async (url) => {
+    if (String(url) === fixture.profile.sourceFilmUrl) return new Response(page);
+    if (String(url) === native.source) return new Response(primary);
+    assert.equal(String(url), `https://v3-cinemeta.strem.io/meta/movie/${fixture.movie.id}.json`);
+    return Response.json({
+      meta: {
+        type: 'movie',
+        id: fixture.movie.id,
+        name: fixture.movie.title,
+        releaseInfo: '2026',
+        director: ['A Director'],
+        cast: ['First Actor'],
+      },
+    });
+  };
+  try {
+    const result = await expandReleases(
+      mergeReleaseFeed([], parseProfileReports(page, fixture.profile), now),
+      {
+        db: fake.db,
+        publishUnknown: true,
+        expectedImdbId: fixture.movie.id,
+        expectedMovie: native,
+      },
+    );
+    assert.equal(result.matched, 1);
+    const stored = fake.writes[0].args.p_movie as Movie;
+    assert.equal(stored.id, native.id);
+    assert.equal(stored.imdbId, fixture.movie.id);
+    assert.equal(stored.releases[0].filmImdbId, fixture.movie.id);
+    assert.match(
+      (fake.writes[0].args.p_match as { rationale: string }).rationale,
+      /dvdsreleasedates/,
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('verified catalogue candidates avoid broad namesake searches during automatic profile discovery', async () => {
+  const fixture = film(0),
+    fake = store([fixture]),
+    original = globalThis.fetch;
+  fake.rows.clear();
+  const source = fixture.profile.sourceFilmUrl;
+  const entry = {
+    ...fixture.entry,
+    report: { ...fixture.entry.report, release: { ...fixture.entry.report.release, source } },
+  };
+  const html = fixture.page.replace(
+    '</article>',
+    '<p>VOD Release Date: November 11, 2026</p></article>',
+  );
+  try {
+    globalThis.fetch = async (url) => {
+      assert.equal(String(url), `https://v3-cinemeta.strem.io/meta/movie/${fixture.movie.id}.json`);
+      return Response.json({
+        meta: {
+          type: 'movie',
+          id: fixture.movie.id,
+          name: fixture.movie.title,
+          releaseInfo: '2026',
+          director: ['A Director'],
+          cast: ['First Actor', 'Second Actor'],
+        },
+      });
+    };
+    const result = await expandReleases([entry], {
+      db: fake.db,
+      publishUnknown: true,
+      checkpoint: false,
+      sourcePages: new Map([[source, html]]),
+      knownMovies: [fixture.movie],
+    });
+    assert.equal(result.matched, 1);
+    assert.equal(result.decisions[0].imdbId, fixture.movie.id);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('inventory checks current approved announcements when profiles are TBA and retires actual withdrawals without restoring snapshots', async () => {
+  const fixture = film(0),
+    mapping = cachedIdentity(fixture.row)!,
+    original = globalThis.fetch;
+  fixture.row.reports = [
+    parseVerifiedReport(fixture.article, { ...fixture.entry.report, imdbId: fixture.movie.id }, [
+      mapping,
+    ])!,
+  ];
+  const fake = store([fixture]),
+    source = fixture.profile.sourceFilmUrl;
+  const page = fixture.page.replace(
+    '</article>',
+    '<p>VOD Release Date: TBA</p><p>SVOD Release Date: TBA</p></article>',
+  );
+  const entry = {
+    ...fixture.entry,
+    report: { ...fixture.entry.report, release: { ...fixture.entry.report.release, source } },
+  };
+  try {
+    globalThis.fetch = async (url) => {
+      assert.equal(String(url), fixture.entry.report.release.source);
+      return new Response(fixture.article);
+    };
+    const result = await expandReleases([entry], {
+      db: fake.db,
+      publishUnknown: true,
+      checkpoint: false,
+      sourcePages: new Map([[source, page]]),
+    });
+    assert.equal(result.matched, 1);
+    assert.equal(fake.movies.get(fixture.movie.id)?.movie.releases[0].date, '2026-11-11');
+    globalThis.fetch = async () =>
+      new Response(
+        fixture.article.replace(
+          'is arriving on Netflix on November 11, 2026.',
+          'has no date; its release was withdrawn.',
+        ),
+      );
+    const withdrawn = await expandReleases([entry], {
+      db: fake.db,
+      publishUnknown: true,
+      checkpoint: false,
+      sourcePages: new Map([[source, page]]),
+    });
+    assert.equal(withdrawn.decisions[0].outcome, 'withheld');
+    assert.equal(withdrawn.decisions[0].audit?.withdrawn, 1);
+    assert.ok(
+      fake.writes.some(
+        (w) =>
+          w.name === 'a_list_withhold_release_report' &&
+          w.args.p_source === fixture.entry.report.release.source,
+      ),
+    );
+    fake.writes.length = 0;
+    globalThis.fetch = async () => new Response('Unavailable', { status: 503 });
+    const failed = await expandReleases([entry], {
+      db: fake.db,
+      publishUnknown: true,
+      checkpoint: false,
+      sourcePages: new Map([[source, page]]),
+    });
+    assert.equal(failed.decisions[0].outcome, 'source_unavailable');
     assert.equal(fake.writes.length, 0);
   } finally {
     globalThis.fetch = original;

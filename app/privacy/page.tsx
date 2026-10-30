@@ -50,6 +50,13 @@ export default function Privacy() {
         information needed to operate the app. Poster hosts may receive image requests. Source links
         open the original provider’s website.
       </p>
+      <h2>Performance measurements</h2>
+      <p>
+        Vercel also measures loading speed, layout stability and interaction responsiveness on a
+        sample of visits. These performance measurements exclude URL query strings and calendar or
+        sign-in callback links. The app does not attach your email, searches or saved-film list to
+        these measurements.
+      </p>
       <h2>Your controls</h2>
       <p>
         In Account settings you can download your library as JSON, reset your calendar link, or
@@ -63,7 +70,7 @@ export default function Privacy() {
         Copies already downloaded to your devices are controlled by your calendar app. Providers may
         retain operational logs and backups according to their own retention settings.
       </p>
-      <p className="privacy-updated">Updated October 25, 2026.</p>
+      <p className="privacy-updated">Updated October 29, 2026.</p>
       <Link href="/" className="privacy-home">
         Back to A-List
       </Link>

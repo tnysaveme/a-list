@@ -50,11 +50,11 @@ export async function membership(ctx: DataContext, movies: Movie[]): Promise<Mov
   }));
 }
 type Catalogue = { movies: Movie[]; checkedAt: string | null; provenance?: 'live' | 'fallback' };
-async function sharedCatalogue(ctx: DataContext): Promise<Catalogue> {
-  let result = await cached<Catalogue>('catalogue');
+async function sharedCatalogue(ctx: DataContext, fresh = false): Promise<Catalogue> {
+  let result = fresh ? null : await cached<Catalogue>('catalogue');
   if (!result)
-    result = await singleFlight('catalogue', async () => {
-      const again = await cached<Catalogue>('catalogue');
+    result = await singleFlight(fresh ? 'catalogue:fresh' : 'catalogue', async () => {
+      const again = fresh ? null : await cached<Catalogue>('catalogue');
       if (again) return again;
       try {
         const row = checked(
@@ -88,8 +88,9 @@ async function sharedCatalogue(ctx: DataContext): Promise<Catalogue> {
 export async function getCatalogue(
   ctx: DataContext,
   options: CatalogueOptions = {},
+  fresh = false,
 ): Promise<CataloguePage> {
-  const result = await sharedCatalogue(ctx),
+  const result = await sharedCatalogue(ctx, fresh),
     day = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   const page = cataloguePage(result.movies, options, day);
   return {
@@ -344,14 +345,20 @@ async function refreshStoredMovie(ctx: DataContext, id: string): Promise<Movie |
   }
   return (await membership(ctx, [movie]))[0];
 }
-export async function account(ctx: DataContext): Promise<AccountRow> {
+export async function account(ctx: DataContext, signal?: AbortSignal): Promise<AccountRow> {
   checked(
     await ctx.db
       .from('a_list_accounts')
-      .upsert({ id: ctx.userId }, { onConflict: 'id', ignoreDuplicates: true }),
+      .upsert({ id: ctx.userId }, { onConflict: 'id', ignoreDuplicates: true })
+      .abortSignal(signal || AbortSignal.timeout(10000)),
   );
   return checked(
-    await ctx.db.from('a_list_accounts').select('*').eq('id', ctx.userId).single(),
+    await ctx.db
+      .from('a_list_accounts')
+      .select('*')
+      .eq('id', ctx.userId)
+      .abortSignal(signal || AbortSignal.timeout(10000))
+      .single(),
   ) as AccountRow;
 }
 export async function getLibraryPage(
@@ -363,17 +370,20 @@ export async function getLibraryPage(
     limit?: number;
     tracked?: boolean;
   } = {},
+  signal?: AbortSignal,
 ): Promise<LibraryPage> {
   const limit = options.limit || 25,
     offset = options.offset || 0;
   const page = checked(
-    await ctx.db.rpc('a_list_library_page', {
-      p_sort: options.sort || 'release',
-      p_filter: options.filter || 'all',
-      p_offset: offset,
-      p_limit: limit,
-      p_tracked: !!options.tracked,
-    }),
+    await ctx.db
+      .rpc('a_list_library_page', {
+        p_sort: options.sort || 'release',
+        p_filter: options.filter || 'all',
+        p_offset: offset,
+        p_limit: limit,
+        p_tracked: !!options.tracked,
+      })
+      .abortSignal(signal || AbortSignal.timeout(10000)),
   ) as Omit<LibraryPage, 'nextOffset'>;
   return {
     ...page,
@@ -441,4 +451,15 @@ export async function getCalendarFeed(token: string): Promise<FeedDocument | nul
     return document;
   }
   throw new Error('Calendar changed during refresh; retry');
+}
+
+/** One bounded private bootstrap for server rendering and the explicit init retry. */
+export async function initializeLibrary(ctx: DataContext, signal = AbortSignal.timeout(10000)) {
+  const [owner, page] = await Promise.all([account(ctx, signal), getLibraryPage(ctx, {}, signal)]);
+  return {
+    ...page,
+    feedPath: `/api/feed/${owner.feed_token}.ics`,
+    includeRumors: owner.include_rumors,
+    feedPublic: true,
+  };
 }

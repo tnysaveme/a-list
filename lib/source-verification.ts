@@ -1,11 +1,18 @@
 import type { Movie } from './model';
 import { filmIndex, verifiedIdentityId, conflictingIdentity } from './film-identity';
 import { assertListingSource, listingImdbId } from './source-identity';
-import { fetchSource, parseDetail, parseVerifiedReport, type ReleaseReport } from './sources';
+import {
+  fetchSource,
+  parseDetail,
+  parseVerifiedReport,
+  profileReleaseEvidence,
+  type ReleaseReport,
+} from './sources';
 import type { ReviewedReportIdentity } from './reviewed-report-identities';
 import { reviewedReportIdentity } from './reviewed-report-identities';
 import { text } from './sources';
-import { parseSourceProfile, profileFingerprint, SourceProfileConflict } from './release-profile';
+import { parseSourceProfile, unchangedProfile, SourceProfileConflict } from './release-profile';
+import { structuredFilmIdentity } from './source-identity';
 
 /** Existing mappings need current native evidence; a failed fetch is not a withdrawal. */
 export async function fetchVerifiedReport(
@@ -25,11 +32,30 @@ export async function fetchVerifiedReport(
   }
   const html = await page;
   const mapping =
-    reviewedReportIdentity(html, report.title, text, identities) ||
+    reviewedReportIdentity(html, report.title, text, identities, report.imdbId) ||
     identities?.find(
       (identity) =>
         identity.sourceFilmUrl === report.release.source && identity.imdbId === report.imdbId,
     );
+  // A missing crosswalk is not positive evidence that a previously verified date
+  // was withdrawn. Keep it pending verification; explicit conflicting subjects below
+  // still fail closed, and unverified legacy reports never gain this protection.
+  const structured = structuredFilmIdentity(html, report.title);
+  if (
+    structured.ambiguous ||
+    (structured.imdbId && report.imdbId && structured.imdbId !== report.imdbId)
+  )
+    return null;
+  if (
+    !mapping &&
+    !structured.imdbId &&
+    !structured.ambiguous &&
+    report.imdbId &&
+    report.release.filmImdbId === report.imdbId &&
+    ['reviewed', 'corroborated'].includes(report.release.filmIdentityMethod || '') &&
+    report.release.filmIdentitySource
+  )
+    throw new Error('Release mapping unavailable');
   if (mapping?.profileFingerprint) {
     let profile = profiles.get(mapping.sourceFilmUrl);
     if (!profile) {
@@ -38,14 +64,31 @@ export async function fetchVerifiedReport(
     }
     const native = await profile;
     try {
-      if (profileFingerprint(parseSourceProfile(native, mapping)) !== mapping.profileFingerprint)
-        return null;
+      const current = parseSourceProfile(native, mapping);
+      if (current.facts?.series) return null;
+      if (!unchangedProfile(current, mapping)) {
+        if (
+          report.release.source === mapping.sourceFilmUrl &&
+          profileReleaseEvidence(native, current).withdrawnKinds.includes(report.release.kind)
+        )
+          return null;
+        // Edited credits/synopsis require the normal matcher to corroborate them again.
+        // They cannot certify a new date or silently withdraw the last verified one.
+        throw new Error('Release profile requires verification');
+      }
     } catch (error) {
       if (error instanceof SourceProfileConflict) return null;
       throw error;
     }
   }
-  return parseVerifiedReport(html, report, identities);
+  // A verified native subject may include its director's credit or an edition label.
+  return parseVerifiedReport(
+    html,
+    mapping?.profileFingerprint && mapping.imdbId === report.imdbId
+      ? { ...report, title: mapping.title }
+      : report,
+    identities,
+  );
 }
 
 const MAX_VERIFICATIONS = 4;

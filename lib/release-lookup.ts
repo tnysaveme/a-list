@@ -1,13 +1,15 @@
 import 'server-only';
-import { verifiedReleases, type Movie } from './model';
-import { verifiedIdentityId, titleKey } from './film-identity';
+import { verifiedReleases, type Movie, type Release } from './model';
+import { verifiedIdentityId } from './film-identity';
 import {
   fetchSource,
   parseReports,
   parseReportProfiles,
   parseProfileReports,
   text,
+  parseDetail,
 } from './sources';
+import { assertListingSource } from './source-identity';
 import { profileReference } from './reviewed-report-identities';
 import { expandReleases } from './release-expansion';
 import { mergeReleaseFeed } from './release-automation';
@@ -15,8 +17,13 @@ import { adminDb } from './supabase/admin';
 import { checked } from './db-result';
 import { cached, remember, withLease } from './infrastructure';
 import { recordSourceCheck } from './source-checks';
+import { sameReleaseTitle } from './release-evidence';
 
-export type LookupState = { nextCheckAt: string; outcome: LookupOutcome };
+export type LookupState = {
+  nextCheckAt: string;
+  outcome: LookupOutcome;
+  knownKinds?: Release['kind'][];
+};
 export type LookupOutcome =
   'ineligible' | 'cached' | 'busy' | 'matched' | 'no_report' | 'unresolved' | 'source_unavailable';
 export type LookupResult = {
@@ -43,8 +50,7 @@ export function needsReportLookup(movie: Movie) {
   const releases = verifiedReleases(movie).filter((r) => r.confidence === 'listed');
   return (
     movie.mediaType !== 'series' &&
-    !!verifiedIdentityId(movie) &&
-    !!movie.year &&
+    (!!verifiedIdentityId(movie) || /^\d{1,8}$/.test(movie.id)) &&
     (!releases.some((r) => r.kind === 'Digital' || r.kind === 'PVOD') ||
       !releases.some((r) => r.kind === 'Subscription'))
   );
@@ -66,12 +72,63 @@ export async function lookupReleaseReports(
     budgetMs?: number;
   } = {},
 ): Promise<LookupResult> {
-  const id = verifiedIdentityId(movie);
-  if (!id || !needsReportLookup(movie)) return { movie, attempted: false, outcome: 'ineligible' };
-  const key = `release-lookup:v5:${id}`,
-    settleDeadline = Date.now() + budgetMs + 3000,
+  if (!needsReportLookup(movie)) return { movie, attempted: false, outcome: 'ineligible' };
+  const settleDeadline = Date.now() + budgetMs + 3000,
     own = AbortSignal.timeout(budgetMs),
     signal = parent ? AbortSignal.any([parent, own]) : own;
+  if (!verifiedIdentityId(movie)) {
+    try {
+      assertListingSource(movie);
+      const verified = await lookupCache.lease(`release-identity:${movie.id}`, 20, async () => {
+        const row = checked(
+          await db
+            .from('a_list_movies')
+            .select('movie,updated_at')
+            .eq('id', movie.id)
+            .abortSignal(signal)
+            .maybeSingle(),
+        );
+        if (!row) throw new Error('Film not found');
+        const current = row.movie as Movie;
+        if (verifiedIdentityId(current)) return current;
+        assertListingSource(current);
+        const fresh = parseDetail(
+          await fetchSource(current.source, { signal, cache: 'no-store' }),
+          current,
+        );
+        if (!verifiedIdentityId(fresh)) throw new Error('Native film identity unavailable');
+        const saved = checked(
+          await db
+            .from('a_list_movies')
+            .update({ movie: fresh, updated_at: new Date().toISOString() })
+            .eq('id', current.id)
+            .eq('updated_at', row.updated_at)
+            .select('movie')
+            .abortSignal(signal)
+            .maybeSingle(),
+        );
+        if (!saved) throw new Error('Catalogue changed; retry');
+        return saved.movie as Movie;
+      });
+      if (!verified) return { movie, attempted: false, outcome: 'busy' };
+      movie = verified;
+    } catch {
+      return {
+        movie: lookupStatus(movie, 'source_unavailable'),
+        attempted: true,
+        outcome: 'source_unavailable',
+        nextCheckAt: new Date(Date.now() + 600_000).toISOString(),
+      };
+    }
+  }
+  const id = verifiedIdentityId(movie);
+  if (!id || !needsReportLookup(movie)) return { movie, attempted: false, outcome: 'ineligible' };
+  const key = `release-lookup:v10:${id}`;
+  const usable = (state: LookupState) =>
+    Date.parse(state.nextCheckAt) > Date.now() &&
+    (state.knownKinds || []).every((kind) =>
+      verifiedReleases(movie).some((release) => release.kind === kind),
+    );
   let attempted = false,
     value = movie;
   const cachedResult = (state: LookupState): LookupResult => ({
@@ -87,20 +144,28 @@ export async function lookupReleaseReports(
   ): Promise<LookupResult> => {
     const ttl = retry ? 600 : 86400,
       nextCheckAt = new Date(Date.now() + ttl * 1000).toISOString();
-    await lookupCache.write(key, { outcome, nextCheckAt }, ttl);
+    await lookupCache.write(
+      key,
+      {
+        outcome,
+        nextCheckAt,
+        knownKinds: [...new Set(verifiedReleases(value).map((r) => r.kind))],
+      },
+      ttl,
+    );
     return { movie: lookupStatus(value, outcome), attempted, outcome, nextCheckAt };
   };
   try {
     const hit = await lookupCache.read(key);
-    if (hit && Date.parse(hit.nextCheckAt) > Date.now()) return cachedResult(hit);
+    if (hit && usable(hit)) return cachedResult(hit);
     const found = await lookupCache.lease(key, 20, async () => {
       const again = await lookupCache.read(key);
-      if (again && Date.parse(again.nextCheckAt) > Date.now()) return cachedResult(again);
+      if (again && usable(again)) return cachedResult(again);
       if (signal.aborted) return { movie, attempted: false, outcome: 'busy' as const };
       attempted = true;
       const xml = await fetchSource(
         `https://whentostream.com/feed/?s=${encodeURIComponent(movie.title.slice(0, 160))}`,
-        { signal },
+        { signal, cache: 'no-store' },
       );
       if (!/<rss\b/i.test(xml) || !/<channel\b/i.test(xml) || !/<\/channel>/i.test(xml))
         throw new Error('Release feed format changed');
@@ -123,7 +188,7 @@ export async function lookupReleaseReports(
       let retry = profiles.some((result) => result.status === 'rejected');
       for (const reports of [
         profiles.flatMap((result) => (result.status === 'fulfilled' ? result.value : [])),
-        parseReports(xml),
+        parseReports(xml, movie),
       ]) {
         const known = new Set(
           verifiedReleases(value)
@@ -132,7 +197,7 @@ export async function lookupReleaseReports(
         );
         const selected = reports.filter(
           (report) =>
-            titleKey(report.title) === titleKey(movie.title) &&
+            sameReleaseTitle(report.title, movie.title) &&
             (!report.year ||
               report.year === movie.year ||
               sourcePages.has(report.release.source)) &&
@@ -153,6 +218,7 @@ export async function lookupReleaseReports(
           budgetMs,
           checkpoint: false,
           expectedImdbId: id,
+          expectedMovie: movie,
           sourcePages,
         });
         retry ||= result.decisions.some(
@@ -197,7 +263,7 @@ export async function lookupMovieReports(
   return (await lookupReleaseReports(movie, options)).movie;
 }
 
-/** Scan a bounded due batch; cached or busy films do not consume the single source request. */
+/** The existing scheduled job sweeps the catalogue, with two concurrent source lookups at most. */
 export async function refreshReportLookups({
   db = adminDb(),
   signal,
@@ -213,26 +279,31 @@ export async function refreshReportLookups({
   let scanned = 0,
     attempts = 0,
     failures = 0;
-  for (const row of rows) {
+  for (let offset = 0; offset < rows.length; offset += 2) {
     if (signal.aborted) break;
-    const result = await lookup(row.movie, { db, signal });
-    scanned++;
-    if (result.nextCheckAt || result.outcome === 'ineligible')
-      checked(
-        await db
-          .from('a_list_movies')
-          .update({
-            report_lookup_after:
-              result.nextCheckAt || new Date(Date.now() + 86400_000).toISOString(),
-          })
-          .eq('id', row.id)
-          .abortSignal(signal),
-      );
-    if (!result.attempted) continue;
-    attempts++;
-    failures += Number(result.outcome === 'source_unavailable');
-    await recordSourceCheck(db, 'wts_lookup', !failures);
-    break;
+    const results = await Promise.allSettled(
+      rows.slice(offset, offset + 2).map(async (row) => {
+        const result = await lookup(row.movie, { db, signal });
+        scanned++;
+        if (result.nextCheckAt || result.outcome === 'ineligible')
+          checked(
+            await db
+              .from('a_list_movies')
+              .update({
+                report_lookup_after:
+                  result.nextCheckAt || new Date(Date.now() + 86400_000).toISOString(),
+              })
+              .eq('id', row.id)
+              .abortSignal(signal),
+          );
+        if (!result.attempted) return;
+        attempts++;
+        failures += Number(result.outcome === 'source_unavailable');
+      }),
+    );
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure?.status === 'rejected') throw failure.reason;
   }
+  if (attempts) await recordSourceCheck(db, 'wts_lookup', !failures);
   return { scanned, attempts, failures };
 }

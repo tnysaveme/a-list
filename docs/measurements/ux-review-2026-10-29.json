@@ -1,0 +1,25 @@
+[
+  {
+    "name": "stalled-account-export",
+    "data": {
+      "closeDisabled": true,
+      "escapeDismisses": false,
+      "explicitDeadlineInSource": false
+    }
+  },
+  {
+    "name": "calendar-error",
+    "data": {
+      "errorInsideDialog": false,
+      "inlineRetry": false,
+      "errorText": "Fixture calendar unavailable"
+    }
+  },
+  {
+    "name": "discover-empty",
+    "data": {
+      "copy": "Nothing in this chapter yet.\n\nFind a film, save it here, and we’ll follow its journey home.\n\nFind your first film",
+      "filter": "TBA"
+    }
+  }
+]

@@ -25,7 +25,7 @@
   font: 500 var(--text-sm)/1.4 var(--font-body);
   text-decoration: none;
   white-space: nowrap;
-  transition: transform var(--dur-short) var(--ease-out);
+  transition: scale var(--dur-release) var(--ease-out);
 }
 .film-control:focus-visible,
 .film-control.is-focus {
@@ -34,7 +34,6 @@
 }
 .film-control:active:not(:disabled),
 .film-control.is-active {
-  transform: translateY(1px);
   background: var(--color-paper-2);
   color: var(--color-ink);
 }

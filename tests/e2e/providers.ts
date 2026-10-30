@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
+import { createHash } from 'node:crypto';
 import { discoverMovies } from '../../lib/catalogue-view';
-import { calendarRelease, calendarReleases, type Movie } from '../../lib/model';
+import { calendarRelease, calendarReleaseGroups, type Movie } from '../../lib/model';
 const user = {
   id: '11111111-1111-4111-8111-111111111111',
   email: 'fixture@example.invalid',
@@ -77,13 +78,21 @@ function page(args: Record<string, unknown>) {
     .filter((v) => v.release)
     .sort((a, b) => a.release!.date.localeCompare(b.release!.date))[0];
   return {
-    movies: filtered.slice(offset, offset + limit),
-    total: all.length,
-    filteredTotal: filtered.length,
+    movies: flags.renderCount
+      ? Array.from({ length: Number(flags.renderCount) }, (_, index) => ({
+          ...filtered[index % filtered.length],
+          id: index === 0 ? filtered[0].id : `render-sample-${index}`,
+          title: index === 0 ? filtered[0].title : `Render sample ${index}`,
+        }))
+      : filtered.slice(offset, offset + limit),
+    total: Number(flags.renderCount) || all.length,
+    filteredTotal: Number(flags.renderCount) || filtered.length,
     trackedCount: all.length,
     knownCount: all.length,
-    listedEvents: all.flatMap((m) => calendarReleases(m, false)).length,
-    rumoredEvents: all.flatMap((m) => m.releases.filter((r) => r.confidence === 'rumored')).length,
+    listedEvents: all.flatMap((m) => calendarReleaseGroups(m, false)).length,
+    rumoredEvents: all.flatMap((m) =>
+      calendarReleaseGroups(m).filter((group) => group.every((r) => r.confidence === 'rumored')),
+    ).length,
     upcoming: upcoming?.movie || null,
     upcomingRelease: upcoming?.release || null,
   };
@@ -132,7 +141,9 @@ export const server = createServer(async (req, res) => {
     if ((body as { reset?: boolean }).reset) reset();
     else {
       flags = { ...flags, ...(body as object) };
-      redis.clear();
+      if (Array.isArray(flags.libraryIds)) saved = new Set(flags.libraryIds.map(String));
+      if (!flags.keepCache) redis.clear();
+      if (typeof flags.releaseDate === 'string') films[1].releases[0].date = flags.releaseDate;
       for (const id of (flags.staleMovies || []) as string[]) {
         const film = films.find((m) => m.id === id);
         if (film) {
@@ -207,6 +218,12 @@ export const server = createServer(async (req, res) => {
   if (flags.databaseUnavailable) return json({ message: 'Fixture database unavailable' }, 503);
   const args = body as Record<string, unknown>,
     name = url.pathname.split('/').at(-1)!;
+  if (name === 'a_list_collection_revision')
+    return json(
+      createHash('md5')
+        .update(JSON.stringify([flags.revision || 0, [...saved].sort(), includeRumors]))
+        .digest('hex'),
+    );
   if (name === 'a_list_library_page') {
     if (args.p_filter === 'available') await new Promise((resolve) => setTimeout(resolve, 200));
     return json(page(args));

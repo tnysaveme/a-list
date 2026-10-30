@@ -1,13 +1,13 @@
 'use client';
+import { useStateEntrance } from '../hooks/use-state-entrance';
+import { MembershipIcon } from './membership-icon';
 import { useId, useState } from 'react';
 import {
   Bookmark,
   CalendarDays,
-  Check,
   ChevronDown,
   ExternalLink,
   LoaderCircle,
-  Plus,
   Trash2,
   X,
 } from 'lucide-react';
@@ -30,6 +30,7 @@ export type MovieDetailsProps = {
   saved: boolean;
   ready: boolean;
   busy: boolean;
+  pending?: boolean;
   loading: boolean;
   error: string;
   onSave: () => void;
@@ -42,6 +43,7 @@ export function MovieDetails({
   saved,
   ready,
   busy,
+  pending = busy,
   loading,
   error,
   onSave,
@@ -50,6 +52,7 @@ export function MovieDetails({
 }: MovieDetailsProps) {
   const id = useId();
   const [expanded, setExpanded] = useState(false);
+  const synopsis = useStateEntrance<HTMLParagraphElement>(expanded, 0);
   const series = movie.mediaType === 'series';
   const release = displayRelease(movie);
   const available = !!availableRelease(movie);
@@ -115,17 +118,13 @@ export function MovieDetails({
             className="film-control film-saved"
             data-autofocus
             disabled={busy}
-            aria-busy={busy}
-            data-state={busy ? 'loading' : 'success'}
+            aria-busy={pending}
+            data-state={pending ? 'loading' : 'success'}
             onClick={onRemove}
           >
-            {busy ? (
-              <LoaderCircle size={16} className="spin" aria-hidden="true" />
-            ) : (
-              <Check size={16} aria-hidden="true" />
-            )}
-            <span>{busy ? 'Removing…' : 'Saved to library'}</span>
-            {!busy && <Trash2 className="film-remove-icon" size={14} aria-hidden="true" />}
+            <MembershipIcon saved pending={pending} size={16} />
+            <span>{pending ? 'Removing…' : 'Saved to library'}</span>
+            {!pending && <Trash2 className="film-remove-icon" size={14} aria-hidden="true" />}
             <span className="sr-only"> — remove from library</span>
           </button>
         ) : (
@@ -134,16 +133,12 @@ export function MovieDetails({
             data-autofocus
             disabled={!ready || busy || series}
             aria-describedby={series ? `${id}-movie-only` : undefined}
-            aria-busy={busy}
-            data-state={busy ? 'loading' : undefined}
+            aria-busy={pending}
+            data-state={pending ? 'loading' : undefined}
             onClick={onSave}
           >
-            {busy ? (
-              <LoaderCircle size={16} className="spin" aria-hidden="true" />
-            ) : (
-              <Plus size={16} aria-hidden="true" />
-            )}
-            {series ? 'Movies only' : busy ? 'Saving…' : 'Save to library'}
+            <MembershipIcon saved={false} pending={pending} size={16} />
+            {series ? 'Movies only' : pending ? 'Saving…' : 'Save to library'}
           </button>
         )}
       </div>
@@ -231,6 +226,7 @@ export function MovieDetails({
       <section className="film-synopsis" aria-labelledby={`${id}-synopsis`}>
         <h3 id={`${id}-synopsis`}>Synopsis</h3>
         <p
+          ref={synopsis}
           id={`${id}-copy`}
           className={`film-overview ${collapsible && !expanded ? 'film-overview-collapsed' : ''}`}
           aria-live="polite"

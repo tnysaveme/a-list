@@ -1,8 +1,8 @@
-import type { PostResponses, MovieResponse } from '../../../lib/api-contract';
+import type { MovieResponse } from '../../../lib/api-contract';
 import { ConfigurationError } from '../../../lib/configuration';
 import { getUser } from '../../../lib/auth';
 import {
-  account,
+  initializeLibrary,
   context,
   getCatalogue,
   getLibraryPage,
@@ -21,6 +21,7 @@ import { InvalidRequest, settingsInput, libraryInput } from '../../../lib/api-va
 import { validMovieId } from '../../../lib/model';
 import { exportLibrary, privacyAction } from '../../../lib/privacy-api';
 import { MovieOnlyError, readLibraryMembership } from '../../../lib/library-mutations';
+import { checked } from '../../../lib/db-result';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -47,6 +48,12 @@ async function handle(request: Request) {
     if (blocked) return blocked;
     const ctx = await context(user.id);
     after(() => metric('api_requests'));
+    if (request.method === 'GET' && path === 'revision') {
+      const revision = checked(await ctx.db.rpc('a_list_collection_revision'));
+      if (typeof revision !== 'string' || !/^[a-f0-9]{32}$/.test(revision))
+        throw new Error('Collection revision unavailable');
+      return json({ revision });
+    }
     if (request.method === 'GET' && path === 'account/export')
       return exportLibrary(ctx, user.email);
     if (request.method === 'GET' && path === 'library/membership') {
@@ -63,7 +70,7 @@ async function handle(request: Request) {
         return json({ error: 'Invalid catalogue page' }, 400);
       }
       if (options.sort === 'added') return json({ error: 'Invalid catalogue sort' }, 400);
-      return json(await getCatalogue(ctx, options));
+      return json(await getCatalogue(ctx, options, url.searchParams.get('fresh') === 'true'));
     }
     if (request.method === 'GET' && path === 'library') {
       let options;
@@ -103,17 +110,7 @@ async function handle(request: Request) {
       return json({ error: 'Invalid request' }, 400);
     const privacy = await privacyAction(ctx, user, path, body);
     if (privacy) return privacy;
-    if (path === 'init') {
-      const owner = await account(ctx);
-      const page = await getLibraryPage(ctx);
-      const response: PostResponses['init'] = {
-        ...page,
-        feedPath: `/api/feed/${owner.feed_token}.ics`,
-        includeRumors: owner.include_rumors,
-        feedPublic: true,
-      };
-      return json(response);
-    }
+    if (path === 'init') return json(await initializeLibrary(ctx));
     if (path === 'settings') {
       await updateSettings(ctx, settingsInput(body));
       return json({ ok: true });

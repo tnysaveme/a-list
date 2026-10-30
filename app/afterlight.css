@@ -94,10 +94,6 @@ select:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 4px;
 }
-button:active:not(:disabled),
-a.button:active:not(.disabled) {
-  transform: translateY(1px);
-}
 button svg,
 a svg {
   flex-shrink: 0;
@@ -914,11 +910,22 @@ input[type='checkbox'] {
   color: var(--color-ink);
   box-shadow: 0 24px 80px var(--color-shadow);
 }
-.dialog[open] {
-  animation: dialog-in var(--dur-medium) var(--ease-out);
+.dialog {
+  opacity: 0;
+  transition: opacity var(--dur-short) var(--ease-out);
+}
+.dialog[data-state='open'] {
+  opacity: 1;
+  transition-duration: var(--dur-medium);
 }
 .dialog::backdrop {
   background: var(--color-overlay);
+  opacity: 0;
+  transition: opacity var(--dur-short) var(--ease-out);
+}
+.dialog[data-state='open']::backdrop {
+  opacity: 1;
+  transition-duration: var(--dur-medium);
 }
 .dialog-inner {
   position: relative;
@@ -1365,14 +1372,6 @@ input[type='checkbox'] {
     transform: rotate(360deg);
   }
 }
-@keyframes dialog-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 @media (hover: hover) {
   .button.primary:hover:not(:disabled):not(.disabled) {
     background: var(--color-accent-hover);
@@ -1552,15 +1551,82 @@ input[type='checkbox'] {
   .preference-row input::after {
     transition: none;
   }
-  button:active:not(:disabled),
-  a.button:active:not(.disabled) {
-    transform: none;
-  }
-  .dialog[open] {
+  .spin {
     animation: none;
   }
-  .spin {
-    animation-duration: 2s;
+}
+
+/* Explicit action families keep frequent navigation and poster artwork stationary.
+ * Individual scale preserves positioning transforms on list save controls. */
+:is(
+  .button,
+  .icon-button,
+  .app-header-control,
+  .film-control,
+  .save-button,
+  .app-header-search-clear,
+  .search-mobile-action
+) {
+  transition:
+    scale var(--dur-release) var(--ease-out),
+    opacity var(--dur-short) var(--ease-out);
+}
+:is(
+    .button,
+    .icon-button,
+    .app-header-control,
+    .film-control,
+    .save-button,
+    .app-header-search-clear,
+    .search-mobile-action
+  ):active:not(:focus-visible):not(:disabled):not(.disabled) {
+  scale: 0.97;
+  transition-duration: var(--dur-press), var(--dur-short);
+}
+.collection-status {
+  min-height: 1.4em;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  text-align: end;
+}
+.feedback-surface {
+  opacity: 1;
+  transition: opacity var(--dur-medium) var(--ease-out);
+}
+.feedback-surface[data-state='closed'] {
+  opacity: 0;
+  pointer-events: none;
+  transition-duration: var(--dur-short);
+}
+.film-read-more svg {
+  transition: transform var(--dur-short) var(--ease-out);
+}
+@starting-style {
+  .dialog[data-state='open'],
+  .dialog[data-state='open']::backdrop,
+  .feedback-surface[data-state='open'] {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(
+      .button,
+      .icon-button,
+      .app-header-control,
+      .film-control,
+      .save-button,
+      .app-header-search-clear,
+      .search-mobile-action
+    ):active:not(:focus-visible):not(:disabled):not(.disabled) {
+    scale: none;
+  }
+  .dialog[data-state='open'],
+  .dialog[data-state='open']::backdrop,
+  .feedback-surface {
+    transition-duration: var(--dur-short);
+  }
+  .film-read-more svg {
+    transition: none;
   }
 }
 
@@ -1610,5 +1676,259 @@ p {
   }
   .site-footer > span:last-child {
     justify-self: end;
+  }
+}
+
+/* Shared moving selection; the static active style remains the no-JS fallback. */
+.nav-tabs,
+.filter-list {
+  position: relative;
+  isolation: isolate;
+}
+.moving-tab-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  pointer-events: none;
+  opacity: 0;
+  z-index: -1;
+}
+[data-indicator-ready] > .moving-tab-indicator {
+  opacity: 1;
+}
+.nav-tabs > .moving-tab-indicator {
+  background: var(--color-ink);
+  border-radius: var(--radius-round);
+}
+.filter-list > .moving-tab-indicator {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 3px var(--color-shadow);
+}
+.nav-tabs[data-indicator-ready] > button.active::after {
+  display: none;
+}
+.filter-list[data-indicator-ready] button.active {
+  background: transparent;
+  box-shadow: none;
+}
+/* Capture only changing content. The header and section controls stay interactive. */
+html[data-content-motion] {
+  view-transition-name: none;
+}
+html[data-content-motion='forward'] .intro,
+html[data-content-motion='back'] .intro {
+  view-transition-name: section-intro;
+}
+html[data-content-motion='forward'] .section-content,
+html[data-content-motion='back'] .section-content {
+  view-transition-name: section-body;
+}
+html[data-content-motion='results'] .collection-results {
+  view-transition-name: collection-results;
+}
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-group(section-intro),
+::view-transition-group(section-body),
+::view-transition-group(collection-results) {
+  animation: none;
+  pointer-events: none;
+}
+::view-transition-old(section-intro),
+::view-transition-old(section-body),
+::view-transition-old(collection-results) {
+  animation: content-fade-out var(--dur-short) var(--ease-out) both;
+}
+::view-transition-new(section-intro) {
+  animation: content-fade-in var(--dur-medium) var(--ease-out) both;
+}
+::view-transition-new(section-body) {
+  animation: section-forward var(--dur-view) var(--ease-out) both;
+}
+html[data-content-motion='back']::view-transition-new(section-body) {
+  animation-name: section-back;
+}
+::view-transition-new(collection-results) {
+  animation: results-enter var(--dur-results) var(--ease-out) both;
+}
+@keyframes content-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes content-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes section-forward {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes section-back {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes results-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-new(section-body),
+  html[data-content-motion='back']::view-transition-new(section-body),
+  ::view-transition-new(collection-results),
+  ::view-transition-new(section-intro) {
+    animation-name: content-fade-in;
+    animation-duration: var(--dur-short);
+  }
+}
+
+.membership-icon {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.membership-icon > svg {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(0.9);
+  transition:
+    opacity var(--dur-short) var(--ease-out),
+    transform var(--dur-medium) var(--ease-out);
+}
+.membership-icon .membership-check path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset var(--dur-medium) var(--ease-out);
+}
+.membership-icon[data-membership='saved'] .membership-check,
+.membership-icon[data-membership='unsaved'] .membership-add,
+.membership-icon[data-membership='pending'] .membership-pending,
+.membership-icon[data-membership='unknown'] .membership-unknown {
+  opacity: 1;
+  transform: none;
+}
+.membership-icon[data-membership='saved'] .membership-check path {
+  stroke-dashoffset: 0;
+}
+.membership-icon[data-membership='saved'] .membership-add {
+  transform: rotate(45deg) scale(0.9);
+}
+.collection-motion-root {
+  position: relative;
+}
+.membership-ghost-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.membership-ghost {
+  pointer-events: none;
+}
+.membership-ghost .save-button {
+  visibility: hidden;
+}
+.membership-ghost .spin {
+  animation: none;
+}
+html[data-motion-input='keyboard'] .membership-icon > svg,
+html[data-motion-input='keyboard'] .membership-icon .membership-check path {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .membership-icon > svg {
+    transform: none !important;
+    transition-property: opacity;
+  }
+  .membership-icon .membership-check path {
+    transition: none;
+  }
+}
+
+.login-state {
+  min-block-size: 16rem;
+  margin-top: var(--space-lg);
+}
+.login-state form {
+  margin-top: 0;
+}
+.calendar-load-error {
+  margin-block: var(--space-md);
+  color: var(--color-danger);
+}
+.calendar-load-error .button {
+  margin-top: var(--space-xs);
+}
+.search-error .text-link {
+  margin-inline-start: var(--space-sm);
+}
+.copy-feed-icon {
+  display: inline-block;
+  position: relative;
+  flex-shrink: 0;
+  inline-size: 15px;
+  block-size: 15px;
+}
+.copy-feed-icon svg {
+  position: absolute;
+  inset: 0;
+  transition: opacity var(--dur-short) var(--ease-out);
+}
+.copy-check-icon {
+  opacity: 0;
+}
+.copy-check-icon path {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  transition: stroke-dashoffset var(--dur-medium) var(--ease-out);
+}
+.copy-feed-icon[data-copied='true'] .copy-check-icon {
+  opacity: 1;
+}
+.copy-feed-icon[data-copied='true'] .copy-check-icon path {
+  stroke-dashoffset: 0;
+}
+.copy-feed-icon[data-copied='true'] .copy-link-icon {
+  opacity: 0;
+}
+.copy-feed-label {
+  display: grid;
+}
+.copy-feed-label > span {
+  grid-area: 1 / 1;
+}
+.copy-feed-label > span[aria-hidden] {
+  visibility: hidden;
+}
+html[data-motion-input='keyboard'] .copy-feed-icon svg,
+html[data-motion-input='keyboard'] .copy-check-icon path,
+html[data-motion-input='keyboard'] .film-read-more svg {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .copy-check-icon path {
+    transition: none;
   }
 }

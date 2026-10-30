@@ -75,7 +75,12 @@
   display: none;
 }
 .movie-card-poster .save-button {
-  transition: opacity var(--dur-short) var(--ease-out);
+  transition:
+    opacity var(--dur-short) var(--ease-out),
+    scale var(--dur-release) var(--ease-out);
+}
+.movie-card-poster .save-button[aria-busy='true'] {
+  opacity: 1;
 }
 .movie-card-poster .save-button:active:not(:disabled) {
   opacity: 0.7;

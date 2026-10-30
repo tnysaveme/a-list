@@ -20,6 +20,13 @@ import { cached } from './infrastructure';
 import { TRANSIENT_RETRY_MS } from './source-health';
 import { movieRows } from './movie-rows';
 import { failedRefreshMovie } from './source-errors';
+import {
+  indexWtsProfiles,
+  indexWtsProfileChanges,
+  dueWtsProfiles,
+  inventoryEntries,
+  checkpointWtsProfiles,
+} from './wts-inventory';
 
 export async function refreshSources() {
   return withLease('ingestion', 55, async () => {
@@ -44,6 +51,17 @@ export async function refreshSources() {
       feed: FeedEntry[] = status.wts_feed || [],
       feedLoaded = false;
     const checks = new Map<string, boolean>();
+    try {
+      const audit = checked(
+        await db.rpc('a_list_reconcile_wts_coverage', { p_limit: 16 }).abortSignal(signal),
+      );
+      if (audit?.queued)
+        console.info(
+          JSON.stringify({ event: 'wts_consistency_repair_queued', count: audit.queued }),
+        );
+    } catch {
+      console.warn(JSON.stringify({ event: 'wts_consistency_audit_deferred' }));
+    }
     const onSourceResult = ({
       source,
       success,
@@ -216,11 +234,32 @@ export async function refreshSources() {
       }
     }
     if (Date.now() - started < 33000) {
+      const discoveries = await Promise.allSettled(
+        [indexWtsProfileChanges, indexWtsProfiles].map((discover) =>
+          discover(status, db, AbortSignal.any([signal, AbortSignal.timeout(2500)])),
+        ),
+      );
+      for (const [index, result] of discoveries.entries())
+        if (result.status === 'rejected') {
+          checks.set('wts_reports', false);
+          console.warn(
+            JSON.stringify({
+              event: index === 0 ? 'wts_profile_changes_deferred' : 'wts_profile_index_deferred',
+            }),
+          );
+        } else if (result.value) checks.set('wts_reports', checks.get('wts_reports') ?? true);
+      const inventory = await dueWtsProfiles(db, signal);
       await getFeed();
       const budgetMs = Math.min(10000, 40000 - (Date.now() - started));
       if (budgetMs > 500)
         try {
-          const result = await expandReleases(feed, { budgetMs, signal, db });
+          const result = await expandReleases([...feed, ...inventoryEntries(inventory)], {
+            budgetMs,
+            signal,
+            db,
+            knownMovies: status.catalogue || [],
+          });
+          await checkpointWtsProfiles(inventory, result.decisions, db, signal);
           if (result.processed) {
             const success = !result.decisions.some(
               (d) => d.partial || ['source_unavailable', 'budget_exhausted'].includes(d.outcome),

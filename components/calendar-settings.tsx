@@ -6,6 +6,7 @@ import {
   Check,
   CircleHelp,
   ExternalLink,
+  LoaderCircle,
   X,
 } from 'lucide-react';
 import type { useMovieCalendar } from '../hooks/use-movie-calendar';
@@ -40,6 +41,10 @@ export function CalendarSettings({
     updateRumors,
     download,
     copyFeed,
+    trackedError,
+    preferenceError,
+    copyError,
+    copying,
   } = state;
   const trackedCount = page.trackedCount,
     canSubscribe = state.feedPublic;
@@ -88,7 +93,8 @@ export function CalendarSettings({
       <p className="calendar-tip">
         <strong>Release-day reminders · 1pm GMT</strong>
         <br />
-        Each release is a 30-minute block from 13:00–13:30 GMT (UTC), with an alert at its start. In
+        Each film has one reminder per release day, combining releases on the same date. Every
+        reminder is a 30-minute block from 13:00–13:30 GMT (UTC), with an alert at its start. In
         Apple Calendar, leave “Alerts” unchecked under Remove and turn off “Ignore alerts”. Calendar
         notifications must be enabled on your device.
       </p>
@@ -105,6 +111,11 @@ export function CalendarSettings({
           onChange={(e) => void updateRumors(e.target.checked)}
         />
       </label>
+      {preferenceError && (
+        <p className="inline-error" role="alert">
+          {preferenceError} Your previous setting is still selected.
+        </p>
+      )}
       {!canSubscribe && (
         <div className="subscription-notice">
           <CircleHelp aria-hidden="true" size={18} />
@@ -137,17 +148,20 @@ export function CalendarSettings({
       </a>
       <div className="calendar-secondary">
         <button
-          className="button subtle"
+          className="button subtle copy-feed-button"
           data-state={copied ? 'success' : undefined}
-          disabled={!ready || !trackedCount || !canSubscribe}
+          disabled={copying || !ready || !trackedCount || !canSubscribe}
+          aria-busy={copying}
           onClick={() => void copyFeed()}
         >
-          {copied ? (
-            <Check aria-hidden="true" size={15} />
-          ) : (
-            <ExternalLink aria-hidden="true" size={15} />
-          )}{' '}
-          {copied ? 'Link copied' : 'Copy feed link'}
+          <span className="copy-feed-icon" data-copied={copied} aria-hidden="true">
+            <ExternalLink size={15} className="copy-link-icon" />
+            <Check size={15} className="copy-check-icon" />
+          </span>
+          <span className="copy-feed-label">
+            <span aria-hidden="true">Copy feed link</span>
+            <span>{copying ? 'Copying…' : copied ? 'Link copied' : 'Copy feed link'}</span>
+          </span>
         </button>
         <button
           className="button subtle"
@@ -158,11 +172,19 @@ export function CalendarSettings({
           Download .ics
         </button>
       </div>
+      <span className="sr-only" role="status">
+        {copied ? 'Calendar link copied.' : copying ? 'Copying calendar link…' : ''}
+      </span>
+      {copyError && (
+        <p className="inline-error" role="alert">
+          {copyError}
+        </p>
+      )}
       <p className="calendar-footnote">
         In Apple Calendar, choose iCloud to see it across your devices. Event downloads are a
         snapshot; subscriptions update. Keep your feed link private.
       </p>
-      {trackedCount > 0 && (
+      {(trackedCount > 0 || trackedError) && (
         <div className="tracked-list">
           <h3>On your calendar</h3>
           <p className="calendar-tip">
@@ -182,7 +204,19 @@ export function CalendarSettings({
               </span>
             </div>
           ))}
-          {trackedNext !== null && (
+          {trackedError && (
+            <div className="calendar-load-error" role="alert">
+              <p>{trackedError.message}</p>
+              <button
+                className="button subtle"
+                disabled={trackedBusy}
+                onClick={() => void loadTracked(trackedError.offset)}
+              >
+                Try again
+              </button>
+            </div>
+          )}
+          {trackedNext !== null && !trackedError && (
             <button
               className="button subtle"
               disabled={trackedBusy}
@@ -191,7 +225,11 @@ export function CalendarSettings({
               More films <ArrowDownToLine aria-hidden="true" size={16} />
             </button>
           )}
-          {trackedBusy && <p role="status">Opening your films…</p>}
+          {trackedBusy && (
+            <p role="status">
+              <LoaderCircle size={16} aria-hidden="true" className="spin" /> Opening your films…
+            </p>
+          )}
         </div>
       )}
     </>

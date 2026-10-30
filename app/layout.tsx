@@ -3,6 +3,7 @@ import './globals.css';
 import { Figtree, Inter } from 'next/font/google';
 import { AppearanceSync } from '../components/appearance-sync';
 import { appearanceScript } from '../lib/appearance';
+import { PerformanceInsights } from '../components/performance-insights';
 
 const figtree = Figtree({ subsets: ['latin'], variable: '--font-figtree', display: 'swap' });
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
@@ -37,6 +38,7 @@ export default function RootLayout({
       <body className="antialiased">
         <AppearanceSync />
         {children}
+        <PerformanceInsights />
       </body>
     </html>
   );

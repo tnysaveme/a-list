@@ -150,3 +150,29 @@
     width: 100%;
   }
 }
+
+.account-confirm-presence {
+  transform: none;
+  transition:
+    opacity var(--dur-medium) var(--ease-out),
+    transform var(--dur-medium) var(--ease-out);
+}
+.account-confirm-presence[data-state='closed'] {
+  transform: translateY(4px);
+}
+@starting-style {
+  .account-confirm-presence[data-state='open'] {
+    transform: translateY(4px);
+  }
+}
+html[data-motion-input='keyboard'] .account-confirm-presence {
+  transition: none;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-confirm-presence {
+    transform: none !important;
+    transition-property: opacity;
+    transition-duration: var(--dur-short);
+  }
+}

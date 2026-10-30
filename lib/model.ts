@@ -131,6 +131,20 @@ export function calendarReleases(movie: Movie, includeRumors = true) {
     );
   });
 }
+/** One reminder per movie/date; a fixed kind order keeps the surviving legacy UID predictable. */
+export function calendarReleaseGroups(movie: Movie, includeRumors = true): Release[][] {
+  const kinds: Release['kind'][] = ['Digital', 'PVOD', 'Subscription'];
+  const releases = calendarReleases(movie, includeRumors).sort(
+    (a, b) => kinds.indexOf(a.kind) - kinds.indexOf(b.kind),
+  );
+  const groups = new Map<string, Release[]>();
+  for (const release of releases) {
+    const group = groups.get(release.date);
+    if (group) group.push(release);
+    else groups.set(release.date, [release]);
+  }
+  return [...groups.values()];
+}
 export function calendarRelease(
   movie: Movie,
   includeRumors = true,
