@@ -18,7 +18,7 @@ Matching identities are cached for one hour under a key containing both the matc
 
 ## Release order and verification
 
-Apply `20261030160244_backend_read_efficiency.sql` before deploying the application. This migration adds one version column and updates/adds private invoker triggers without widening permissions. It does not change existing feed tokens, film identities, or event UIDs. The migration is prepared locally and has not been applied to production.
+Migration `20261030160244_backend_read_efficiency.sql` was applied to production on 30 October 2026 before the application release. This migration adds one version column and updates/adds private invoker triggers without widening permissions. It does not change existing feed tokens, film identities, or event UIDs. Production verification confirmed the version column, enabled trigger, invoker execution, empty search paths, and denied anonymous function access. The application release includes implementation commit `f8fc11b`; Vercel records the deployed commit and build status.
 
 `npm run check` passes formatting, lint, TypeScript, all 234 unit/database tests, and the backup self-test. The new tests exercise concurrent search sharing, bounded waiting, empty results, cache revocation and fill races, request counts, lazy payload loading, account recovery, token preservation, ownership checks, and auth deletion cascades in disposable Postgres.
 
