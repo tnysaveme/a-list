@@ -39,6 +39,128 @@ async function openAccount(page: import('@playwright/test').Page) {
   return page.getByRole('dialog', { name: 'Your account', exact: true });
 }
 
+test('calendar setup follows the first confirmed save, stays optional, and remembers dismissal', async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await request.post('http://127.0.0.1:4318/_control', { data: { libraryIds: [] } });
+  await page.goto('/');
+  const reminder = page.getByRole('complementary', { name: 'Calendar setup reminder' });
+  await expect(reminder).toHaveCount(0);
+  const save = page.getByRole('button', { name: 'Save Fixture Film 00', exact: true });
+  await page.route('**/api/library', (route) =>
+    route.fulfill({ status: 503, json: { error: 'Save unavailable' } }),
+  );
+  await save.click();
+  await expect(save).toBeEnabled();
+  await expect(page.getByRole('alert').filter({ hasText: 'Save unavailable' })).toBeVisible();
+  await expect(reminder).toHaveCount(0);
+  await page.unroute('**/api/library');
+  await save.click();
+  await expect(reminder).toBeVisible();
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+  await reminder.getByRole('button', { name: 'Connect your calendar' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Your movie calendar' });
+  await expect(dialog.getByRole('link', { name: 'Subscribe in Apple Calendar' })).toBeInViewport();
+  await expect(dialog.getByText('Release-day reminders · 1pm GMT')).not.toBeVisible();
+  await dialog.locator('summary').focus();
+  await page.keyboard.press('Enter');
+  await expect(dialog.getByText('Release-day reminders · 1pm GMT')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(dialog).toHaveCSS('opacity', '1');
+  await page.screenshot({ path: 'outputs/review/calendar-setup-375-light.png' });
+  await page.getByRole('button', { name: 'Close calendar settings' }).click();
+  // Opening setup is not proof that an external subscription succeeded.
+  await expect(reminder).toBeVisible();
+  await reminder.getByRole('button', { name: 'Dismiss calendar setup reminder' }).click();
+  await expect(reminder).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Calendar settings', exact: true })).toBeFocused();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Calendar settings', exact: true })).toBeEnabled();
+  await expect(reminder).toHaveCount(0);
+  await request.post('http://127.0.0.1:4318/_control', { data: { libraryIds: [] } });
+  await page.reload();
+  await page.getByRole('button', { name: 'Save Fixture Film 00', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Fixture Film 00 is saved', exact: true }),
+  ).toBeVisible();
+  await expect(reminder).toHaveCount(0);
+});
+
+test('upcoming releases disclose tentative dates and subscription type without claiming calendar connection', async ({
+  page,
+  request,
+}) => {
+  await request.post('http://127.0.0.1:4318/_control', {
+    data: {
+      movieReleases: {
+        '1': [
+          {
+            kind: 'Subscription',
+            date: '2099-10-01',
+            confidence: 'rumored',
+            source: 'https://example.invalid/fixture',
+            sourceName: 'Fixture',
+          },
+        ],
+      },
+    },
+  });
+  await page.goto('/');
+  const upcoming = page.locator('.next-up');
+  await expect(upcoming.getByText('Unconfirmed', { exact: true })).toBeVisible();
+  await expect(upcoming.getByText('Included with a subscription', { exact: true })).toBeVisible();
+  await expect(upcoming.getByText('Included in your feed', { exact: true })).toBeVisible();
+  await expect(page.getByText('On your calendar', { exact: true })).toHaveCount(0);
+  await page.screenshot({ path: 'outputs/review/calendar-upcoming-desktop.png' });
+  await page.setViewportSize({ width: 320, height: 812 });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(upcoming.getByText('Unconfirmed', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: 'outputs/review/calendar-upcoming-320-dark.png' });
+});
+
+test('Available uses newest-first releases in both sections while Coming Soon keeps nearest-first order', async ({
+  page,
+  request,
+}) => {
+  const release = (date: string) => [
+    {
+      kind: 'Digital',
+      date,
+      confidence: 'listed',
+      source: 'https://example.invalid/fixture',
+      sourceName: 'Fixture',
+    },
+  ];
+  await request.post('http://127.0.0.1:4318/_control', {
+    data: {
+      libraryIds: ['1', '2', '3', '4', '5'],
+      movieReleases: {
+        '1': release('2020-01-01'),
+        '2': release('2025-01-01'),
+        '3': release('2024-01-01'),
+        '4': release('2099-01-01'),
+        '5': release('2099-02-01'),
+      },
+    },
+  });
+  await page.goto('/');
+  for (const section of ['My library', 'Discover']) {
+    await page.getByRole('button', { name: new RegExp(`^${section}`) }).click();
+    await page.getByRole('button', { name: 'Available', exact: true }).click();
+    await expect(page.locator('.movie-card h3')).toHaveText([
+      'Fixture Film 01',
+      'Fixture Film 02',
+      'Fixture Film 00',
+    ]);
+    await page.getByRole('button', { name: 'Coming Soon', exact: true }).click();
+    await expect(page.locator('.movie-card h3').nth(0)).toHaveText('Fixture Film 03');
+    await expect(page.locator('.movie-card h3').nth(1)).toHaveText('Fixture Film 04');
+  }
+});
+
 test('export can be dismissed while stalled, cancels the read, and never downloads late', async ({
   page,
 }) => {

@@ -24,6 +24,12 @@ Missing configuration produces names-only server diagnostics and retryable unava
 
 ## Release sequence
 
+Migration history was reconciled on October 30, 2026: seven local filenames were aligned with the versions already recorded in production after confirming their SQL text matched exactly. No production history was edited and no historical SQL was replayed. See [the reconciliation record](review-improvements-2026-10-30.md).
+
+Before the next release, apply `20261030115759_available_releases_newest_first.sql` through the linked CLI migration workflow. It only replaces the read-only library summary function; it changes no saved films, calendar credentials, event UIDs, or table permissions. The corresponding Discover sort is in application code, so release both together.
+
+For future migrations, generate the local file with the CLI, test it, and apply that same version through the CLI. Check migration history before and after the release. If a migration is applied through a tool that assigns its own timestamp, retrieve the recorded version and compare its SQL before aligning the local filename; never mark differing SQL as equivalent based on its name alone.
+
 1. Run `npm ci`, `npm run check`, `npm run build`, and `npm run test:e2e`. For the first browser run, install Chromium with `npx playwright install chromium` (`--with-deps` on CI Linux).
 2. Verify the target project and migration history. This checkout's A-List project is `xuxshqjckbrvxiwzclfi`. Inspect the current CLI's help before migration commands; use a dry run against the intended linked project before applying changes.
 3. `20261026183555_release_consistency.sql` was applied to A-List production on October 26 at 18:35 UTC and verified through the Supabase connection. Apply it **before** deploying the matching application to any other database. It replaces library ordering/calendar selection and adds the service-only, row-version-guarded `a_list_withdraw_release_windows` function. No personal rows need editing for this rollout.

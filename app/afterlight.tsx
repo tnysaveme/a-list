@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import {
   ArrowUpRight,
   ArrowRight,
-  Check,
+  CalendarDays,
   X,
   ChevronDown,
   SlidersHorizontal,
@@ -40,6 +40,7 @@ import { useMovieCalendar } from '../hooks/use-movie-calendar';
 import { Dialog } from '../components/dialog';
 import { Wordmark } from '../components/wordmark';
 import { CalendarSettings } from '../components/calendar-settings';
+import { CalendarSetupPrompt } from '../components/calendar-setup-prompt';
 import { AboutContent } from '../components/about-content';
 import { FeedbackSurface } from '../components/feedback-surface';
 import { releaseLabels } from '../lib/release-labels';
@@ -74,6 +75,7 @@ export default function AList({
   const [about, setAbout] = useState(false),
     [accountOpen, setAccountOpen] = useState(false);
   const [accountMounted, setAccountMounted] = useState(false);
+  const [calendarSetupOffered, setCalendarSetupOffered] = useState(false);
   const [notice, setNotice] = useState<{ message: string; error?: boolean; undo?: Movie[] } | null>(
     null,
   );
@@ -401,11 +403,13 @@ export default function AList({
   );
   const save = useCallback(
     async (m: Movie) => {
+      const firstSave = page.total === 0;
       const result = await mutate('add', [m.id]);
+      if (firstSave && result?.changedIds.includes(m.id)) setCalendarSetupOffered(true);
       if (result?.remainingIds.length)
         notify(result.error || 'The film could not be saved. Please try again.', true);
     },
-    [mutate, notify],
+    [mutate, notify, page.total],
   );
   async function remove(ids: string[]) {
     const intent = navigationIntent.current;
@@ -530,6 +534,10 @@ export default function AList({
           <span className="save-note">Digital & streaming releases</span>
         </nav>
         <div className="section-content">
+          <CalendarSetupPrompt
+            active={calendarSetupOffered && ready && page.total > 0}
+            onOpen={openCalendar}
+          />
           {view === 'library' && upcoming && (
             <aside className="next-up">
               <span className="next-up-date">
@@ -542,18 +550,28 @@ export default function AList({
                 <strong>{upcoming.release.date.slice(-2)}</strong>
               </span>
               <div>
-                <p>Next on your horizon</p>
+                <p>
+                  Next on your horizon
+                  {upcoming.release.confidence === 'rumored' && (
+                    <span className="next-up-unconfirmed">{releaseLabels.unconfirmed}</span>
+                  )}
+                </p>
                 <button className="text-link" onClick={() => openMovie(upcoming.movie)}>
                   {upcoming.movie.title}
                   <ArrowUpRight aria-hidden="true" size={16} />
                 </button>
               </div>
               <span className="next-up-type">
-                {upcoming.release.platform || 'Rent or buy at home'}
+                {upcoming.release.platform ||
+                  (upcoming.release.kind === 'Subscription'
+                    ? 'Included with a subscription'
+                    : upcoming.release.kind === 'PVOD'
+                      ? 'Premium rental or purchase'
+                      : 'Rent or buy at home')}
               </span>
               <span className="next-up-calendar">
-                <Check size={16} aria-hidden="true" />
-                <span className="next-up-track-label">On your calendar</span>
+                <CalendarDays size={16} aria-hidden="true" />
+                <span className="next-up-track-label">Included in your feed</span>
               </span>
             </aside>
           )}

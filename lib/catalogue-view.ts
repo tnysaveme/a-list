@@ -102,7 +102,10 @@ export function discoverMovies(
       return { movie, date: date || '9999', rank: !date ? 2 : date >= today ? 0 : 1 };
     })
     .sort(
-      (a, b) => a.rank - b.rank || a.date.localeCompare(b.date) || compareTitles(a.movie, b.movie),
+      (a, b) =>
+        (filter === 'available'
+          ? b.date.localeCompare(a.date)
+          : a.rank - b.rank || a.date.localeCompare(b.date)) || compareTitles(a.movie, b.movie),
     )
     .map(({ movie }) => movie);
 }

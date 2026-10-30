@@ -24,7 +24,7 @@ The complete public index was refreshed. The catch-up checked 193 queued profile
 
 ## Rollout and verification
 
-- Applied `20261029074821_wts_consistency_and_fair_queue.sql` before deploying. Queue and reconciliation RPCs are service-only; no client database access was added.
+- Applied `20261029081236_wts_consistency_and_fair_queue.sql` before deploying. Queue and reconciliation RPCs are service-only; no client database access was added.
 - Created and restore-verified an encrypted application backup before the migration. Personal library rows, calendar credentials and existing movie/event IDs were preserved.
 - Formatting, lint, types, 206 unit/data tests and the backup restore fixture passed. Both final local checks and the Vercel check/build gate passed.
 - All 53 isolated browser scenarios passed against the preserved interface.

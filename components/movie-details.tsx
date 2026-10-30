@@ -108,8 +108,8 @@ export function MovieDetails({
               {series
                 ? 'A-List tracks movies only. TV series are not supported.'
                 : saved
-                  ? 'Sourced dates are included in your calendar.'
-                  : 'Save it to add sourced dates to your calendar.'}
+                  ? 'Sourced dates are included in your calendar feed.'
+                  : 'Save it to add sourced dates to your calendar feed.'}
             </small>
           </span>
         </p>

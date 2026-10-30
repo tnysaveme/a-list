@@ -55,7 +55,7 @@ test('SQL/client ordering, calendar preferences and guarded per-window withdrawa
       checkedAt: new Date().toISOString(),
       releases:
         i % 4 === 0
-          ? [release('Digital', -20), release('Subscription', 2)]
+          ? [release('Digital', -20 + (i % 16)), release('Subscription', 2)]
           : i % 4 === 1
             ? [release('Digital', 5)]
             : i % 4 === 2

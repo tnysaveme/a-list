@@ -90,7 +90,8 @@ select {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+summary:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 4px;
 }
@@ -329,6 +330,11 @@ a svg {
   font-size: var(--text-xs);
   margin-bottom: var(--space-2xs);
 }
+.next-up-unconfirmed {
+  display: block;
+  color: var(--color-amber);
+  margin-top: var(--space-2xs);
+}
 .next-up .text-link {
   display: block;
   max-width: 100%;
@@ -351,12 +357,37 @@ a svg {
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
-  color: var(--color-green);
+  color: var(--color-muted);
   font-size: var(--text-xs);
   flex-shrink: 0;
 }
 .next-up-track-label {
   display: none;
+}
+.calendar-setup {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  padding-block: var(--space-md);
+  margin-bottom: var(--space-lg);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+}
+.calendar-setup > div {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.calendar-setup strong {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.calendar-setup p {
+  margin-top: var(--space-2xs);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.calendar-setup > .icon-button {
+  margin-inline-start: auto;
 }
 .collection {
   min-width: 0;
@@ -1155,6 +1186,7 @@ input[type='checkbox'] {
 .subscribe-button {
   width: 100%;
   padding-inline: var(--space-sm);
+  margin-top: var(--space-lg);
 }
 .subscribe-button > svg:last-child {
   margin-inline-start: auto;
@@ -1173,6 +1205,16 @@ input[type='checkbox'] {
   color: var(--color-muted);
   font-size: var(--text-xs);
   line-height: 1.65;
+}
+.calendar-help > summary {
+  cursor: pointer;
+  min-height: var(--space-control);
+  align-content: center;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.calendar-help > summary:hover {
+  color: var(--color-muted);
 }
 .subscription-notice {
   display: flex;

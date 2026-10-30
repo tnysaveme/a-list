@@ -144,6 +144,12 @@ export const server = createServer(async (req, res) => {
       if (Array.isArray(flags.libraryIds)) saved = new Set(flags.libraryIds.map(String));
       if (!flags.keepCache) redis.clear();
       if (typeof flags.releaseDate === 'string') films[1].releases[0].date = flags.releaseDate;
+      for (const [id, releases] of Object.entries(
+        (flags.movieReleases || {}) as Record<string, Movie['releases']>,
+      )) {
+        const film = films.find((movie) => movie.id === id);
+        if (film) film.releases = releases;
+      }
       for (const id of (flags.staleMovies || []) as string[]) {
         const film = films.find((m) => m.id === id);
         if (film) {

@@ -61,6 +61,47 @@ test('unverified reports cannot leak into discovery filters from a bundled or ca
   assert.equal(discoverMovies([report], 'unknown', 'release', '2026-10-24').length, 1);
 });
 
+test('Available puts recent listed releases first, with stable ties and pagination; Coming Soon stays nearest first', () => {
+  const films = [
+    make('1', 'Older', '2026-01-01'),
+    make('2', 'Yesterday Z', '2026-10-29'),
+    make('3', 'Today', '2026-10-30'),
+    make('4', 'Yesterday A', '2026-10-29'),
+    make('5', 'Tomorrow', '2026-10-31'),
+    make('6', 'Later', '2026-11-03'),
+    make('7', 'Unknown'),
+    {
+      ...make('8', 'Estimate'),
+      releases: [
+        { ...make('8', 'Estimate', '2026-10-30').releases[0], confidence: 'rumored' as const },
+      ],
+    },
+  ];
+  // A future streaming window must not determine its position under Available.
+  films[0].releases.push({ ...films[0].releases[0], kind: 'Subscription', date: '2026-12-01' });
+  const options = { filter: 'available', sort: 'release', limit: 2 };
+  const first = cataloguePage(films, options, '2026-10-30');
+  const second = cataloguePage(films, { ...options, offset: first.nextOffset! }, '2026-10-30');
+  assert.deepEqual(
+    first.movies.map((m) => m.id),
+    ['3', '4'],
+  );
+  assert.deepEqual(
+    second.movies.map((m) => m.id),
+    ['2', '1'],
+  );
+  assert.equal(first.filteredTotal, 4);
+  assert.equal(second.nextOffset, null);
+  assert.deepEqual(
+    discoverMovies(films, 'soon', 'release', '2026-10-30').map((m) => m.id),
+    ['8', '3', '5', '6', '1'],
+  );
+  assert.deepEqual(
+    discoverMovies(films, 'available', 'title', '2026-10-30').map((m) => m.id),
+    ['1', '3', '4', '2'],
+  );
+});
+
 test('catalogue filters and search cover unloaded films while pages omit detail payloads', () => {
   const films = Array.from({ length: 60 }, (_, index) => ({
     ...make(

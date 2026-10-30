@@ -31,4 +31,4 @@ This is a measured coverage improvement, not complete date parity. The 157 ident
 - The scheduled production job completed successfully with the inventory enabled. The final deployment's runtime-error check returned zero records.
 - An encrypted application backup was restore-verified before migration. The service-only inventory is rebuildable source cache, excluded from personal-data backups.
 
-Apply `20261027235000_wts_profile_inventory.sql` before deploying this worker to another database. Use `npm run wts:reconcile -- --limit 1000` for a read-only source-to-storage audit. `--repair --due --concurrency 4` resumes a bounded one-off catch-up; `--repair --index` refreshes the public inventory. Personal libraries and calendar credentials are not edited by these commands.
+Apply `20261027235816_wts_profile_inventory.sql` before deploying this worker to another database. Use `npm run wts:reconcile -- --limit 1000` for a read-only source-to-storage audit. `--repair --due --concurrency 4` resumes a bounded one-off catch-up; `--repair --index` refreshes the public inventory. Personal libraries and calendar credentials are not edited by these commands.

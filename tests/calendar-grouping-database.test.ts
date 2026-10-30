@@ -20,7 +20,7 @@ test('grouped calendar counts agree with feed events across preferences, paginat
       grant execute on function auth.uid() to authenticated,anon;
     `);
     const migrations = new URL('../supabase/migrations/', import.meta.url);
-    const migration = '20261030095442_grouped_calendar_events.sql';
+    const migration = '20261030100802_grouped_calendar_events.sql';
     const names = (await readdir(migrations)).filter((name) => name.endsWith('.sql')).sort();
     for (const name of names.filter((name) => name < migration))
       await db.exec(await readFile(new URL(name, migrations), 'utf8'));

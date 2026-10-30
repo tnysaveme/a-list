@@ -68,52 +68,12 @@ export function CalendarSettings({
       </span>
       <h2>Your calendar</h2>
       <p className="calendar-intro">
-        Every film in your library is included automatically. Subscribe once; dates update when your
-        calendar refreshes.
+        Saved films are included in your private feed. Subscribe once to see their release dates in
+        your calendar.
       </p>
-      <div className="calendar-summary">
-        <div>
-          <strong>{trackedCount}</strong>
-          <span>films in your library</span>
-        </div>
-        <div>
-          <strong>{page.listedEvents + (includeRumors ? page.rumoredEvents : 0)}</strong>
-          <span>calendar events</span>
-        </div>
-        <div>
-          <strong>US</strong>
-          <span>release region</span>
-        </div>
-      </div>
       {trackedCount === 0 && (
         <p className="calendar-tip">
           Save a film to your library to add its sourced release dates here.
-        </p>
-      )}
-      <p className="calendar-tip">
-        <strong>Release-day reminders · 1pm GMT</strong>
-        <br />
-        Each film has one reminder per release day, combining releases on the same date. Every
-        reminder is a 30-minute block from 13:00–13:30 GMT (UTC), with an alert at its start. In
-        Apple Calendar, leave “Alerts” unchecked under Remove and turn off “Ignore alerts”. Calendar
-        notifications must be enabled on your device.
-      </p>
-      <label className="preference-row">
-        <span>
-          <strong>Include unconfirmed dates</strong>
-          <small>Unconfirmed dates appear as tentative events.</small>
-        </span>
-        <input
-          type="checkbox"
-          role="switch"
-          checked={includeRumors}
-          disabled={!ready || busy}
-          onChange={(e) => void updateRumors(e.target.checked)}
-        />
-      </label>
-      {preferenceError && (
-        <p className="inline-error" role="alert">
-          {preferenceError} Your previous setting is still selected.
         </p>
       )}
       {!canSubscribe && (
@@ -125,12 +85,6 @@ export function CalendarSettings({
             access needs to be configured before connecting.
           </p>
         </div>
-      )}
-      {local && (
-        <p className="calendar-tip">
-          Local preview: this subscription works only while this development server is running on
-          your Mac.
-        </p>
       )}
       <a
         className={`button primary subscribe-button ${!ready || !trackedCount || !canSubscribe ? 'disabled' : ''}`}
@@ -181,14 +135,66 @@ export function CalendarSettings({
         </p>
       )}
       <p className="calendar-footnote">
-        In Apple Calendar, choose iCloud to see it across your devices. Event downloads are a
-        snapshot; subscriptions update. Keep your feed link private.
+        Keep your feed link private. Downloads are a snapshot; subscriptions update.
       </p>
+      <div className="calendar-summary">
+        <div>
+          <strong>{trackedCount}</strong>
+          <span>films in your library</span>
+        </div>
+        <div>
+          <strong>{page.listedEvents + (includeRumors ? page.rumoredEvents : 0)}</strong>
+          <span>calendar events</span>
+        </div>
+        <div>
+          <strong>US</strong>
+          <span>release region</span>
+        </div>
+      </div>
+      <details className="calendar-help">
+        <summary>Setup help</summary>
+        <p className="calendar-tip">
+          <strong>Release-day reminders · 1pm GMT</strong>
+          <br />
+          Each film has one reminder per release day, combining releases on the same date. Every
+          reminder is a 30-minute block from 13:00–13:30 GMT (UTC), with an alert at its start. In
+          Apple Calendar, leave “Alerts” unchecked under Remove and turn off “Ignore alerts”.
+          Calendar notifications must be enabled on your device.
+        </p>
+        <p className="calendar-tip">
+          In Apple Calendar, choose iCloud to see the subscription across your devices. Dates update
+          when your calendar refreshes.
+        </p>
+        {local && (
+          <p className="calendar-tip">
+            Local preview: this subscription works only while this development server is running on
+            your Mac.
+          </p>
+        )}
+      </details>
+      <label className="preference-row">
+        <span>
+          <strong>Include unconfirmed dates</strong>
+          <small>Unconfirmed dates appear as tentative events.</small>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          checked={includeRumors}
+          disabled={!ready || busy}
+          onChange={(e) => void updateRumors(e.target.checked)}
+        />
+      </label>
+      {preferenceError && (
+        <p className="inline-error" role="alert">
+          {preferenceError} Your previous setting is still selected.
+        </p>
+      )}
       {(trackedCount > 0 || trackedError) && (
         <div className="tracked-list">
-          <h3>On your calendar</h3>
+          <h3>Included in your feed</h3>
           <p className="calendar-tip">
-            Remove a film from your library to remove its dates from this calendar.
+            Remove a film from your library to remove its dates from this feed.
           </p>
           {tracked.map((m) => (
             <div key={m.id}>

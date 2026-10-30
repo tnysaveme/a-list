@@ -41,6 +41,8 @@ Primary: solid charcoal (light) or near-white (dark), clear action verb. Seconda
 
 Movie details prioritize the title, saved state, release evidence and synopsis. Calendar/account use grouped settings rows. Search keeps its keyboard controls. Real posters are product content, not enrichment. Privacy and emails share the typography and brand. No screen invents a new palette or changes the meaning of a release status.
 
+Calendar settings place Subscribe and copy/download controls before summary counts and optional Setup help. Feed inclusion never claims that an external calendar is connected; tentative upcoming dates retain an explicit Unconfirmed label. A dismissible, nonmodal setup reminder appears after a confirmed first save during the visit, without shifting an existing library on initial load. Available uses newest-first release dates; Coming Soon remains nearest-first.
+
 ## Verification
 
 Inspect 320 / 375 / 414 / 768 px and desktop in light and dark. Check horizontal overflow, nonwrapping control labels, touch targets, focus, long titles and dialog scrolling. Run existing checks, build and isolated browser flows. Keep routes, component ownership and application logic intact.
