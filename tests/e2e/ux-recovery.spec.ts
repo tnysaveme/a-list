@@ -720,13 +720,17 @@ test('mobile sheets keep Done reachable while content scrolls and restore trigge
     await page.setViewportSize({ width, height: 740 });
     await page.emulateMedia({ colorScheme: width === 320 ? 'dark' : 'light' });
     await page.goto('/');
+    // Exercise a reserved scrollbar gutter on both macOS and Linux.
+    await page.addStyleTag({ content: '::-webkit-scrollbar { width: 15px; height: 15px; }' });
     const trigger = page.getByRole('button', { name: 'View Fixture Film 00', exact: true });
     await trigger.click();
     const sheet = page.getByRole('dialog', { name: 'Fixture Film 00 details' });
     await expect(sheet).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
     const bounds = await sheet.boundingBox();
+    // Classic scrollbars reserve a gutter; overlay scrollbars do not.
+    const usableWidth = await page.evaluate(() => document.body.getBoundingClientRect().width);
     expect(bounds!.x).toBeCloseTo(0, 0);
-    expect(bounds!.width).toBeCloseTo(width, 0);
+    expect(bounds!.width).toBeCloseTo(usableWidth, 0);
     expect(bounds!.y + bounds!.height).toBeCloseTo(740, 0);
     await sheet.locator('.dialog-inner').evaluate((node) => {
       node.scrollTop = node.scrollHeight;
@@ -749,6 +753,7 @@ test('sheets honor reduced motion and keyboard entry and desktop dialogs stay ce
   await page.setViewportSize({ width: 375, height: 812 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
+  await page.addStyleTag({ content: '::-webkit-scrollbar { width: 15px; height: 15px; }' });
   await page.getByRole('button', { name: 'Calendar Settings', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Your Movie Calendar' });
   await expect(dialog).toHaveCSS('transition-property', 'opacity');
@@ -765,7 +770,8 @@ test('sheets honor reduced motion and keyboard entry and desktop dialogs stay ce
   await expect(dialog).toHaveCSS('opacity', '1');
   await expect(dialog.getByRole('button', { name: 'Done', exact: true })).toBeHidden();
   const box = await dialog.boundingBox();
-  expect(box!.x + box!.width / 2).toBeCloseTo(720, 0);
+  const usableWidth = await page.evaluate(() => document.body.getBoundingClientRect().width);
+  expect(box!.x + box!.width / 2).toBeCloseTo(usableWidth / 2, 0);
   expect(box!.y + box!.height / 2).toBeCloseTo(500, 0);
 });
 

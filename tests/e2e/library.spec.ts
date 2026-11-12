@@ -230,20 +230,23 @@ test('calendar pagination merges overlapping pages without duplicate films', asy
 
 test('changing filters does not postpone the scheduled revision refresh', async ({ page }) => {
   await page.clock.install();
-  await page.goto('/');
   let revisions = 0;
   await page.route('**/api/revision', (route) => {
     revisions++;
     return route.continue();
   });
+  await page.goto('/');
+  // Server-rendered controls can appear before hydration installs the refresh timer.
+  await expect(page.locator('html')).toHaveAttribute('data-motion-input', 'keyboard');
   await page.clock.fastForward(30_000);
+  expect(revisions).toBe(0);
   await page.getByRole('button', { name: 'Coming Soon', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Coming Soon', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
   await page.clock.fastForward(30_001);
-  await expect.poll(() => revisions).toBeGreaterThan(0);
+  await expect.poll(() => revisions).toBe(1);
 });
 
 test('watched films persist in their section and leave the calendar until marked unwatched', async ({
