@@ -9,7 +9,8 @@ function fold(line: string): string {
   let out = '',
     bytes = 0;
   for (const char of line) {
-    const n = new TextEncoder().encode(char).length;
+    const point = char.codePointAt(0)!;
+    const n = point < 0x80 ? 1 : point < 0x800 ? 2 : point < 0x10000 ? 3 : 4;
     if (bytes + n > 75) {
       out += '\r\n ';
       bytes = 1;

@@ -419,3 +419,53 @@ test('four whole cast names from an explicitly identified primary page tolerate 
   ])
     assert.throws(() => automaticEvidence(source, [bad]), /insufficient/);
 });
+
+test('all corroborating facts invalidate identity proof while legacy proof is upgraded from its stored evidence', () => {
+  const original = {
+    ...profile,
+    facts: { runtime: 100, theatrical: '2026-01-01', nonfiction: true },
+  };
+  const fingerprint = profileFingerprint(original, 1);
+  const row = {
+    source_id: '7001',
+    profile: original,
+    fingerprint,
+    reviewed_fingerprint: fingerprint,
+    status: 'approved',
+    approved_imdb_id: evidence.movie.id,
+    reviewed_at: evidence.movie.checkedAt,
+    checked_at: evidence.movie.checkedAt,
+    match_method: 'reviewed',
+  } as MatchRow;
+  assert.equal(cachedIdentity(row)?.profileFingerprint, profileFingerprint(original));
+  for (const facts of [
+    { ...original.facts, runtime: 101 },
+    { ...original.facts, theatrical: '2026-02-01' },
+    { ...original.facts, nonfiction: false },
+    { ...original.facts, series: true },
+  ])
+    assert.notEqual(
+      profileFingerprint({ ...original, facts }),
+      cachedIdentity(row)?.profileFingerprint,
+    );
+});
+
+test('urgent, aging and saved inventory survive a flood of unchecked RSS announcements', () => {
+  const now = Date.parse('2026-11-02T00:00:00Z');
+  const rss = Array.from({ length: 20 }, (_, i) => ({
+    report: {
+      ...report,
+      release: { ...report.release, source: `https://whentostream.com/rss-${i}/` },
+    },
+    revision: '1',
+    seenAt: new Date(now).toISOString(),
+  }));
+  const inventory = [
+    { priority: 2, dueAt: new Date(now).toISOString() },
+    { dueAt: new Date(now - 2 * 86400_000).toISOString() },
+    { saved: true, dueAt: new Date(now).toISOString() },
+  ].map((value, i) => ({ ...rss[i], ...value, report: { ...rss[i].report, inventory: true } }));
+  const selected = dueReleaseEntries([...rss, ...inventory], now);
+  assert.deepEqual(selected.slice(0, 3), inventory);
+  assert.ok(selected.some((entry) => !entry.report.inventory));
+});

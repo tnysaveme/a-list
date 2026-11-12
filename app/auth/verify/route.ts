@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       await client.auth.signOut({ scope: 'local' });
       return result('/login?error=expired-link');
     }
-    return result('/');
+    return result(`/?welcome=${crypto.randomUUID()}`);
   } catch {
     console.error(JSON.stringify({ event: 'email_confirmation_unavailable' }));
     return result('/login?error=service-unavailable');

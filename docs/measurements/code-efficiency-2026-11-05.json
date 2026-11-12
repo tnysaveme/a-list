@@ -1,0 +1,70 @@
+{
+  "measuredAt": "2026-11-05T11:26:32.300Z",
+  "node": "v24.22.0",
+  "method": "Alternating before/after invocations after six warm-ups per version; local CPU only, synthetic catalogue; no production latency or provider throughput claim",
+  "results": [
+    {
+      "size": 1000,
+      "mode": "release",
+      "samples": 20,
+      "beforeMedianMs": 2.7013330000000053,
+      "afterMedianMs": 1.0297089999999969,
+      "speedup": 2.6233945706991135,
+      "reductionPercent": 61.881448899487964
+    },
+    {
+      "size": 1000,
+      "mode": "title",
+      "samples": 20,
+      "beforeMedianMs": 1.050958000000037,
+      "afterMedianMs": 0.786625000000015,
+      "speedup": 1.3360343238519203,
+      "reductionPercent": 25.15162356630928
+    },
+    {
+      "size": 1000,
+      "mode": "theatrical",
+      "samples": 20,
+      "beforeMedianMs": 1.594000000000051,
+      "afterMedianMs": 0.9055830000000356,
+      "speedup": 1.7601920530751884,
+      "reductionPercent": 43.188017565871604
+    },
+    {
+      "size": 1000,
+      "mode": "calendar",
+      "samples": 20,
+      "beforeMedianMs": 143.744917,
+      "afterMedianMs": 12.15249999999969,
+      "speedup": 11.828423534252511,
+      "reductionPercent": 91.54578801558618
+    },
+    {
+      "size": 10000,
+      "mode": "release",
+      "samples": 20,
+      "beforeMedianMs": 27.709374999999454,
+      "afterMedianMs": 9.312125000000378,
+      "speedup": 2.9756231794567114,
+      "reductionPercent": 66.39359422577895
+    },
+    {
+      "size": 10000,
+      "mode": "title",
+      "samples": 20,
+      "beforeMedianMs": 10.313250000000153,
+      "afterMedianMs": 7.794917000000169,
+      "speedup": 1.3230737415164175,
+      "reductionPercent": 24.418422902576264
+    },
+    {
+      "size": 10000,
+      "mode": "theatrical",
+      "samples": 20,
+      "beforeMedianMs": 17.732915999999932,
+      "afterMedianMs": 10.324333999999908,
+      "speedup": 1.7175844950386234,
+      "reductionPercent": 41.778701258157724
+    }
+  ]
+}

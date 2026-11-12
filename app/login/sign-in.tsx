@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { requestData, ApiTimeoutError, RequestError } from '../../lib/client-request';
 import { installMotionInput } from '../../lib/content-motion';
 import { useStateEntrance } from '../../hooks/use-state-entrance';
-import { Wordmark } from '../../components/wordmark';
+import { AuthShell } from '../../components/auth-shell';
 import { ArrowRight, Mail, LoaderCircle, Check } from 'lucide-react';
 export default function SignIn({
   expired = false,
@@ -64,13 +64,10 @@ export default function SignIn({
     }
   }
   return (
-    <main className="login-shell">
-      <div className="login-brand">
-        <Wordmark />
-      </div>
+    <AuthShell>
       <section className="login-panel">
         <p className="intro-caption">Your personal film library</p>
-        <h1>Your next movie night.</h1>
+        <h1>Your Next Movie Night.</h1>
         {deleted && (
           <p className="login-note" role="status">
             Your account and saved library have been deleted.
@@ -83,7 +80,7 @@ export default function SignIn({
           {state === 'sent' ? (
             <div ref={success} className="login-success" role="status" tabIndex={-1}>
               <Check aria-hidden="true" size={24} />
-              <h2>Check your inbox.</h2>
+              <h2>Check Your Inbox.</h2>
               <p>
                 We sent you a sign-in link. Open it on the device where you want to use A-List.
                 Check Spam if it hasn’t arrived.
@@ -95,12 +92,12 @@ export default function SignIn({
                   setState('idle');
                 }}
               >
-                Use another email <ArrowRight aria-hidden="true" size={14} />
+                Use Another Email <ArrowRight aria-hidden="true" size={14} />
               </button>
             </div>
           ) : (
             <form onSubmit={submit}>
-              <label htmlFor="email">Your email address</label>
+              <label htmlFor="email">Your Email Address</label>
               <div className="login-input" data-invalid={invalidEmail || undefined}>
                 <Mail aria-hidden="true" size={18} />
                 <input
@@ -151,7 +148,7 @@ export default function SignIn({
                   </>
                 ) : (
                   <>
-                    Continue with email
+                    Continue with Email
                     <ArrowRight aria-hidden="true" size={16} />
                   </>
                 )}
@@ -160,10 +157,9 @@ export default function SignIn({
           )}
         </div>
         <p id="email-note" className="login-note">
-          Your email. Your own private library. <a href="/privacy">How your data is used</a>
+          Your email. Your own private library. <a href="/privacy">How Your Data Is Used</a>
         </p>
       </section>
-      <p className="login-colophon">Films worth looking forward to.</p>
-    </main>
+    </AuthShell>
   );
 }

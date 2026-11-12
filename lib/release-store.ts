@@ -13,7 +13,7 @@ import { versionedCache } from './versioned-cache';
 // Old previews and production share Redis. Their supported matching rules can differ.
 const identityCacheKey = `release-identities:v4:rule${MATCH_RULE_VERSION}`;
 
-export async function releaseIdentities(): Promise<ReviewedReportIdentity[]> {
+export async function releaseIdentities(signal?: AbortSignal): Promise<ReviewedReportIdentity[]> {
   return versionedCache(identityCacheKey, {
     version: async () => {
       const row = checked(
@@ -21,6 +21,7 @@ export async function releaseIdentities(): Promise<ReviewedReportIdentity[]> {
           .from('a_list_source_status')
           .select('identity_version')
           .eq('id', true)
+          .abortSignal(signal || AbortSignal.timeout(3000))
           .single(),
       );
       if (!row?.identity_version) throw new Error('Release identity version unavailable');
@@ -28,10 +29,10 @@ export async function releaseIdentities(): Promise<ReviewedReportIdentity[]> {
     },
     read: (key) => cached<ReviewedReportIdentity[]>(key),
     write: (key, value) => remember(key, value, 3600),
-    load: loadReleaseIdentities,
+    load: () => loadReleaseIdentities(signal),
   });
 }
-async function loadReleaseIdentities(): Promise<ReviewedReportIdentity[]> {
+async function loadReleaseIdentities(signal?: AbortSignal): Promise<ReviewedReportIdentity[]> {
   const rows: MatchRow[] = [];
   const db = adminDb();
   for (let offset = 0; ; offset += 500) {
@@ -42,7 +43,8 @@ async function loadReleaseIdentities(): Promise<ReviewedReportIdentity[]> {
           'source_id,profile,fingerprint,status,approved_imdb_id,reviewed_fingerprint,reviewed_at,rationale,checked_at,match_method,rule_version',
         )
         .order('source_id')
-        .range(offset, offset + 499),
+        .range(offset, offset + 499)
+        .abortSignal(signal || AbortSignal.timeout(5000)),
     ) as MatchRow[];
     rows.push(...page);
     if (page.length < 500) break;
@@ -50,7 +52,7 @@ async function loadReleaseIdentities(): Promise<ReviewedReportIdentity[]> {
   return activeReleaseIdentities(rows, reviewedReportIdentities);
 }
 export type ReleaseImportRow = { id: string; movie: Movie; updated_at: string };
-export async function releaseImports(): Promise<ReleaseImportRow[]> {
+export async function releaseImports(signal?: AbortSignal): Promise<ReleaseImportRow[]> {
   const db = adminDb(),
     rows: ReleaseImportRow[] = [];
   for (let offset = 0; ; offset += 500) {
@@ -61,7 +63,8 @@ export async function releaseImports(): Promise<ReleaseImportRow[]> {
           .select('id,movie,updated_at')
           .eq('movie->>discoveredFrom', 'When To Stream')
           .order('id')
-          .range(offset, offset + 499),
+          .range(offset, offset + 499)
+          .abortSignal(signal || AbortSignal.timeout(5000)),
       ) as ReleaseImportRow[]) || [];
     rows.push(...page);
     if (page.length < 500) break;

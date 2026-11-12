@@ -12,24 +12,24 @@ export default function Privacy() {
       <Link href="/" className="privacy-home">
         <Wordmark />
       </Link>
-      <h1>Your data</h1>
+      <h1>Your Data</h1>
       <p>
         A-List is a small movie tracker for its owner and friends. This note explains what the app
         keeps and the controls available to you.
       </p>
-      <h2>What is saved</h2>
+      <h2>What Is Saved</h2>
       <p>
         Your email is used to send sign-in links. Your account stores your saved movie IDs, the time
         you saved them, your unconfirmed-date preference and a secret calendar link. Movie metadata
         and release evidence are shared across the app; your personal library is separate.
       </p>
-      <h2>Your private calendar</h2>
+      <h2>Your Private Calendar</h2>
       <p>
         Anyone with your calendar link can read its events without signing in. Keep the link
         private. Account settings let you reset it: the old link stops serving events immediately,
         and you will need to remove the old subscription and subscribe again in your calendar app.
       </p>
-      <h2>The services involved</h2>
+      <h2>The Services Involved</h2>
       <p>
         <a href="https://supabase.com/privacy" target="_blank" rel="noreferrer">
           Supabase
@@ -50,14 +50,14 @@ export default function Privacy() {
         information needed to operate the app. Poster hosts may receive image requests. Source links
         open the original provider’s website.
       </p>
-      <h2>Performance measurements</h2>
+      <h2>Performance Measurements</h2>
       <p>
         Vercel also measures loading speed, layout stability and interaction responsiveness on a
         sample of visits. These performance measurements exclude URL query strings and calendar or
         sign-in callback links. The app does not attach your email, searches or saved-film list to
         these measurements.
       </p>
-      <h2>Your controls</h2>
+      <h2>Your Controls</h2>
       <p>
         In Account settings you can download your library as JSON, reset your calendar link, or
         permanently delete your account. The export includes films without dates and excludes the

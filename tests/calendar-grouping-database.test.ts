@@ -88,9 +88,11 @@ test('grouped calendar counts agree with feed events across preferences, paginat
       accounts: (await db.query('select * from public.a_list_accounts order by id')).rows,
     });
     const before = await snapshot();
-    for (const name of names.filter((name) => name >= migration))
+    for (const name of names.filter((name) => name === migration))
       await db.exec(await readFile(new URL(name, migrations), 'utf8'));
     assert.deepEqual(await snapshot(), before, 'the migration only replaces the summary function');
+    for (const name of names.filter((name) => name > migration))
+      await db.exec(await readFile(new URL(name, migrations), 'utf8'));
     const permissions = (
       await db.query<{ definer: boolean; settings: string[] }>(
         "select prosecdef as definer,proconfig as settings from pg_proc where oid='public.a_list_library_page(text,text,integer,integer,boolean)'::regprocedure",

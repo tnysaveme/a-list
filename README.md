@@ -85,6 +85,8 @@ Discovery computes release dates once per film before sorting and uses indexed l
 
 ## Reminders
 
+Your Library separates **To Watch** from **Watched**. In a saved film's details, use **Mark as Watched** to keep it in your history and remove its calendar events. **Mark as Unwatched** moves it back and restores those events. Watched dates persist per account, appear in exports, and survive Remove → Undo. Calendar subscriptions pick up these changes on their next refresh. See [the Watched release record](docs/watched-library-2026-11-04.md) for migration and verification details.
+
 Every dated calendar event is a **30-minute reminder block from 13:00–13:30 GMT (UTC) on its release day**, with a display alarm at the start. Start and end timestamps use UTC, so daylight-saving changes cannot move the GMT reminder time. The event description distinguishes the reminder block from the film's actual availability time. When a date changes, its block and alert follow it. Unconfirmed dates are included by default as labelled tentative events with the same reminders. Calendar settings still allow opting out. Downloads include the same blocks and alarms. The format revision advances existing subscriptions while retaining event UIDs.
 
 Apple Calendar can suppress alerts from subscriptions. In its subscription settings, leave **Alerts** unchecked under **Remove** and turn **Ignore alerts** off. Calendar notifications must also be enabled on the device. Existing subscriptions pick up the alarms on their next refresh; notification delivery is controlled by the calendar client. See [Apple’s subscription instructions](https://support.apple.com/guide/calendar/subscribe-to-calendars-icl1022/mac). GMT stays UTC+0 throughout the year.
@@ -136,6 +138,8 @@ The owner health endpoint reports source-specific success, failure and stale fee
 ## Checks and source recovery
 
 Run `npm run check` before releasing: it checks formatting, lint, types and unit/database fixtures. `npm run build` verifies the production bundle. GitHub Actions runs both plus the production dependency audit; Vercel runs the same check gate before building. Unit tests receive no service credentials and reject unmocked network requests. The explicitly enabled integration suites use disposable accounts and run separately.
+
+Type checking also rejects unused locals and parameters. The [code efficiency review](docs/code-efficiency-2026-11-05.md) records the verified cleanup, behavior comparisons and local CPU measurements.
 
 `npm run sources:check -- --limit 30` checks failed film refreshes without writing data. Add `--saved` to check saved films, or `--repair` to store verified results with row-version guards. Repairs update shared film records and source-health checks, preserving personal library rows and calendar credentials. Up to 100 records can be checked per run. Missing metadata remains a coverage gap; it cannot create a release date or prevent independent release-source checks. Failed sources retain last-good dates and surface a retry notice in movie details; expected or estimated dates remain tentative.
 

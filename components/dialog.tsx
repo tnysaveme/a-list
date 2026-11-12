@@ -1,9 +1,10 @@
 'use client';
-import { useLayoutEffect, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { useExitContent, useExitPresence } from '../hooks/use-exit-presence';
 
 const modalLocks = new Set<HTMLDialogElement>();
 let previousOverflow = '';
+let returnFocus: HTMLElement | null = null;
 export function Dialog({
   children,
   open = true,
@@ -25,25 +26,30 @@ export function Dialog({
 }) {
   const { ref, mounted } = useExitPresence<HTMLDialogElement>(open, onAfterClose);
   const content = useExitContent(children, open);
+  const backdropPress = useRef(false);
   useLayoutEffect(() => {
     const dialog = ref.current;
     if (!mounted || !dialog) return;
     const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (!modalLocks.size) {
+      returnFocus = trigger;
       previousOverflow = document.body.style.overflow;
       document.body.style.overflow = 'clip';
     }
     modalLocks.add(dialog);
     dialog.showModal();
     dialog
-      .querySelector<HTMLButtonElement>('[data-autofocus]:not(:disabled)')
+      .querySelector<HTMLElement>('[data-autofocus]:not(:disabled)')
       ?.focus({ preventScroll: true });
     return () => {
       dialog.close();
       modalLocks.delete(dialog);
       if (!modalLocks.size) {
         document.body.style.overflow = previousOverflow;
-        if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+        const target =
+          trigger?.isConnected && !trigger.closest('dialog:not([open])') ? trigger : returnFocus;
+        if (target?.isConnected) target.focus({ preventScroll: true });
+        returnFocus = null;
       }
     };
   }, [mounted, ref]);
@@ -64,10 +70,22 @@ export function Dialog({
         if (open && !event.currentTarget.open) onClose();
       }}
       onClick={(e) => {
-        if (e.target === e.currentTarget && !busy) onClose();
+        if (e.target === e.currentTarget && backdropPress.current && !busy) onClose();
+        backdropPress.current = false;
+      }}
+      onPointerDown={(event) => {
+        backdropPress.current = event.target === event.currentTarget;
+      }}
+      onPointerCancel={() => {
+        backdropPress.current = false;
       }}
     >
       <div className="dialog-inner">{content}</div>
+      <div className="dialog-mobile-actions">
+        <button className="button subtle" disabled={busy || !open} onClick={onClose}>
+          Done
+        </button>
+      </div>
     </dialog>
   );
 }

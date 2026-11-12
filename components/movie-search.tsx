@@ -9,6 +9,7 @@ export function MovieSearch({
   search,
   searchResults,
   savedIds,
+  savingIds,
   onSelect,
   resultsId,
   activeIndex,
@@ -18,6 +19,7 @@ export function MovieSearch({
   search: ReturnType<typeof useFilmSearch>;
   searchResults: Movie[];
   savedIds: Set<string>;
+  savingIds?: Set<string>;
   onSelect: (movie: Movie) => void;
   resultsId: string;
   activeIndex: number;
@@ -60,7 +62,7 @@ export function MovieSearch({
             ? 'Showing available catalogue matches.'
             : 'No catalogue matches are available for this title.'}
           <button className="text-link" onClick={search.retrySearch} disabled={searchBusy}>
-            Try again
+            Try Again
           </button>
         </p>
       )}
@@ -77,6 +79,7 @@ export function MovieSearch({
             id={`${resultsId}-${movie.id}`}
             role="option"
             aria-selected={activeIndex === index}
+            aria-busy={savingIds?.has(movie.id) || undefined}
             key={movie.id}
             className="search-result"
             onPointerMove={() => {
@@ -93,7 +96,13 @@ export function MovieSearch({
                 {searchReleaseSummary(movie, currentDay)}
               </small>
               {(savedIds.has(movie.id) || movie.saved) && (
-                <span className="sr-only">Saved to your library</span>
+                <span className="sr-only">
+                  {savingIds?.has(movie.id)
+                    ? 'Saving to your library'
+                    : movie.watchedAt
+                      ? 'Watched · saved to your library'
+                      : 'Saved to your library'}
+                </span>
               )}
             </span>
             {savedIds.has(movie.id) || movie.saved ? (

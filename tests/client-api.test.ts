@@ -120,3 +120,32 @@ test('unreadable successful mutations are uncertain but rejected validation is s
     globalThis.fetch = previous;
   }
 });
+
+test('successful JSON and blob bodies cannot publish after caller cancellation', async () => {
+  const { requestData } = await import('../lib/client-request');
+  const previous = globalThis.fetch;
+  try {
+    for (const blob of [false, true]) {
+      const controller = new AbortController();
+      globalThis.fetch = async () => {
+        const response = Response.json({ membership: { '1': true } });
+        if (blob)
+          response.blob = async () => {
+            controller.abort();
+            return new Blob(['late export']);
+          };
+        else
+          response.json = async () => {
+            controller.abort();
+            return { membership: { '1': true } };
+          };
+        return response;
+      };
+      await assert.rejects(requestData('/api/fixture', { signal: controller.signal, blob }), {
+        name: 'AbortError',
+      });
+    }
+  } finally {
+    globalThis.fetch = previous;
+  }
+});

@@ -1,21 +1,8 @@
-import {
-  availableRelease,
-  displayRelease,
-  sanitizeMovie,
-  verifiedReleases,
-  type Movie,
-} from './model';
+import { selectRelease, sanitizeMovie, verifiedReleases, type Movie } from './model';
 
 /** The selected window must be the one that qualified the film for this view. */
 export function releaseForView(movie: Movie, filter: string, today: string) {
-  const releases = verifiedReleases(movie).sort((a, b) => a.date.localeCompare(b.date));
-  if (filter === 'soon') return releases.find((r) => r.date >= today);
-  if (filter === 'rumored') {
-    const reported = releases.filter((r) => r.confidence === 'rumored');
-    return reported.find((r) => r.date >= today) || reported.at(-1);
-  }
-  if (filter === 'available') return availableRelease(movie, today);
-  return displayRelease(movie, today);
+  return selectRelease(verifiedReleases(movie), today, filter);
 }
 
 export type CatalogueOptions = {
@@ -35,10 +22,10 @@ export type CataloguePage = {
   provenance?: 'live' | 'fallback';
 };
 
-/** Cards do not need synopsis and metadata payloads; details load on opening. */
+/** A bounded synopsis powers hover previews; complete details still load on opening. */
 export function movieCard(movie: Movie): Movie {
   const card = { ...sanitizeMovie(movie) };
-  delete card.overview;
+  if (card.overview) card.overview = card.overview.slice(0, 320);
   delete card.overviewSource;
   delete card.metadataCheckedAt;
   delete card.synopsisCheckedAt;
@@ -77,7 +64,7 @@ export function discoverMovies(
   today: string,
 ): Movie[] {
   const films = catalogue.map(sanitizeMovie).filter((movie) => {
-    if (filter === 'soon') return movie.releases.some((release) => release.date >= today);
+    if (filter === 'soon') return movie.releases.some((release) => release.date > today);
     if (filter === 'available')
       return movie.releases.some(
         (release) => release.date <= today && release.confidence === 'listed',
@@ -87,38 +74,46 @@ export function discoverMovies(
       return movie.releases.some((release) => release.confidence === 'rumored');
     return true;
   });
-  if (sort === 'title') return films.sort((a, b) => compareTitles(a, b));
-  if (sort === 'added')
-    return films.sort(
-      (a, b) => (b.addedAt || '').localeCompare(a.addedAt || '') || compareTitles(a, b),
-    );
-  if (sort === 'theatrical')
-    return films.sort(
-      (a, b) => (b.theatrical || '').localeCompare(a.theatrical || '') || compareTitles(a, b),
-    );
   return films
     .map((movie) => {
-      const date = releaseForView(movie, filter, today)?.date;
-      return { movie, date: date || '9999', rank: !date ? 2 : date >= today ? 0 : 1 };
+      const date =
+        sort === 'title'
+          ? undefined
+          : sort === 'added'
+            ? movie.addedAt
+            : sort === 'theatrical'
+              ? movie.theatrical
+              : selectRelease(movie.releases, today, filter)?.date;
+      return {
+        movie,
+        title: movie.title.toLowerCase(),
+        date: date || (sort === 'added' || sort === 'theatrical' ? '' : '9999'),
+        rank: !date ? 2 : date >= today ? 0 : 1,
+      };
     })
     .sort(
       (a, b) =>
-        (filter === 'available'
-          ? b.date.localeCompare(a.date)
-          : a.rank - b.rank || a.date.localeCompare(b.date)) || compareTitles(a.movie, b.movie),
+        (sort === 'title'
+          ? 0
+          : sort === 'added' || sort === 'theatrical' || filter === 'available'
+            ? b.date.localeCompare(a.date)
+            : a.rank - b.rank || a.date.localeCompare(b.date)) ||
+        compareText(a.title, b.title) ||
+        compareText(a.movie.id, b.movie.id),
     )
     .map(({ movie }) => movie);
 }
 
 function compareText(a: string, b: string) {
-  const left = Array.from(a),
-    right = Array.from(b);
-  for (let i = 0; i < Math.min(left.length, right.length); i++) {
-    const difference = left[i].codePointAt(0)! - right[i].codePointAt(0)!;
+  let left = 0,
+    right = 0;
+  while (left < a.length && right < b.length) {
+    const leftPoint = a.codePointAt(left)!,
+      rightPoint = b.codePointAt(right)!;
+    const difference = leftPoint - rightPoint;
     if (difference) return difference;
+    left += leftPoint > 0xffff ? 2 : 1;
+    right += rightPoint > 0xffff ? 2 : 1;
   }
-  return left.length - right.length;
-}
-function compareTitles(a: Movie, b: Movie) {
-  return compareText(a.title.toLowerCase(), b.title.toLowerCase()) || compareText(a.id, b.id);
+  return Number(left < a.length) - Number(right < b.length);
 }

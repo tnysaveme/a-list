@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto';
 import { imdbId, titleKey, verifiedIdentityId } from './film-identity';
-import { evidenceAgreement, type SourceProfile } from './release-profile';
+import { evidenceAgreement, profileFingerprint, type SourceProfile } from './release-profile';
 import type { MetadataEvidence } from './metadata';
 import type { Movie, Release } from './model';
 import type { ReleaseReport } from './sources';
 import type { ReviewedReportIdentity } from './reviewed-report-identities';
 
-export const MATCH_RULE_VERSION = 7;
+export const MATCH_RULE_VERSION = 8;
 export const SIX_HOURS = 6 * 3600_000;
 // Leave one minute of room for jitter in the existing ten-minute scheduler.
 export const WTS_DISCOVERY_CACHE_MS = 9 * 60_000;
@@ -20,6 +20,9 @@ export type FeedEntry = {
   sourceId?: string;
   movieId?: string;
   outcome?: string;
+  priority?: number;
+  saved?: boolean;
+  dueAt?: string;
 };
 export type MatchRow = {
   source_id: string;
@@ -90,7 +93,7 @@ export function cachedIdentity(row: MatchRow): ReviewedReportIdentity | undefine
   // Rule 1's exact-year matches remain valid under the stricter evidence required for year drift.
   if (
     row.match_method === 'corroborated' &&
-    ![1, 2, 3, 4, 5, 6, MATCH_RULE_VERSION].includes(row.rule_version)
+    ![1, 2, 3, 4, 5, 6, 7, MATCH_RULE_VERSION].includes(row.rule_version)
   )
     return;
   return {
@@ -101,7 +104,11 @@ export function cachedIdentity(row: MatchRow): ReviewedReportIdentity | undefine
     imdbId: row.approved_imdb_id,
     reviewedAt: row.reviewed_at || row.checked_at,
     method: row.match_method || 'reviewed',
-    profileFingerprint: row.fingerprint,
+    // Upgrade legacy proof from its stored evidence, not from a newly fetched page.
+    profileFingerprint:
+      row.fingerprint === profileFingerprint(row.profile, 1)
+        ? profileFingerprint(row.profile)
+        : row.fingerprint,
     evidence: {
       metadata: `https://v3-cinemeta.strem.io/meta/movie/${row.approved_imdb_id}.json`,
       releaseSource: `https://www.imdb.com/title/${row.approved_imdb_id}/`,
@@ -228,12 +235,33 @@ export function mergeReleaseFeed(
   ].slice(0, 80);
 }
 export function dueReleaseEntries(entries: FeedEntry[], now: number, limit = 5) {
-  return entries
+  const rank = (entry: FeedEntry) =>
+    entry.priority === 2
+      ? 0
+      : entry.dueAt && Date.parse(entry.dueAt) < now - 86400_000
+        ? 1
+        : entry.saved
+          ? 2
+          : !entry.checkedAt || entry.priority === 1
+            ? 3
+            : 4;
+  const due = entries
     .filter((entry) => !entry.nextCheckAt || Date.parse(entry.nextCheckAt) <= now)
     .sort(
       (a, b) =>
-        Number(!!a.checkedAt) - Number(!!b.checkedAt) ||
-        (Date.parse(a.checkedAt || '') || 0) - (Date.parse(b.checkedAt || '') || 0),
-    )
-    .slice(0, Math.min(5, Math.max(0, limit)));
+        rank(a) - rank(b) ||
+        (Date.parse(a.dueAt || a.checkedAt || a.seenAt) || 0) -
+          (Date.parse(b.dueAt || b.checkedAt || b.seenAt) || 0),
+    );
+  const cap = Math.min(5, Math.max(0, limit));
+  const selected = due.slice(0, cap);
+  // Reserve one slot for each source of work unless higher-priority repairs fill it.
+  for (const inventory of [true, false]) {
+    const candidate = due.find((entry) => !!entry.report.inventory === inventory);
+    if (!cap || !candidate || selected.some((entry) => !!entry.report.inventory === inventory))
+      continue;
+    const replace = selected.findLastIndex((entry) => rank(entry) >= 3);
+    if (replace >= 0) selected[replace] = candidate;
+  }
+  return selected;
 }

@@ -55,6 +55,13 @@ export function needsReportLookup(movie: Movie) {
       !releases.some((r) => r.kind === 'Subscription'))
   );
 }
+export function lookupCadence(movie: Movie, saved: boolean, misses: number, now = Date.now()) {
+  const recent =
+    Number(movie.year) >= new Date(now).getUTCFullYear() ||
+    movie.releases.some((release) => Date.parse(release.date) >= now - 90 * 86400_000);
+  return saved || recent ? 86400 : Math.min(7, 2 ** Math.min(3, misses + 1)) * 86400;
+}
+
 /** A bounded daily search fills missing windows even when a rental date is already known. */
 export async function lookupReleaseReports(
   movie: Movie,
@@ -123,7 +130,15 @@ export async function lookupReleaseReports(
   }
   const id = verifiedIdentityId(movie);
   if (!id || !needsReportLookup(movie)) return { movie, attempted: false, outcome: 'ineligible' };
-  const key = `release-lookup:v10:${id}`;
+  const context = checked(
+    await db.rpc('a_list_report_lookup_context', { p_id: id }).abortSignal(signal),
+  ) as {
+    saved?: boolean;
+    misses?: number;
+    revision?: string;
+    profiles?: { source: string; title: string }[];
+  } | null;
+  const key = `release-lookup:v11:${id}:${context?.revision || 'unindexed'}:${context?.saved ? 'saved' : 'public'}`;
   const usable = (state: LookupState) =>
     Date.parse(state.nextCheckAt) > Date.now() &&
     (state.knownKinds || []).every((kind) =>
@@ -142,7 +157,11 @@ export async function lookupReleaseReports(
     value = movie,
     retry = false,
   ): Promise<LookupResult> => {
-    const ttl = retry ? 600 : 86400,
+    const ttl = retry
+        ? 600
+        : outcome === 'no_report' || outcome === 'unresolved'
+          ? lookupCadence(movie, !!context?.saved, context?.misses || 0)
+          : 86400,
       nextCheckAt = new Date(Date.now() + ttl * 1000).toISOString();
     await lookupCache.write(
       key,
@@ -163,15 +182,18 @@ export async function lookupReleaseReports(
       if (again && usable(again)) return cachedResult(again);
       if (signal.aborted) return { movie, attempted: false, outcome: 'busy' as const };
       attempted = true;
-      const xml = await fetchSource(
-        `https://whentostream.com/feed/?s=${encodeURIComponent(movie.title.slice(0, 160))}`,
-        { signal, cache: 'no-store' },
-      );
+      const indexed = context?.profiles?.slice(0, 2) || [];
+      let xml = indexed.length
+        ? '<rss><channel></channel></rss>'
+        : await fetchSource(
+            `https://whentostream.com/feed/?s=${encodeURIComponent(movie.title.slice(0, 160))}`,
+            { signal, cache: 'no-store' },
+          );
       if (!/<rss\b/i.test(xml) || !/<channel\b/i.test(xml) || !/<\/channel>/i.test(xml))
         throw new Error('Release feed format changed');
       const sourcePages = new Map<string, string>();
       const profiles = await Promise.allSettled(
-        parseReportProfiles(xml, movie).map(async (candidate) => {
+        (indexed.length ? indexed : parseReportProfiles(xml, movie)).map(async (candidate) => {
           const html = await fetchSource(candidate.source, { signal, cache: 'no-store' });
           const reference = profileReference(html, candidate.title, text);
           if (!reference || reference.sourceFilmUrl !== candidate.source)
@@ -186,10 +208,25 @@ export async function lookupReleaseReports(
         matched = 0,
         processed = false;
       let retry = profiles.some((result) => result.status === 'rejected');
-      for (const reports of [
-        profiles.flatMap((result) => (result.status === 'fulfilled' ? result.value : [])),
-        parseReports(xml, movie),
-      ]) {
+      for (const phase of ['profiles', 'articles']) {
+        if (
+          phase === 'articles' &&
+          indexed.length &&
+          needsReportLookup(value) &&
+          remaining &&
+          !signal.aborted
+        ) {
+          xml = await fetchSource(
+            `https://whentostream.com/feed/?s=${encodeURIComponent(movie.title.slice(0, 160))}`,
+            { signal, cache: 'no-store' },
+          );
+          if (!/<rss\b/i.test(xml) || !/<channel\b/i.test(xml) || !/<\/channel>/i.test(xml))
+            throw new Error('Release feed format changed');
+        }
+        const reports =
+          phase === 'profiles'
+            ? profiles.flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
+            : parseReports(xml, movie);
         const known = new Set(
           verifiedReleases(value)
             .filter((r) => r.confidence === 'listed' || sourcePages.has(r.source))
@@ -256,13 +293,6 @@ export async function lookupReleaseReports(
     return complete('source_unavailable', value, true);
   }
 }
-export async function lookupMovieReports(
-  movie: Movie,
-  options: Parameters<typeof lookupReleaseReports>[1] = {},
-): Promise<Movie> {
-  return (await lookupReleaseReports(movie, options)).movie;
-}
-
 /** The existing scheduled job sweeps the catalogue, with two concurrent source lookups at most. */
 export async function refreshReportLookups({
   db = adminDb(),
@@ -273,9 +303,12 @@ export async function refreshReportLookups({
   signal: AbortSignal;
   lookup?: typeof lookupReleaseReports;
 }) {
-  const rows = checked(
+  const candidates = checked(
     await db.rpc('a_list_report_lookup_candidates', { p_limit: 8 }).abortSignal(signal),
   ) as { id: string; movie: Movie }[];
+  const rows = [
+    ...new Map(candidates.map((row) => [verifiedIdentityId(row.movie) || row.id, row])).values(),
+  ];
   let scanned = 0,
     attempts = 0,
     failures = 0;
@@ -288,12 +321,14 @@ export async function refreshReportLookups({
         if (result.nextCheckAt || result.outcome === 'ineligible')
           checked(
             await db
-              .from('a_list_movies')
-              .update({
-                report_lookup_after:
-                  result.nextCheckAt || new Date(Date.now() + 86400_000).toISOString(),
+              .rpc('a_list_checkpoint_report_lookup', {
+                p_id: row.id,
+                p_after: result.nextCheckAt || new Date(Date.now() + 86400_000).toISOString(),
+                p_missed:
+                  result.outcome === 'cached'
+                    ? null
+                    : result.outcome === 'no_report' || result.outcome === 'unresolved',
               })
-              .eq('id', row.id)
               .abortSignal(signal),
           );
         if (!result.attempted) return;

@@ -1060,3 +1060,28 @@ test('inventory checks current approved announcements when profiles are TBA and 
     globalThis.fetch = original;
   }
 });
+
+test('all-TBA retains verified identity without manufacturing releases; malformed fields remain partial', async () => {
+  for (const field of ['TBA', 'Coming soon']) {
+    const fixture = film(0),
+      fake = store([fixture]);
+    const html = fixture.page.replace(
+      '</article>',
+      `<p>VOD Release Date: ${field}</p><p>SVOD Release Date: TBA</p></article>`,
+    );
+    const report = {
+      ...fixture.entry.report,
+      release: { ...fixture.entry.report.release, source: fixture.profile.sourceFilmUrl },
+    };
+    const result = await expandReleases(mergeReleaseFeed([], [report], now), {
+      db: fake.db,
+      publishUnknown: true,
+      checkpoint: false,
+      sourcePages: new Map([[fixture.profile.sourceFilmUrl, html]]),
+    });
+    assert.equal(result.decisions[0].outcome, 'verified_no_date');
+    assert.equal(!!result.decisions[0].partial, field !== 'TBA');
+    assert.ok(fake.writes.some((w) => w.name === 'a_list_store_release_identity'));
+    assert.ok(!fake.writes.some((w) => w.name === 'a_list_store_release_match'));
+  }
+});

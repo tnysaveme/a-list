@@ -1,4 +1,5 @@
 'use client';
+import { releaseDay } from '../lib/release-day';
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -25,11 +26,13 @@ import { ExitContent } from './feedback-surface';
 const emptyMembership: Record<string, { saved: boolean; at: number }> = {};
 
 type AppHeaderProps = {
+  currentDay?: string;
   ready: boolean;
   onHome: () => void;
   catalogue: Movie[];
   savedIds: Set<string>;
-  membership?: Record<string, { saved: boolean; at: number }>;
+  savingIds?: Set<string>;
+  membership?: Record<string, { saved: boolean; at: number; watchedAt?: string | null }>;
   onSelectMovie: (movie: Movie) => void;
   onCalendar: () => void;
   onAccount: () => void;
@@ -37,10 +40,12 @@ type AppHeaderProps = {
 };
 
 export function AppHeader({
+  currentDay = releaseDay(),
   ready,
   onHome,
   catalogue,
   savedIds,
+  savingIds,
   membership = emptyMembership,
   onSelectMovie,
   onCalendar,
@@ -69,7 +74,6 @@ export function AppHeader({
     useExitPresence<HTMLDivElement>(searching);
   const resultsId = useId();
   const [activeIndex, setActiveIndex] = useState(-1);
-  const currentDay = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   const matches = useMemo(
     () =>
       searching
@@ -82,7 +86,19 @@ export function AppHeader({
             membership[movie.id] &&
             membership[movie.id].at >= resultsAt &&
             results.some((result) => result.id === movie.id)
-              ? { ...movie, saved: membership[movie.id].saved, tracked: membership[movie.id].saved }
+              ? {
+                  ...movie,
+                  saved: membership[movie.id].saved,
+                  watchedAt:
+                    membership[movie.id].watchedAt === undefined
+                      ? movie.watchedAt
+                      : membership[movie.id].watchedAt,
+                  tracked:
+                    membership[movie.id].saved &&
+                    !(membership[movie.id].watchedAt === undefined
+                      ? movie.watchedAt
+                      : membership[movie.id].watchedAt),
+                }
               : movie,
           )
         : [],
@@ -105,6 +121,7 @@ export function AppHeader({
       ) {
         event.preventDefault();
         searchRef.current?.focus({ preventScroll: true });
+        setDialogHandoff(false);
         setSearching(true);
       }
     }
@@ -119,6 +136,8 @@ export function AppHeader({
     };
   }, [searchRef, setSearching]);
   function selectMovie(movie: Movie) {
+    // Remove the exiting Radix layer before the native dialog takes Escape handling.
+    setDialogHandoff(true);
     closeSearch();
     setActiveIndex(-1);
     onSelectMovie(movie);
@@ -168,8 +187,14 @@ export function AppHeader({
                 autoComplete="off"
                 spellCheck={false}
                 value={query}
-                onFocus={() => setSearching(true)}
-                onClick={() => setSearching(true)}
+                onFocus={() => {
+                  setDialogHandoff(false);
+                  setSearching(true);
+                }}
+                onClick={() => {
+                  setDialogHandoff(false);
+                  setSearching(true);
+                }}
                 onChange={(event) => {
                   changeQuery(event.target.value);
                   setActiveIndex(-1);
@@ -229,7 +254,7 @@ export function AppHeader({
             <nav className="app-header-actions" aria-label="App controls">
               <button
                 className="app-header-control app-header-calendar"
-                aria-label="Calendar settings"
+                aria-label="Calendar Settings"
                 disabled={!ready}
                 onClick={onCalendar}
               >
@@ -282,7 +307,7 @@ export function AppHeader({
                       }}
                     >
                       <DropdownMenu.Label className="app-header-menu-label">
-                        Settings & help
+                        Settings & Help
                       </DropdownMenu.Label>
                       <DropdownMenu.Item
                         className="app-header-menu-item"
@@ -290,19 +315,19 @@ export function AppHeader({
                         onSelect={() => openDialog(onAccount)}
                       >
                         <UserRound size={17} aria-hidden="true" />
-                        Account settings
+                        Account Settings
                       </DropdownMenu.Item>
                       <DropdownMenu.Item
                         className="app-header-menu-item"
                         onSelect={() => openDialog(onAbout)}
                       >
                         <CircleHelp size={17} aria-hidden="true" />
-                        How A-List works
+                        How A-List Works
                       </DropdownMenu.Item>
                       <DropdownMenu.Item className="app-header-menu-item" asChild>
                         <Link href="/privacy">
                           <ShieldCheck size={17} aria-hidden="true" />
-                          Privacy & your data
+                          Privacy & Your Data
                         </Link>
                       </DropdownMenu.Item>
                       <DropdownMenu.Separator className="app-header-menu-rule" />
@@ -328,7 +353,7 @@ export function AppHeader({
                             ) : (
                               <LogOut size={17} aria-hidden="true" />
                             )}
-                            {signingOut ? 'Signing out…' : 'Sign out'}
+                            {signingOut ? 'Signing out…' : 'Sign Out'}
                           </button>
                         </DropdownMenu.Item>
                       </form>
@@ -339,7 +364,7 @@ export function AppHeader({
             </nav>
           </div>
         </Popover.Anchor>
-        {searchMounted && (
+        {searchMounted && (searching || !dialogHandoff) && (
           <Popover.Portal forceMount>
             <Popover.Content
               forceMount
@@ -367,6 +392,7 @@ export function AppHeader({
                   search={search}
                   searchResults={matches}
                   savedIds={savedIds}
+                  savingIds={savingIds}
                   onSelect={selectMovie}
                   resultsId={resultsId}
                   activeIndex={active}

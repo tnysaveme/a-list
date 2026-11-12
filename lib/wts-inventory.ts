@@ -3,6 +3,7 @@ import { adminDb } from './supabase/admin';
 import { checked } from './db-result';
 import { text } from './sources';
 import type { FeedEntry } from './release-automation';
+import type { ReleaseDiagnostic } from './release-diagnostics';
 import type { ReleaseAudit } from './release-reconciliation';
 import { WTS_DISCOVERY_CACHE_MS } from './release-automation';
 
@@ -24,6 +25,8 @@ export type InventoryRow = {
   priority?: number;
   movie_id?: string | null;
   saved?: boolean;
+  check_after?: string;
+  checked_at?: string | null;
 };
 
 export function parseProfileIndex(value: unknown): InventoryRow[] {
@@ -178,6 +181,10 @@ export async function dueWtsProfiles(db: Db, signal: AbortSignal): Promise<Inven
 export function inventoryEntries(rows: InventoryRow[]): FeedEntry[] {
   return rows.map((row) => ({
     sourceId: row.source_id,
+    priority: row.priority,
+    saved: row.saved,
+    dueAt: row.check_after,
+    checkedAt: row.checked_at || undefined,
     revision: row.modified_at,
     seenAt: new Date().toISOString(),
     report: {
@@ -202,6 +209,7 @@ export async function checkpointWtsProfiles(
     movieId?: string;
     audit?: ReleaseAudit;
     partial?: boolean;
+    diagnostic?: ReleaseDiagnostic;
   }[],
   db: Db,
   signal: AbortSignal,
@@ -210,20 +218,27 @@ export async function checkpointWtsProfiles(
     const result = decisions.find((decision) => decision.source === row.source);
     if (!result) continue; // Unstarted work remains due.
     const complete =
-      !result.partial && ['matched', 'withheld', 'not_movie'].includes(result.outcome);
-    const attempts = complete ? 0 : (row.attempts || 0) + 1;
-    const failures =
-      result.partial || ['source_unavailable', 'budget_exhausted'].includes(result.outcome)
+      !result.partial &&
+      ['matched', 'withheld', 'verified_no_date', 'not_movie'].includes(result.outcome);
+    const localFailure =
+      result.outcome === 'budget_exhausted' ||
+      ['database', 'publication'].includes(result.diagnostic?.stage || '');
+    const attempts = localFailure ? row.attempts || 0 : complete ? 0 : (row.attempts || 0) + 1;
+    const failures = localFailure
+      ? row.failures || 0
+      : result.partial || result.outcome === 'source_unavailable'
         ? (row.failures || 0) + 1
         : 0;
-    const delay = failures
-      ? Math.min((row.saved ? 6 : 24) * 3600_000, 10 * 60_000 * 2 ** Math.min(8, failures - 1))
-      : complete
-        ? 7 * 86400_000
-        : Math.min(
-            row.saved ? 86400_000 : 7 * 86400_000,
-            86400_000 * 2 ** Math.min(3, attempts - 1),
-          );
+    const delay = localFailure
+      ? 60_000
+      : failures
+        ? Math.min((row.saved ? 6 : 24) * 3600_000, 10 * 60_000 * 2 ** Math.min(8, failures - 1))
+        : complete
+          ? 7 * 86400_000
+          : Math.min(
+              row.saved ? 86400_000 : 7 * 86400_000,
+              86400_000 * 2 ** Math.min(3, attempts - 1),
+            );
     checked(
       await db
         .from('a_list_wts_profiles')
@@ -237,6 +252,8 @@ export async function checkpointWtsProfiles(
             !complete && !result.outcome.startsWith('conflicting_') && row.priority === 2 ? 2 : 0,
           movie_id: result.movieId || row.movie_id || null,
           audit: result.audit || {},
+          diagnostic: result.diagnostic || {},
+          ...(complete ? { last_success_at: new Date().toISOString() } : {}),
         })
         .eq('source_id', row.source_id)
         .eq('modified_at', row.modified_at)

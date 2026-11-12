@@ -21,20 +21,28 @@ export type GetResponse<P extends GetPath> = P extends 'revision'
     : P extends `catalogue${string}`
       ? CataloguePage
       : P extends `library/membership?${string}`
-        ? { membership: Record<string, boolean> }
+        ? { membership: Record<string, boolean>; watched: Record<string, string | null> }
         : P extends `search?${string}`
           ? { movies: Movie[] }
           : LibraryPage;
 export type PostRequests = {
   init: Record<string, never>;
-  library: { action: 'add' | 'remove' | 'track'; ids: string[] };
+  library: {
+    action: 'add' | 'remove' | 'track' | 'watch' | 'unwatch';
+    ids: string[];
+    watchedAt?: Record<string, string | null>;
+  };
   settings: { includeRumors: boolean };
   'account/reset-calendar': { confirmation: 'RESET' };
   'account/delete': { confirmation: 'DELETE' };
 };
 export type PostResponses = {
   init: LibraryInit;
-  library: { ok: true };
+  library: {
+    ok: true;
+    watched?: Record<string, string | null>;
+    membership?: Record<string, boolean>;
+  };
   settings: { ok: true };
   'account/reset-calendar': { feedPath: string };
   'account/delete': { deleted: true };

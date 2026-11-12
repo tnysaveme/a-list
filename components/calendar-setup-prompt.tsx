@@ -27,12 +27,12 @@ export function CalendarSetupPrompt({ active, onOpen }: { active: boolean; onOpe
   return (
     <aside className="calendar-setup" aria-label="Calendar setup reminder">
       <div>
-        <strong>Get release dates in your calendar</strong>
+        <strong>Get Release Dates in Your Calendar</strong>
         <p>Subscribe once to follow the films you save.</p>
       </div>
       <button className="button subtle" onClick={onOpen}>
         <CalendarDays size={16} aria-hidden="true" />
-        Connect your calendar
+        Connect Your Calendar
       </button>
       <button
         className="icon-button"

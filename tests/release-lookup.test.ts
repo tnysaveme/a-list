@@ -26,7 +26,8 @@ const movie: Movie = {
   checkedAt: '2026-10-25T00:00:00Z',
   releases: [],
 };
-const db = {} as NonNullable<Parameters<typeof lookupReleaseReports>[1]>['db'];
+const rpc = () => ({ abortSignal: async () => ({ data: {}, error: null }) });
+const db = { rpc } as unknown as NonNullable<Parameters<typeof lookupReleaseReports>[1]>['db'];
 const empty = '<rss><channel>' + '.'.repeat(600) + '</channel></rss>';
 function cache() {
   const values = new Map<string, LookupState>(),
@@ -175,6 +176,7 @@ test('already-dated films look for missing streaming windows and prefer them ove
         '</channel></rss>',
     );
   const fakeDb = {
+    rpc,
     from() {
       const q = {
         select() {
@@ -234,6 +236,12 @@ test('a bounded catalogue batch advances cached entries and performs at most two
         const url = new URL(String(input));
         if (url.pathname.endsWith('/a_list_report_lookup_candidates'))
           return Response.json(candidates.map((m) => ({ id: m.id, movie: m })));
+        if (url.pathname.endsWith('/a_list_checkpoint_report_lookup')) {
+          const body = JSON.parse(String(init?.body));
+          updates.push(body.p_id);
+          assert.ok(body.p_after);
+          return Response.json(null);
+        }
         if (url.pathname.includes('/rpc/')) return Response.json(null);
         updates.push(url.searchParams.get('id')!);
         assert.ok(JSON.parse(String(init?.body)).report_lookup_after);
@@ -271,6 +279,7 @@ test('a completed publication can be read and cached after the source deadline, 
         '</channel></rss>',
     );
   const fakeDb = {
+    rpc,
     from() {
       const q = {
         select() {
@@ -341,6 +350,7 @@ test('native film profiles are verified before announcements and complete profil
     return new Response(String(url).includes('/feed/') ? feed : page);
   };
   const fakeDb = {
+    rpc,
     from() {
       const q = {
         select() {
@@ -489,6 +499,7 @@ test('announcements fill an absent subscription window without replacing a verif
   let current = movie;
   const calls: string[] = [];
   const fakeDb = {
+    rpc,
     from() {
       const q = {
         select() {
@@ -653,4 +664,14 @@ test('catalogue sweep keeps at most two lookups active and stops dispatch after 
   });
   assert.equal(calls, 2);
   assert.equal(peak, 2);
+});
+
+test('old unsaved negatives back off, but saved/recent films stay daily', async () => {
+  const { lookupCadence } = await import('../lib/release-lookup');
+  const old = { ...movie, year: '2020' };
+  assert.equal(lookupCadence(old, false, 0), 2 * 86400);
+  assert.equal(lookupCadence(old, false, 1), 4 * 86400);
+  assert.equal(lookupCadence(old, false, 4), 7 * 86400);
+  assert.equal(lookupCadence(old, true, 4), 86400);
+  assert.equal(lookupCadence(movie, false, 4, Date.parse('2026-11-02')), 86400);
 });

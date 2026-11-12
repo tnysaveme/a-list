@@ -79,5 +79,27 @@ test('worker payload is lazy, shared across phases, projected and abortable', as
   assert.deepEqual(first.catalogue, [{ id: '123' }]);
   assert.equal(first, second);
   assert.equal(f.requests.length, 1);
-  assert.equal(f.requests[0].url.searchParams.get('select'), 'catalogue,wts_feed,wts_feed_after');
+  assert.equal(
+    f.requests[0].url.searchParams.get('select'),
+    'catalogue,wts_feed,wts_feed_after,catalogue_partitions',
+  );
+});
+
+test('request deadlines bound stalled dependencies and consume late failures', async () => {
+  const { beforeDeadline } = await import('../lib/request-deadline');
+  const controller = new AbortController();
+  let rejectWork!: (error: Error) => void;
+  const pending = beforeDeadline(
+    new Promise((_, reject) => {
+      rejectWork = reject;
+    }),
+    controller.signal,
+  );
+  controller.abort();
+  await assert.rejects(pending, /deadline exceeded/);
+  rejectWork(new Error('late provider failure'));
+  assert.equal(
+    await beforeDeadline(Promise.resolve('ready'), new AbortController().signal),
+    'ready',
+  );
 });

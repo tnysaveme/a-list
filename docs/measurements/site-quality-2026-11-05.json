@@ -1,0 +1,32 @@
+{
+  "reviewDate": "2026-11-05",
+  "scope": "Isolated production build, disposable providers/accounts, headless Chromium; not production traffic or live provider availability",
+  "unitAndDatabaseTests": {
+    "passed": 261,
+    "failed": 0
+  },
+  "browserTests": {
+    "passed": 140,
+    "failed": 0,
+    "newRegressions": 6
+  },
+  "checks": [
+    "format",
+    "lint",
+    "typecheck",
+    "production build",
+    "encrypted backup restore fixture",
+    "git diff --check"
+  ],
+  "motionSample": {
+    "metric": "motion-frame-sample",
+    "browser": "156.0.8078.4",
+    "workload": "100 synthetic cards, details opening plus repeated 1.5s polling; headless; 4x CPU slowdown",
+    "frameCount": 288,
+    "medianFrameGapMs": 16.699999999999818,
+    "p95FrameGapMs": 16.799999999999272,
+    "maxFrameGapMs": 200.09999999999997,
+    "longTaskMs": [133, 59]
+  },
+  "interpretation": "A single stress sample for regression review. Median and p95 frame spacing do not imply every frame met budget or establish a speedup."
+}

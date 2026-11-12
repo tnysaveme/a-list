@@ -189,11 +189,11 @@ export default function AccountSettings({
         >
           <X aria-hidden="true" size={20} />
         </button>
-        <h2 id="account-title">Your account</h2>
+        <h2 id="account-title">Your Account</h2>
         <p className="account-intro">A few simple controls for your collection and calendar.</p>
         <AppearanceSetting />
         <section className="account-section">
-          <h3>Your library, to keep.</h3>
+          <h3>Your Library, to Keep.</h3>
           <p>
             Download your saved films, including films waiting for a date, and your calendar
             preference as a JSON file. Your secret calendar link is excluded.
@@ -210,11 +210,11 @@ export default function AccountSettings({
             ) : (
               <ArrowDownToLine aria-hidden="true" size={16} />
             )}
-            {exporting ? 'Exporting…' : 'Export library'}
+            {exporting ? 'Exporting…' : 'Export Library'}
           </button>
         </section>
         <section className="account-section">
-          <h3>A fresh calendar link.</h3>
+          <h3>A Fresh Calendar Link.</h3>
           <p>
             Anyone with your calendar link can read its events. Reset it if it has been shared
             accidentally.
@@ -226,11 +226,11 @@ export default function AccountSettings({
             disabled={busy || !!uncertain}
           >
             <CalendarDays aria-hidden="true" size={16} />
-            Reset calendar link
+            Reset Calendar Link
           </button>
         </section>
         <section className="account-section">
-          <h3>Close your account.</h3>
+          <h3>Close Your Account.</h3>
           <p>
             Delete your sign-in account, saved films and calendar settings. Your shared movie
             catalogue stays available to your friends.
@@ -242,15 +242,15 @@ export default function AccountSettings({
             disabled={busy || !!uncertain}
           >
             <Trash2 aria-hidden="true" size={16} />
-            Delete account
+            Delete Account
           </button>
         </section>
         <FeedbackSurface open={!!confirm} className="account-confirm-presence">
           <form className="account-confirm" onSubmit={submit}>
             <h3>
               {confirm === 'reset'
-                ? 'Reset your calendar link?'
-                : 'Delete your account permanently?'}
+                ? 'Reset Your Calendar Link?'
+                : 'Delete Your Account Permanently?'}
             </h3>
             <p>
               {confirm === 'reset'
@@ -280,7 +280,7 @@ export default function AccountSettings({
                 }
               >
                 {busy ? <LoaderCircle aria-hidden="true" size={16} className="spin" /> : null}
-                {confirm === 'reset' ? 'Reset link' : 'Delete account permanently'}
+                {confirm === 'reset' ? 'Reset Link' : 'Delete Account Permanently'}
               </button>
               <button
                 type="button"
@@ -305,7 +305,7 @@ export default function AccountSettings({
             disabled={busy}
             onClick={() => void checkOutcome()}
           >
-            {busy ? 'Checking…' : 'Check outcome'}
+            {busy ? 'Checking…' : 'Check Outcome'}
           </button>
         )}
         {message && (
@@ -320,18 +320,18 @@ export default function AccountSettings({
             disabled={busy}
             onClick={onCalendar}
           >
-            Open calendar settings
+            Open Calendar Settings
           </button>
         )}
         <form action="/auth/signout" method="post">
           <button className="button subtle account-signout" disabled={busy}>
-            Sign out
+            Sign Out
           </button>
         </form>
         <p className="account-data-note">
           Your email is used for sign-in. Your library belongs to your account.{' '}
           <a href="/privacy" target="_blank" rel="noreferrer">
-            How your data is used
+            How Your Data Is Used
           </a>
         </p>
       </>

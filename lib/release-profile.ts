@@ -84,7 +84,7 @@ export function unchangedProfile(
     profileFingerprint({ ...profile, year: mapping.year }) === mapping.profileFingerprint
   );
 }
-export function profileFingerprint(profile: SourceProfile): string {
+export function profileFingerprint(profile: SourceProfile, version: 1 | 2 = 2): string {
   return createHash('sha256')
     .update(
       JSON.stringify({
@@ -95,6 +95,17 @@ export function profileFingerprint(profile: SourceProfile): string {
         directors: profile.directors.map(titleKey).sort(),
         cast: profile.cast.map(titleKey).sort(),
         overview: profile.overview.normalize('NFKC').trim(),
+        ...(version === 2
+          ? {
+              evidenceVersion: 2,
+              facts: {
+                runtime: profile.facts?.runtime ?? null,
+                theatrical: profile.facts?.theatrical ?? null,
+                nonfiction: profile.facts?.nonfiction === true,
+                series: profile.facts?.series === true,
+              },
+            }
+          : {}),
       }),
     )
     .digest('hex');

@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getApi, postApi } from '../lib/client-api';
+import { RequestError } from '../lib/client-request';
 import type { LibraryInit } from '../lib/api-contract';
 import type { Movie } from '../lib/model';
 
@@ -43,7 +44,7 @@ export function useMovieCalendar(
     (data: { feedPath: string; feedPublic: boolean; includeRumors: boolean }) => {
       setFeedPath(data.feedPath);
       setFeedPublic(data.feedPublic);
-      setIncludeRumors(data.includeRumors);
+      if (!preferenceRequest.current) setIncludeRumors(data.includeRumors);
     },
     [],
   );
@@ -59,7 +60,11 @@ export function useMovieCalendar(
         controller.current.signal,
       );
       if (current !== request.current) return;
-      setTracked((previous) => (offset ? [...previous, ...data.movies] : data.movies));
+      setTracked((previous) =>
+        offset
+          ? [...new Map([...previous, ...data.movies].map((movie) => [movie.id, movie])).values()]
+          : data.movies,
+      );
       setTrackedNext(data.nextOffset);
     } catch (error) {
       if (current === request.current && !(error instanceof Error && error.name === 'AbortError'))
@@ -77,21 +82,50 @@ export function useMovieCalendar(
       if (preferenceRequest.current) return;
       const pending = new AbortController();
       preferenceRequest.current = pending;
+      const previous = includeRumors;
+      setIncludeRumors(value);
       setSettingsBusy(true);
       setPreferenceError('');
+      let confirmed = false;
       try {
         await postApi('settings', { includeRumors: value }, pending.signal);
         pending.signal.throwIfAborted();
-        setIncludeRumors(value);
-        await onPreferenceChange?.();
+        confirmed = true;
       } catch (error) {
-        if (!pending.signal.aborted) setPreferenceError((error as Error).message);
+        if (pending.signal.aborted) return;
+        if (error instanceof RequestError && error.uncertain) {
+          // A lost response can still mean the write committed. Reconcile without retrying it.
+          try {
+            const data = await postApi('init', {}, pending.signal);
+            pending.signal.throwIfAborted();
+            setIncludeRumors(data.includeRumors);
+            confirmed = true;
+            if (data.includeRumors !== value)
+              setPreferenceError(
+                'The change was not confirmed. Showing your current saved setting.',
+              );
+          } catch {
+            if (!pending.signal.aborted) {
+              setIncludeRumors(previous);
+              setPreferenceError(
+                'Could not confirm this change. Showing your previous setting; reopen the page to check before trying again.',
+              );
+            }
+          }
+        } else {
+          setIncludeRumors(previous);
+          setPreferenceError(
+            `${(error as Error).message} Your previous setting has been restored.`,
+          );
+        }
       } finally {
         preferenceRequest.current = null;
         if (!pending.signal.aborted) setSettingsBusy(false);
       }
+      // A failed ancillary read must never roll back an acknowledged preference write.
+      if (confirmed) await onPreferenceChange?.();
     },
-    [onPreferenceChange],
+    [includeRumors, onPreferenceChange],
   );
   const resetFeed = useCallback((path: string) => {
     setFeedPath(path);

@@ -1,4 +1,5 @@
 'use client';
+import { releaseDay } from '../lib/release-day';
 import {
   ArrowDownToLine,
   ArrowUpRight,
@@ -21,11 +22,13 @@ const fullDate = (date: string) =>
   });
 export function CalendarSettings({
   state,
+  currentDay = releaseDay(),
   page,
   ready,
   busy,
 }: {
   state: ReturnType<typeof useMovieCalendar>;
+  currentDay?: string;
   page: LibraryPage;
   ready: boolean;
   busy: boolean;
@@ -66,23 +69,24 @@ export function CalendarSettings({
       <span className="dialog-emblem">
         <CalendarDays aria-hidden="true" size={28} />
       </span>
-      <h2>Your calendar</h2>
+      <h2>Your Calendar</h2>
       <p className="calendar-intro">
-        Saved films are included in your private feed. Subscribe once to see their release dates in
-        your calendar.
+        Films in To Watch are included in your private feed. Watched films are excluded. Subscribe
+        once to see their release dates in your calendar.
       </p>
       {trackedCount === 0 && (
         <p className="calendar-tip">
-          Save a film to your library to add its sourced release dates here.
+          {page.total > 0
+            ? 'Mark a film as unwatched to include its release dates here.'
+            : 'Save a film to your library to add its sourced release dates here.'}
         </p>
       )}
       {!canSubscribe && (
         <div className="subscription-notice">
           <CircleHelp aria-hidden="true" size={18} />
           <p>
-            <strong>One hosting step remains.</strong> Apple Calendar needs a feed it can reach
-            without a site sign-in. This private preview keeps your library protected; subscription
-            access needs to be configured before connecting.
+            <strong>Subscriptions are unavailable right now.</strong> You can still download a
+            calendar snapshot. Try subscribing again later.
           </p>
         </div>
       )}
@@ -113,13 +117,15 @@ export function CalendarSettings({
             <Check size={15} className="copy-check-icon" />
           </span>
           <span className="copy-feed-label">
-            <span aria-hidden="true">Copy feed link</span>
-            <span>{copying ? 'Copying…' : copied ? 'Link copied' : 'Copy feed link'}</span>
+            <span aria-hidden="true">Copy Feed Link</span>
+            <span>{copying ? 'Copying…' : copied ? 'Link Copied' : 'Copy Feed Link'}</span>
           </span>
         </button>
         <button
           className="button subtle"
-          disabled={!(page.listedEvents + (includeRumors ? page.rumoredEvents : 0))}
+          disabled={
+            state.settingsBusy || !(page.listedEvents + (includeRumors ? page.rumoredEvents : 0))
+          }
           onClick={() => download()}
         >
           <ArrowDownToLine aria-hidden="true" size={15} />
@@ -140,19 +146,15 @@ export function CalendarSettings({
       <div className="calendar-summary">
         <div>
           <strong>{trackedCount}</strong>
-          <span>films in your library</span>
+          <span>films in your feed</span>
         </div>
         <div>
           <strong>{page.listedEvents + (includeRumors ? page.rumoredEvents : 0)}</strong>
           <span>calendar events</span>
         </div>
-        <div>
-          <strong>US</strong>
-          <span>release region</span>
-        </div>
       </div>
       <details className="calendar-help">
-        <summary>Setup help</summary>
+        <summary>Setup Help</summary>
         <p className="calendar-tip">
           <strong>Release-day reminders · 1pm GMT</strong>
           <br />
@@ -174,35 +176,40 @@ export function CalendarSettings({
       </details>
       <label className="preference-row">
         <span>
-          <strong>Include unconfirmed dates</strong>
+          <strong>Include Unconfirmed Dates</strong>
           <small>Unconfirmed dates appear as tentative events.</small>
         </span>
         <input
           type="checkbox"
           role="switch"
           checked={includeRumors}
+          aria-busy={state.settingsBusy}
           disabled={!ready || busy}
           onChange={(e) => void updateRumors(e.target.checked)}
         />
       </label>
+      <span className="sr-only" role="status">
+        {state.settingsBusy ? 'Saving calendar preference…' : ''}
+      </span>
       {preferenceError && (
         <p className="inline-error" role="alert">
-          {preferenceError} Your previous setting is still selected.
+          {preferenceError}
         </p>
       )}
       {(trackedCount > 0 || trackedError) && (
         <div className="tracked-list">
-          <h3>Included in your feed</h3>
+          <h3>Included in Your Feed</h3>
           <p className="calendar-tip">
-            Remove a film from your library to remove its dates from this feed.
+            Mark a film as watched or remove it from your library to remove its dates from this
+            feed.
           </p>
           {tracked.map((m) => (
             <div key={m.id}>
               <span>
                 {m.title}
                 <small>
-                  {calendarRelease(m, includeRumors)
-                    ? fullDate(calendarRelease(m, includeRumors)!.date)
+                  {calendarRelease(m, includeRumors, currentDay)
+                    ? fullDate(calendarRelease(m, includeRumors, currentDay)!.date)
                     : m.releases.length
                       ? 'Unconfirmed dates excluded'
                       : 'TBA'}
@@ -218,7 +225,7 @@ export function CalendarSettings({
                 disabled={trackedBusy}
                 onClick={() => void loadTracked(trackedError.offset)}
               >
-                Try again
+                Try Again
               </button>
             </div>
           )}
@@ -228,7 +235,7 @@ export function CalendarSettings({
               disabled={trackedBusy}
               onClick={() => loadTracked(trackedNext)}
             >
-              More films <ArrowDownToLine aria-hidden="true" size={16} />
+              More Films <ArrowDownToLine aria-hidden="true" size={16} />
             </button>
           )}
           {trackedBusy && (

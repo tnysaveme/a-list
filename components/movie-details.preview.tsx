@@ -98,10 +98,10 @@ export default function MovieDetailsPreview({ movie }: { movie: Movie }) {
               {state === 'loading'
                 ? 'Saving…'
                 : state === 'success'
-                  ? 'Saved to library'
+                  ? 'Saved to Library'
                   : state === 'error'
-                    ? 'Try again'
-                    : 'Save to library'}
+                    ? 'Try Again'
+                    : 'Save to Library'}
             </button>
             <a
               className={`film-control film-source ${['hover', 'focus', 'active'].includes(state) ? `is-${state}` : ''}`}

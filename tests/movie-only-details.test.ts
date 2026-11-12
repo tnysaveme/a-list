@@ -48,7 +48,7 @@ test('series details disable saving and explain the movie-only scope', () => {
     createElement(MovieDetails, { ...props, movie: { ...series, mediaType: 'movie' } }),
   );
   assert.doesNotMatch(film, /<button[^>]*class="film-control film-save"[^>]*disabled/);
-  assert.match(film, /Save to library/);
+  assert.match(film, /Save to Library/);
 });
 test('a previously saved series remains removable', () => {
   const html = renderToStaticMarkup(createElement(MovieDetails, { ...props, saved: true }));

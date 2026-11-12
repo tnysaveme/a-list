@@ -6,12 +6,9 @@ export default function AppError({ retry }: { error: unknown; retry: () => void 
       <section className="login-panel">
         <Wordmark className="error-brand" />
         <h1>We couldn’t open this page.</h1>
-        <p role="alert">
-          A required service is temporarily unavailable. Your saved library is unchanged. Please try
-          again shortly.
-        </p>
+        <p role="alert">This page is temporarily unavailable. Please try again shortly.</p>
         <button className="button primary" onClick={() => retry()}>
-          Try again
+          Try Again
         </button>
         <p>
           <a href="/login">Return to sign-in</a>

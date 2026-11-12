@@ -1,6 +1,6 @@
 import { adminDb } from '../../../lib/supabase/admin';
 import { checked } from '../../../lib/db-result';
-import { sourceHealthSummary } from '../../../lib/source-health';
+import { sourceHealthSummary, SOURCE_HEALTH_COLUMNS } from '../../../lib/source-health';
 import { throttle, clientAddress } from '../../../lib/infrastructure';
 export const dynamic = 'force-dynamic';
 /** Public readiness contains no diagnostics, identity, library data or feed tokens. */
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const status = checked(
       await adminDb()
         .from('a_list_source_status')
-        .select('last_success_at,catalogue_success_at,failures,source_health')
+        .select(SOURCE_HEALTH_COLUMNS)
         .eq('id', true)
         .abortSignal(AbortSignal.timeout(3000))
         .single(),

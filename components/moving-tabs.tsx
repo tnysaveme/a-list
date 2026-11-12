@@ -10,7 +10,7 @@ export function MovingTabs({
   children,
 }: {
   value: string;
-  className: 'nav-tabs' | 'filter-list';
+  className: 'nav-tabs' | 'filter-list' | 'library-sections';
   label?: string;
   children: ReactNode;
 }) {
@@ -26,6 +26,13 @@ export function MovingTabs({
       if (!selected) return;
       const parent = container.getBoundingClientRect();
       const next = selected.getBoundingClientRect();
+      // The mobile filter uses a native select; hidden desktop tabs have no geometry.
+      if (!next.width || !next.height) {
+        motion.current?.cancel();
+        delete container.dataset.indicatorReady;
+        target.current = '';
+        return;
+      }
       const previous = container.dataset.indicatorReady ? indicator.getBoundingClientRect() : null;
       const x = next.left - parent.left + container.scrollLeft;
       const y = className === 'nav-tabs' ? container.clientHeight - 1 : next.top - parent.top;
@@ -62,7 +69,17 @@ export function MovingTabs({
       observer.disconnect();
     };
   }, [value, className]);
-  useLayoutEffect(() => () => motion.current?.cancel(), []);
+  useLayoutEffect(() => {
+    const preference = matchMedia('(prefers-reduced-motion: reduce)');
+    const cancel = () => motion.current?.cancel();
+    document.addEventListener('keydown', cancel, true);
+    preference.addEventListener('change', cancel);
+    return () => {
+      cancel();
+      document.removeEventListener('keydown', cancel, true);
+      preference.removeEventListener('change', cancel);
+    };
+  }, []);
   return (
     <div ref={ref} className={className} aria-label={label}>
       <span ref={marker} className="moving-tab-indicator" aria-hidden="true" />

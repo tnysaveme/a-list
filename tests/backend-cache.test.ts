@@ -129,3 +129,23 @@ test('a mapping change during pagination discards the mixed snapshot before cach
   assert.deepEqual(writes, ['racing-identity:after:current']);
   assert.equal(loads, 2);
 });
+
+test('a version change under a shared fill lease retries instead of waiting on its own obsolete cache', async () => {
+  let version = 'before';
+  const writes: string[] = [];
+  const value = await versionedCache('leased-race', {
+    version: async () => version,
+    read: async () => null,
+    lease: async (_key, work) => work(),
+    load: async () => {
+      const result = version;
+      version = 'after';
+      return result;
+    },
+    write: async (key) => {
+      writes.push(key);
+    },
+  });
+  assert.equal(value, 'after');
+  assert.deepEqual(writes, ['leased-race:after']);
+});

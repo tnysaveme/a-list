@@ -244,6 +244,7 @@ test('source health detects individual failures and stale feed/catalogue data de
     catalogue_success_at: recent,
     failures: 0,
     source_health: { wts_feed: { ok: true, lastSuccess: recent } },
+    wts_profile_changes: { checkedAt: recent, through: recent },
   };
   assert.equal(sourceHealthSummary(status, now).status, 'healthy');
   assert.ok(
@@ -271,6 +272,54 @@ test('source health detects individual failures and stale feed/catalogue data de
       now,
     ).issues.includes('wts_reports_failed'),
   );
+});
+
+test('WTS freshness detects missed discovery runs despite healthy refresh jobs', () => {
+  const now = Date.parse('2026-11-01T12:00:00Z');
+  const stamp = (minutes: number) => new Date(now - minutes * 60_000).toISOString();
+  const status = {
+    last_success_at: stamp(1),
+    catalogue_success_at: stamp(1),
+    source_health: { wts_feed: { ok: true, lastSuccess: stamp(1) } },
+    wts_profile_changes: { checkedAt: stamp(1), through: stamp(1) },
+  };
+  // Allow one missed scheduled run and the existing fifteen-minute retry.
+  assert.equal(
+    sourceHealthSummary(
+      {
+        ...status,
+        source_health: { wts_feed: { ok: true, lastSuccess: stamp(30) } },
+        wts_profile_changes: { checkedAt: stamp(30), through: stamp(60) },
+      },
+      now,
+    ).status,
+    'healthy',
+  );
+  assert.deepEqual(
+    sourceHealthSummary(
+      {
+        ...status,
+        source_health: { wts_feed: { ok: true, lastSuccess: stamp(31) } },
+        wts_profile_changes: { checkedAt: stamp(31), through: stamp(61) },
+      },
+      now,
+    ).issues,
+    ['wts_feed_stale', 'wts_discovery_stale', 'wts_discovery_lagging'],
+  );
+  // Successful page fetches must not hide a catch-up cursor that stopped advancing.
+  assert.deepEqual(
+    sourceHealthSummary(
+      { ...status, wts_profile_changes: { checkedAt: stamp(1), through: stamp(61) } },
+      now,
+    ).issues,
+    ['wts_discovery_lagging'],
+  );
+  for (const cursor of [undefined, null, {}, { checkedAt: 'invalid', through: 'invalid' }])
+    assert.deepEqual(sourceHealthSummary({ ...status, wts_profile_changes: cursor }, now).issues, [
+      'wts_discovery_stale',
+      'wts_discovery_lagging',
+    ]);
+  assert.equal(sourceHealthSummary(status, now).status, 'healthy');
 });
 
 test('approved director-credit titles refresh against the bound native subject and retain the canonical film ID', async () => {

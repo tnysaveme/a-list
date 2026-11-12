@@ -45,7 +45,11 @@ export async function requestData<T>(
     });
     if (response.status === 401 && options.redirectUnauthorized && typeof window !== 'undefined')
       window.location.replace(new URL('/login', window.location.origin));
-    if (response.ok && options.blob) return (await response.blob()) as T;
+    if (response.ok && options.blob) {
+      const data = await response.blob();
+      signal.throwIfAborted();
+      return data as T;
+    }
     let data: T & { error?: string };
     try {
       data = await response.json();
@@ -59,6 +63,7 @@ export async function requestData<T>(
         response.status,
       );
     }
+    signal.throwIfAborted();
     if (!response.ok)
       throw new RequestError(
         data?.error || 'Could not complete this request.',

@@ -14,7 +14,16 @@ export function readNavigation(
   const sort = params.get('sort') || 'release';
   return {
     section,
-    filter: ['all', 'soon', 'available', 'unknown', 'rumored'].includes(filter) ? filter : 'all',
+    filter: [
+      'all',
+      'soon',
+      'available',
+      'unknown',
+      'rumored',
+      ...(section === 'library' ? ['watched'] : []),
+    ].includes(filter)
+      ? filter
+      : 'all',
     sort: (section === 'discover'
       ? ['release', 'title', 'theatrical']
       : ['release', 'title', 'added', 'theatrical']

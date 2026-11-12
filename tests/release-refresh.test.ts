@@ -168,3 +168,38 @@ test('ordinary source lookups retain caching while explicit release checks use n
     globalThis.fetch = original;
   }
 });
+
+test('failed archive partitions retain prior films and recover independently', async () => {
+  const original = globalThis.fetch;
+  const url = digitalListingUrls(now)[9];
+  const retained = { ...coyote, id: '999', title: 'Archive Only' };
+  let unavailable = true;
+  let partitions: import('../lib/release-catalogue').CataloguePartitions = {
+    [url]: { movies: [retained], checkedAt: '2020-01-01T00:00:00Z' },
+  };
+  globalThis.fetch = async (input) => {
+    if (String(input) === url && unavailable) return new Response('Unavailable', { status: 503 });
+    return new Response(
+      padding +
+        "<td class='reldate future'>Tuesday October 27, 2026</td>" +
+        Array.from({ length: 10 }, (_, i) => cell(String(200 + i), `Film ${i}`)).join(''),
+    );
+  };
+  try {
+    const load = () =>
+      loadCatalogue(now, [], undefined, {
+        enrichReports: false,
+        previousPartitions: partitions,
+        onPartitions: (value) => {
+          partitions = value;
+        },
+      });
+    assert.ok((await load()).some((m) => m.id === retained.id));
+    assert.equal(partitions[url].checkedAt, '2020-01-01T00:00:00Z');
+    unavailable = false;
+    assert.ok(!(await load()).some((m) => m.id === retained.id));
+    assert.equal(partitions[url].checkedAt, now.toISOString());
+  } finally {
+    globalThis.fetch = original;
+  }
+});

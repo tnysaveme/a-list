@@ -437,7 +437,9 @@ export function profileReleaseEvidence(html: string, reference: ReportReference)
     throw new Error('Release profile format changed');
   const reports: ReleaseReport[] = [];
   const withdrawnKinds: Release['kind'][] = [],
-    unknownKinds: Release['kind'][] = [];
+    unknownKinds: Release['kind'][] = [],
+    absentKinds: Release['kind'][] = [],
+    malformedKinds: Release['kind'][] = [];
   for (const [label, kind] of [
     ['VOD', 'Digital'],
     ['PVOD', 'PVOD'],
@@ -447,6 +449,7 @@ export function profileReleaseEvidence(html: string, reference: ReportReference)
     if (fields.length > 1) throw new Error('Ambiguous profile release dates');
     const field = fields[0];
     if (!field) {
+      absentKinds.push(kind);
       unknownKinds.push(kind);
       continue;
     }
@@ -473,6 +476,7 @@ export function profileReleaseEvidence(html: string, reference: ReportReference)
     ];
     const date = dates.length === 1 ? dateFromText(dates[0][0]) : null;
     if (!date) {
+      malformedKinds.push(kind);
       unknownKinds.push(kind);
       continue;
     }
@@ -496,7 +500,7 @@ export function profileReleaseEvidence(html: string, reference: ReportReference)
       },
     });
   }
-  return { reports, withdrawnKinds, unknownKinds };
+  return { reports, withdrawnKinds, unknownKinds, absentKinds, malformedKinds };
 }
 export function parseProfileReports(
   html: string,

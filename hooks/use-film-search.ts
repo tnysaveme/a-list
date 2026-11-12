@@ -59,24 +59,30 @@ export function useFilmSearch() {
       controller.abort();
     };
   }, [term, searching, attempt]);
-  const changeQuery = useCallback((value: string) => {
-    setQuery(value);
-    setSearchError('');
-    const next = normalize(value);
-    const cached = cache.current.get(next);
-    if (cached && Date.now() - cached.at < freshMs) {
-      setResults(cached.movies);
-      setResultsAt(cached.at);
-      setResultsQuery(next);
-      setSearchBusy(false);
-    } else {
-      setSearchBusy(next.length >= 2);
-      if (next.length < 2) {
-        setResults([]);
-        setResultsQuery('');
+  const changeQuery = useCallback(
+    (value: string) => {
+      setQuery(value);
+      const next = normalize(value);
+      // The request effect depends on the normalized term. Cosmetic edits must
+      // preserve its current result/error/pending state because no new work starts.
+      if (next === term) return;
+      setSearchError('');
+      const cached = cache.current.get(next);
+      if (cached && Date.now() - cached.at < freshMs) {
+        setResults(cached.movies);
+        setResultsAt(cached.at);
+        setResultsQuery(next);
+        setSearchBusy(false);
+      } else {
+        setSearchBusy(next.length >= 2);
+        if (next.length < 2) {
+          setResults([]);
+          setResultsQuery('');
+        }
       }
-    }
-  }, []);
+    },
+    [term],
+  );
   const retrySearch = useCallback(() => {
     cache.current.delete(term);
     setSearchError('');

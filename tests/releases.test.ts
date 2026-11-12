@@ -209,6 +209,14 @@ test('calendar content is escaped and UTF-8 lines are folded at 75 bytes', () =>
   for (const line of calendar.split('\r\n')) assert.ok(Buffer.byteLength(line) <= 75);
   assert.match(calendar, /\\nBEGIN:VEVENT/);
 });
+test('calendar folding preserves mixed-width Unicode at byte boundaries', () => {
+  const title = 'Aé中🎬'.repeat(40);
+  const calendar = makeCalendar([{ ...sample, title }]);
+  for (const line of calendar.split('\r\n')) assert.ok(Buffer.byteLength(line) <= 75);
+  const unfolded = calendar.replace(/\r\n /g, '');
+  assert.ok(unfolded.includes(`SUMMARY:${title} · Digital\r\n`));
+  assert.equal((calendar.match(/BEGIN:VEVENT\r\n/g) || []).length, 1);
+});
 test('unknown films do not create fake events; next release chooses upcoming window', () => {
   assert.doesNotMatch(makeCalendar([{ ...sample, releases: [] }]), /BEGIN:VEVENT/);
   assert.equal(

@@ -1,0 +1,11 @@
+# Authentication artwork and welcome arrival
+
+Sign-in and confirmation keep their supplied photographs and layout. Static image imports now provide tiny embedded previews, softened with a fixed blur behind the image. The full photograph is preloaded and transitions only its opacity once Next/Image finishes decoding. Already-complete cached images bypass the fade. The form and caption remain usable while the image loads, and a failed decorative image retains the preview. A no-JavaScript style exposes the regular image.
+
+Successful email verification and the legacy callback now redirect with a unique, non-sensitive welcome marker. The authenticated home page uses it to show “Welcome home.” and “Cinema at home”. The greeting enters over 260ms with an 8px translation, holds for a short reading beat, and crossfades into the live site over 500ms. The whole sequence takes approximately 1.1 seconds; library data and images load beneath it, without an artificial progress indicator or a wait for every poster.
+
+Ordinary visits and reloads do not play a welcome. The marker is removed while preserving unrelated URL state. Optional session storage prevents replay of the same marker. Keyboard or pointer input dismisses the welcome immediately; focus remains available and is never trapped. Reduced motion skips the hold and spatial movement. CSS completes the reveal without hydration, and a bounded JavaScript fallback clears stale overlay state. Image reveal shortens to 120ms for reduced motion.
+
+Implementation uses existing React and Next/Image plus CSS opacity/transform animation, with the shared easing tokens and no new dependency. The blur is static, not animated. Authentication validation, token redemption and session permissions are unchanged.
+
+Validation: `npm run check` passed all 256 unit/database cases and the backup self-test. The complete browser suite passed 110 tests. Eight new browser cases cover both cold image previews, failed artwork, successful confirmation and refresh, keyboard skipping and marker deduplication, reduced motion, blocked storage, and CSS/no-JavaScript fallbacks. The existing cross-browser email confirmation case also passes. Auth layouts and cold/decoded states were reviewed at 320, 390, 768 and 1440px in both themes, and the welcome/reveal was captured at phone and desktop widths.

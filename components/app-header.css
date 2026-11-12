@@ -1,6 +1,7 @@
 /* Hallmark · genre: modern-minimal · macrostructure: Workbench · design-system: design.md · designed-as-app · nav: N5
  * states: default · hover · focus · active · disabled · loading · error · success */
 .app-header {
+  container: app-header / inline-size;
   padding: max(var(--space-md), env(safe-area-inset-top, 0)) var(--space-md) 0;
   background: var(--color-paper);
   color: var(--color-ink);
@@ -17,7 +18,6 @@
   border: var(--rule-hair) solid var(--color-rule);
   border-radius: var(--radius-round);
   background: var(--color-surface);
-  box-shadow: 0 4px 16px var(--color-shadow);
 }
 .app-header-brand {
   flex-shrink: 0;
@@ -38,7 +38,6 @@
   font: 500 var(--text-sm)/1.4 var(--font-body);
   text-decoration: none;
   white-space: nowrap;
-  transition: scale var(--dur-release) var(--ease-out);
 }
 .app-header-control:focus-visible,
 .app-header-control.is-focus {
@@ -203,11 +202,15 @@
   box-shadow: 0 8px 32px var(--color-shadow);
   font-family: var(--font-body);
   opacity: 0;
-  transition: opacity var(--dur-short) var(--ease-out);
+  transform: translateY(-4px) scale(0.97);
+  transition:
+    opacity var(--dur-short) var(--ease-out),
+    transform var(--dur-medium) var(--ease-out);
   transform-origin: var(--radix-dropdown-menu-content-transform-origin);
 }
 .app-header-menu[data-state='open'] {
   opacity: 1;
+  transform: none;
 }
 .app-search-panel[data-state='closed'],
 .app-header-menu[data-state='closed'] {
@@ -259,20 +262,6 @@
   gap: var(--space-sm);
   color: var(--color-danger);
 }
-@media (hover: hover) {
-  .search-mobile-action:hover,
-  .app-header-search-clear:hover,
-  .app-header-control:hover:not(:disabled):not([aria-disabled='true']),
-  .app-header-control.is-hover {
-    background: var(--color-paper-2);
-    color: var(--color-ink);
-  }
-  .app-header-signout:hover:not(:disabled),
-  .app-header-signout[data-highlighted] {
-    background: var(--color-danger-wash);
-    color: var(--color-danger);
-  }
-}
 @media (min-width: 40rem) {
   .app-header-inner {
     gap: var(--space-sm);
@@ -317,7 +306,36 @@
     display: none;
   }
 }
+/* Reflow when enlarged text leaves too little room for a usable search field. */
+@container app-header (width < calc(9rem + 120px)) {
+  .app-header-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    border-radius: var(--radius-lg);
+  }
+  .app-header-brand {
+    justify-self: start;
+  }
+  .app-header-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .app-header-search-field {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 0;
+    padding-inline: var(--space-xs);
+    border-inline: 0;
+    border-top: var(--rule-hair) solid var(--color-rule);
+  }
+  .app-header-search-field > svg {
+    display: block;
+  }
+}
 @starting-style {
+  .app-header-menu[data-state='open']:not([data-instant='true']) {
+    transform: translateY(-4px) scale(0.97);
+  }
   .app-header-menu[data-state='open'],
   .app-search-panel[data-state='open'] {
     opacity: 0;
@@ -355,5 +373,19 @@
 @media (max-width: 39.999rem) {
   .app-search-panel .search-foot {
     display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-header-menu:not([data-instant='true']),
+  .app-header-menu[data-state='open']:not([data-instant='true']) {
+    transform: none;
+    transition-property: opacity;
+    transition-duration: var(--dur-short);
+  }
+  @starting-style {
+    .app-header-menu[data-state='open']:not([data-instant='true']) {
+      transform: none;
+    }
   }
 }

@@ -94,7 +94,11 @@ export async function fetchVerifiedReport(
 const MAX_VERIFICATIONS = 4;
 
 /** Search stays bounded even when many titles collide. Failures keep providers separate. */
-export async function verifySearchListings(listings: Movie[], metadata: Movie[]): Promise<Movie[]> {
+export async function verifySearchListings(
+  listings: Movie[],
+  metadata: Movie[],
+  parent?: AbortSignal,
+): Promise<Movie[]> {
   const index = filmIndex(metadata);
   const candidates = listings
     .filter(
@@ -106,7 +110,8 @@ export async function verifySearchListings(listings: Movie[], metadata: Movie[])
     )
     .slice(0, MAX_VERIFICATIONS);
   if (!candidates.length) return listings;
-  const signal = AbortSignal.timeout(3500);
+  const deadline = AbortSignal.timeout(3500);
+  const signal = parent ? AbortSignal.any([parent, deadline]) : deadline;
   const checked = await Promise.allSettled(
     candidates.map(async (movie) => {
       const html = await fetchSource(movie.source, { signal });

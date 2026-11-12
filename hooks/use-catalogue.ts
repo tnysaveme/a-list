@@ -1,4 +1,5 @@
 'use client';
+import { releaseDay } from '../lib/release-day';
 import {
   collectionFreshMs,
   initialQuery,
@@ -26,6 +27,7 @@ export function useCatalogue(
   const [loadError, setLoadError] = useState<CollectionError | null>(null);
   const applied = useRef(initialQuery);
   const freshAt = useRef(0);
+  const freshDay = useRef(releaseDay());
   useEffect(() => {
     if (!initial.stale) freshAt.current = Date.now();
   }, [initial.stale]);
@@ -56,6 +58,13 @@ export function useCatalogue(
     },
     [memory],
   );
+  const recordWatched = useCallback(
+    (values: Record<string, string | null>) => {
+      freshAt.current = 0;
+      memory.recordWatched(values);
+    },
+    [memory],
+  );
   useEffect(() => () => current.current?.abort(), []);
 
   const load = useCallback(
@@ -73,13 +82,15 @@ export function useCatalogue(
         !append &&
         !loading.current &&
         sameQuery(applied.current, requested) &&
-        Date.now() - freshAt.current < collectionFreshMs
+        Date.now() - freshAt.current < collectionFreshMs &&
+        freshDay.current === releaseDay()
       ) {
         setLoadError(null);
         return true;
       }
       if (!refresh) query.current = requested;
       current.current?.abort();
+      const requestedDay = releaseDay();
       const controller = new AbortController();
       current.current = controller;
       const signal = parent ? AbortSignal.any([parent, controller.signal]) : controller.signal;
@@ -95,12 +106,10 @@ export function useCatalogue(
             filter: options.filter || 'all',
             offset: String(offset),
           });
-          // A changed revision must not acknowledge an older Redis snapshot. The first
-          // page rebuilds from stored rows; subsequent loaded pages reuse that cache.
-          if (refresh && offset === 0) params.set('fresh', 'true');
           let data: CataloguePage;
           try {
             data = await getApi(`catalogue?${params}`, signal);
+            signal.throwIfAborted();
             memory.remember(data.movies, epoch === memory.epoch);
             data = { ...data, movies: memory.fallback(data.movies) };
             pages.current.set(params.toString(), data);
@@ -109,7 +118,7 @@ export function useCatalogue(
             signal.throwIfAborted();
             fallback.current ??= (await import('../lib/catalogue.json')).default as Movie[];
             signal.throwIfAborted();
-            const day = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+            const day = releaseDay();
             const previous = pages.current.get(params.toString());
             data = previous
               ? {
@@ -152,6 +161,7 @@ export function useCatalogue(
           setPage(data);
           applied.current = requested;
           freshAt.current = data.stale ? 0 : Date.now();
+          freshDay.current = requestedDay;
           setDisplayQuery(requested);
         };
         if (animate)
@@ -195,6 +205,7 @@ export function useCatalogue(
     load,
     refresh,
     recordMembership,
+    recordWatched,
     rememberMovie,
   };
 }
