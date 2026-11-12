@@ -10,6 +10,7 @@ import {
   type FeedEntry,
 } from '../lib/release-automation';
 import type { Movie } from '../lib/model';
+import { makeCalendar } from '../lib/calendar';
 import type { adminDb } from '../lib/supabase/admin';
 registerHooks({
   resolve(specifier, context, next) {
@@ -26,7 +27,8 @@ const { expandReleases } = await import('../lib/release-expansion');
 const { lookupReleaseReports } = await import('../lib/release-lookup');
 const { refreshMovie } = await import('../lib/movie-refresh');
 const { inferredIdentity } = await import('../lib/release-automation');
-const { parseProfileReports, parseVerifiedReport, text } = await import('../lib/sources');
+const { parseProfileReports, parseVerifiedReport, profileReleaseEvidence, text } =
+  await import('../lib/sources');
 const { profileReference } = await import('../lib/reviewed-report-identities');
 const padding = '<!--' + '.'.repeat(600) + '-->';
 const now = new Date().toISOString(),
@@ -1062,7 +1064,7 @@ test('inventory checks current approved announcements when profiles are TBA and 
 });
 
 test('all-TBA retains verified identity without manufacturing releases; malformed fields remain partial', async () => {
-  for (const field of ['TBA', 'Coming soon']) {
+  for (const field of ['TBA', 'TB A', 'T B D', 'N/A', 'not applicable', 'Coming soon']) {
     const fixture = film(0),
       fake = store([fixture]);
     const html = fixture.page.replace(
@@ -1080,8 +1082,169 @@ test('all-TBA retains verified identity without manufacturing releases; malforme
       sourcePages: new Map([[fixture.profile.sourceFilmUrl, html]]),
     });
     assert.equal(result.decisions[0].outcome, 'verified_no_date');
-    assert.equal(!!result.decisions[0].partial, field !== 'TBA');
+    assert.equal(!!result.decisions[0].partial, field === 'Coming soon');
     assert.ok(fake.writes.some((w) => w.name === 'a_list_store_release_identity'));
     assert.ok(!fake.writes.some((w) => w.name === 'a_list_store_release_match'));
+  }
+});
+
+test('service originals with N/A rental fields publish a complete subscription window and stable calendar event', async () => {
+  const fixture = film(0),
+    fake = store([fixture]);
+  const source = fixture.profile.sourceFilmUrl;
+  const page = fixture.page.replace(
+    '</article>',
+    '<p>PVOD Release Date: N/A</p><p>SVOD Release Date: December 11, 2026 (Netflix)</p></article>',
+  );
+  const entry = {
+    ...fixture.entry,
+    report: { ...fixture.entry.report, release: { ...fixture.entry.report.release, source } },
+  };
+  const evidence = profileReleaseEvidence(page, fixture.profile);
+  assert.deepEqual(evidence.malformedKinds, []);
+  assert.deepEqual(evidence.withdrawnKinds, ['PVOD']);
+  for (let pass = 0; pass < 2; pass++) {
+    const result = await expandReleases([entry], {
+      db: fake.db,
+      publishUnknown: true,
+      checkpoint: false,
+      sourcePages: new Map([[source, page]]),
+    });
+    assert.equal(result.matched, 1);
+    assert.equal(result.decisions[0].partial, undefined);
+    const movie = fake.movies.get(fixture.movie.id)!.movie;
+    assert.deepEqual(
+      movie.releases.map((r) => [r.kind, r.date]),
+      [['Subscription', '2026-12-11']],
+    );
+    const calendar = makeCalendar([{ ...movie, tracked: true }], { now: new Date(now) });
+    assert.equal((calendar.match(/BEGIN:VEVENT/g) || []).length, 1);
+    assert.match(calendar, /DTSTART:20261211T130000Z/);
+    assert.match(calendar, /TRIGGER;RELATED=START:PT0S/);
+    assert.match(calendar, /UID:movie-tt7000000-subscription@afterlight/);
+  }
+});
+
+test('punctuated profile dates publish only the home window and never the theatrical date', async () => {
+  const fixture = film(0);
+  fixture.profile.facts = { theatrical: '2026-06-10' };
+  fixture.row.fingerprint = fixture.row.reviewed_fingerprint = profileFingerprint(fixture.profile);
+  const fake = store([fixture]);
+  const source = fixture.profile.sourceFilmUrl;
+  const page = fixture.page.replace(
+    '</article>',
+    '<p>Theater Date: June 10. 2026</p><p>VOD Release Date: July 17. 2026</p><p>SVOD Release Date: TBA</p></article>',
+  );
+  const entry = {
+    ...fixture.entry,
+    report: { ...fixture.entry.report, release: { ...fixture.entry.report.release, source } },
+  };
+  const result = await expandReleases([entry], {
+    db: fake.db,
+    publishUnknown: true,
+    checkpoint: false,
+    sourcePages: new Map([[source, page]]),
+  });
+  assert.equal(result.matched, 1);
+  assert.equal(result.decisions[0].partial, undefined);
+  assert.deepEqual(
+    fake.movies.get(fixture.movie.id)!.movie.releases.map((r) => [r.kind, r.date]),
+    [['Digital', '2026-07-17']],
+  );
+});
+
+test('a successful WTS recheck clears only recovered WTS issues and retains other provider failures', async () => {
+  for (const keepPrimary of [false, true]) {
+    const fixture = film(0);
+    const remaining = keepPrimary
+      ? [{ provider: 'primary' as const, category: 'timeout' as const }]
+      : [];
+    fixture.movie.releaseCheck = {
+      status: 'partial',
+      attemptedAt: profileTime,
+      issues: [{ provider: 'wts', category: 'format_changed' }, ...remaining],
+    };
+    const fake = store([fixture]);
+    const source = fixture.profile.sourceFilmUrl;
+    const page = fixture.page.replace(
+      '</article>',
+      '<p>PVOD Release Date: N/A</p><p>SVOD Release Date: December 11, 2026 (Netflix)</p></article>',
+    );
+    const entry = {
+      ...fixture.entry,
+      report: { ...fixture.entry.report, release: { ...fixture.entry.report.release, source } },
+    };
+    await expandReleases([entry], {
+      db: fake.db,
+      publishUnknown: true,
+      checkpoint: false,
+      sourcePages: new Map([[source, page]]),
+    });
+    const movie = fake.movies.get(fixture.movie.id)!.movie;
+    assert.deepEqual(movie.releaseCheck?.issues, remaining);
+    assert.equal(movie.releaseCheck?.status, keepPrimary ? 'partial' : 'fresh');
+  }
+});
+
+test('unusable metadata identities stay unresolved without withdrawing last-good WTS dates', async () => {
+  const original = globalThis.fetch;
+  try {
+    for (const expected of [
+      'metadata_not_listed',
+      'metadata_identity_conflict',
+      'identity_evidence_conflict',
+    ]) {
+      const raw =
+        expected === 'metadata_not_listed'
+          ? null
+          : { id: 'tt9999999', type: 'movie', name: 'Film 0', releaseInfo: '2026' };
+      const fixture = film(0),
+        fake = store([fixture]);
+      fixture.movie.releases = [
+        {
+          ...fixture.entry.report.release,
+          source: fixture.profile.sourceFilmUrl,
+          filmImdbId: fixture.movie.id,
+          filmIdentityMethod: 'reviewed',
+          filmIdentitySource: fixture.profile.sourceFilmUrl,
+        },
+      ];
+      const before = structuredClone(fixture.movie.releases);
+      const page = fixture.page
+        .replace(fixture.profile.overview!, 'An edited synopsis requiring fresh corroboration.')
+        .replace('</article>', '<p>SVOD Release Date: December 11, 2026 (Netflix)</p></article>');
+      globalThis.fetch = async (url) => {
+        if (String(url).includes('v3-cinemeta.strem.io')) return Response.json({ meta: raw });
+        if (expected === 'identity_evidence_conflict')
+          throw new Error('Film source identity mismatch');
+        return new Response('<div>No results found</div>' + padding);
+      };
+      const source = fixture.profile.sourceFilmUrl;
+      const entry = {
+        ...fixture.entry,
+        report: { ...fixture.entry.report, release: { ...fixture.entry.report.release, source } },
+      };
+      const result = await expandReleases([entry], {
+        db: fake.db,
+        publishUnknown: true,
+        checkpoint: false,
+        sourcePages: new Map([[source, page]]),
+        knownMovies: [fixture.movie],
+      });
+      assert.equal(result.decisions[0].outcome, expected);
+      assert.equal(result.matched, 0);
+      assert.deepEqual(fake.movies.get(fixture.movie.id)!.movie.releases, before);
+      assert.ok(
+        !fake.writes.some((w) =>
+          [
+            'a_list_store_release_match',
+            'a_list_withhold_release_report',
+            'a_list_withdraw_release_windows',
+          ].includes(w.name),
+        ),
+      );
+    }
+  } finally {
+    globalThis.fetch = original;
   }
 });

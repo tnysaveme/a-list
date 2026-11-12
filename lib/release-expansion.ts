@@ -30,6 +30,8 @@ import {
   searchMetadata,
   type MetadataEvidence,
   UnsupportedMediaType,
+  MetadataNotListed,
+  MetadataIdentityConflict,
 } from './metadata';
 import { titleKey, verifiedIdentityId } from './film-identity';
 import {
@@ -59,6 +61,7 @@ import {
 } from './release-diagnostics';
 import { knownProfileMovies, corroborateCandidates } from './release-matching';
 import { fetchVerifiedReport } from './source-verification';
+import { sourceIssue } from './source-errors';
 
 type Db = ReturnType<typeof adminDb>;
 export type ReleaseFeedState = { wts_feed?: FeedEntry[]; wts_feed_after?: string | null };
@@ -619,11 +622,18 @@ export async function expandReleases(
                   release.source === releaseProfile?.sourceFilmUrl &&
                   profileEvidence.unknownKinds.includes(release.kind),
               ));
-          if (partial)
+          const previousIssues = movie.releaseCheck?.issues || [],
+            retainedIssues = previousIssues.filter((issue) => issue.provider !== 'wts');
+          if (partial || retainedIssues.length !== previousIssues.length)
             movie.releaseCheck = {
-              status: 'partial',
+              status: partial || retainedIssues.length ? 'partial' : 'fresh',
               attemptedAt: now,
-              issues: [{ provider: 'wts', category: 'format_changed' }],
+              issues: [
+                ...retainedIssues,
+                ...(partial
+                  ? [{ provider: 'wts' as const, category: 'format_changed' as const }]
+                  : []),
+              ],
             };
           stage = 'publication';
           if (!dryRun) {
@@ -680,9 +690,16 @@ export async function expandReleases(
           const outcome =
             error instanceof UnresolvedRelease
               ? error.message
-              : signal.aborted
-                ? 'budget_exhausted'
-                : 'source_unavailable';
+              : error instanceof MetadataNotListed
+                ? 'metadata_not_listed'
+                : error instanceof MetadataIdentityConflict
+                  ? 'metadata_identity_conflict'
+                  : stage === 'identity' &&
+                      sourceIssue(error, 'metadata').category === 'identity_conflict'
+                    ? 'identity_evidence_conflict'
+                    : signal.aborted
+                      ? 'budget_exhausted'
+                      : 'source_unavailable';
           entry.outcome = outcome;
           if (!signal.aborted) {
             entry.checkedAt = now;
@@ -701,7 +718,14 @@ export async function expandReleases(
             row &&
             ((profile &&
               profileFingerprint(profile) !== row.fingerprint &&
-              !['source_unavailable', 'budget_exhausted', 'imports_paused'].includes(outcome)) ||
+              ![
+                'source_unavailable',
+                'budget_exhausted',
+                'imports_paused',
+                'metadata_not_listed',
+                'metadata_identity_conflict',
+                'identity_evidence_conflict',
+              ].includes(outcome)) ||
               outcome.startsWith('conflicting_') ||
               outcome === 'not_movie') &&
             !signal.aborted

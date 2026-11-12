@@ -97,6 +97,16 @@ export type MetadataEvidence = {
   facts?: FilmFacts;
 };
 export class UnsupportedMediaType extends Error {}
+export class MetadataNotListed extends Error {
+  constructor() {
+    super('Movie metadata not listed');
+  }
+}
+export class MetadataIdentityConflict extends Error {
+  constructor() {
+    super('Movie metadata identity mismatch');
+  }
+}
 /** The existing main source can corroborate credits when metadata supplies only a short cast list. */
 export function parseListingEvidence(html: string, movie: Movie): MetadataEvidence {
   if (
@@ -187,8 +197,8 @@ export async function getMetadataEvidence(
   if (object(raw) && typeof raw.type === 'string' && raw.type !== 'movie')
     throw new UnsupportedMediaType('TV series and other media are not supported');
   const movie = parseMetadata(raw);
-  if (!movie && (!object(raw) || raw.id === id)) throw new Error('Movie metadata not listed');
-  if (!movie || movie.id !== id) throw new Error('Movie metadata identity mismatch');
+  if (!movie && (!object(raw) || raw.id === id)) throw new MetadataNotListed();
+  if (!movie || movie.id !== id) throw new MetadataIdentityConflict();
   const names = (value: unknown) =>
     Array.isArray(value)
       ? value
@@ -238,7 +248,7 @@ export async function getMetadata(id: string, signal?: AbortSignal): Promise<Mov
   const data = await fetchMetadata(`/meta/movie/${id}.json`, signal);
   const movie = object(data) ? parseMetadata(data.meta) : null;
   if (!movie && (!object(data) || !object(data.meta) || data.meta.id === id))
-    throw new Error('Movie metadata not listed');
-  if (!movie || movie.id !== id) throw new Error('Movie metadata identity mismatch');
+    throw new MetadataNotListed();
+  if (!movie || movie.id !== id) throw new MetadataIdentityConflict();
   return movie;
 }

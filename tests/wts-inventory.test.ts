@@ -316,6 +316,39 @@ test('profile checkpoints bind to the fetched revision, leave unstarted work due
     'Partial checks cannot wait a week',
   );
 });
+test('identity evidence problems back off as unresolved work without recording source failures or false success', async () => {
+  for (const outcome of [
+    'metadata_not_listed',
+    'metadata_identity_conflict',
+    'identity_evidence_conflict',
+  ]) {
+    const fake = fakeDb();
+    await checkpointWtsProfiles(
+      [{ ...row, failures: 3 }],
+      [
+        {
+          source: row.source,
+          outcome,
+          diagnostic: { stage: 'identity', category: 'identity_conflict', durationMs: 10 },
+        },
+      ],
+      fake.db,
+      AbortSignal.timeout(1000),
+    );
+    const update = fake.writes[0].value;
+    assert.equal(update.failures, 0);
+    assert.equal(update.attempts, 1);
+    assert.equal(update.last_success_at, undefined);
+    assert.ok(Date.parse(String(update.check_after)) > Date.now() + 23 * 3600_000);
+    assert.equal(update.outcome, outcome);
+    assert.deepEqual(update.diagnostic, {
+      stage: 'identity',
+      category: 'identity_conflict',
+      durationMs: 10,
+    });
+  }
+});
+
 test('reconciliation counts missing, changed and explicitly withdrawn windows while preserving primary dates and unknown fields', () => {
   const release: Release = {
     kind: 'Digital',

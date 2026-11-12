@@ -86,6 +86,12 @@ test('invalid dates fail safely', () => {
   assert.equal(dateFromText('January 99, 2026'), null);
   assert.equal(dateFromText('coming soon'), null);
 });
+test('named dates tolerate source punctuation without accepting invalid calendar days', () => {
+  for (const date of ['July 17. 2026', 'July 17,2026', 'July 17 2026', 'July 17th, 2026'])
+    assert.equal(dateFromText(date), '2026-07-17');
+  for (const date of ['February 30. 2026', 'July 32,2026', 'July 17. 20266'])
+    assert.equal(dateFromText(date), null);
+});
 test('service-original platform announcements retain subscription classification in discovery and revalidation', () => {
   const copy =
     'Netflix has released the trailer for AVEDON, which will launch on their platform on November 11th, 2026.';
