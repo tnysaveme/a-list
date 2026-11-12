@@ -104,15 +104,18 @@ export function listingSubjectMatches(
     const canonical = [...html.matchAll(/<link\b[^>]*>/gi)].find(
       (link) => sourceAttribute(link[0], 'rel') === 'canonical',
     );
-    const source = new URL(canonical ? sourceAttribute(canonical[0], 'href') || '' : ''),
-      expected = new URL(movie.source);
+    const source = new URL(decode(canonical ? sourceAttribute(canonical[0], 'href') || '' : '')),
+      expected = new URL(decode(movie.source));
     const headings = [...html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)];
+    const heading = headings.length === 1 ? decode(headings[0][1]) : '';
     const subject =
       headings.length === 1
         ? decode(headings[0][1]).match(
             /^(.*?)\s+\(\s*(?:(?:18|19|20)\d{2}|TV (?:Mini )?Series(?:[^)]*)?)\s*\)$/i,
           )
         : null;
+    const subjectTitle =
+      subject?.[1] || (listingImdbId(html) && !/[()]/.test(heading) ? heading : '');
     return (
       source.protocol === 'https:' &&
       source.hostname === expected.hostname &&
@@ -123,8 +126,8 @@ export function listingSubjectMatches(
       !source.password &&
       /^\/movies\/\d{1,8}\/[^/]+\/?$/.test(source.pathname) &&
       source.pathname.split('/')[2] === expected.pathname.split('/')[2] &&
-      !!subject &&
-      titleKey(subject[1]) === titleKey(movie.title)
+      !!subjectTitle &&
+      titleKey(subjectTitle) === titleKey(movie.title)
     );
   } catch {
     return false;

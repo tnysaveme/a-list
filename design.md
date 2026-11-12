@@ -8,16 +8,16 @@ The approved shared system for the entire app. Extend this file and `tokens.css`
 
 Modern-minimal: quiet, precise and functional. Audience: the owner and friends. The main action is finding and saving a movie, then following its sourced US home-release dates through a private calendar.
 
-- App: Workbench — compact navigation, useful collection controls, real film artwork and aligned metadata. No decorative hero or entrance choreography.
-- Authentication: focused form, shared wordmark and direct action hierarchy.
+- App: Workbench — compact navigation, useful collection controls, real film artwork and aligned metadata. Routine navigation has no decorative hero or entrance choreography. Successful sign-in has one brief welcome.
+- Authentication: the user-selected film still fills the left side of desktop sign-in, beside a focused form. Confirmation uses its own supplied still within the same shell. On phones it becomes a short image masthead above the form. The shared wordmark and direct action hierarchy remain.
 - Privacy: Long Document with a comfortable reading measure.
-- Navigation: N5 floating pill. A compact capsule contains the wordmark, search, calendar and account controls. The surrounding header uses the page canvas colour. Its solid surface, visible separation from the edges and restrained shadow provide depth without blur. Footer: compact Ft1 wordmark.
+- Navigation: a centered pill bar frames the wordmark, search field and account/calendar controls. The collection heading and main navigation share a row on desktop. Footer: compact wordmark.
 
 ## Brand and typography
 
-The wordmark is exactly **A-List**, in Figtree 600 with tight tracking. It is text only, without an icon, monogram or decorative punctuation. A shared `Wordmark` component owns its rendering. The favicon also spells the brand.
+The wordmark is exactly **A-List**, in Figtree 600 with tight tracking. It is text only, without an icon, monogram or decorative punctuation. A shared `Wordmark` component owns its rendering. Browser and home-screen icons are the exception: a bold A on a solid rounded tile remains legible at 16px. The SVG icon inverts its tile and letter for the browser color scheme; a neutral keyline and solid background keep the raster fallback visible on either theme.
 
-Every other piece of interface text uses Inter: headings, metadata, forms, controls, status labels and body copy. Fonts come from Google Fonts, self-hosted by Next.js. All headings are upright. Display tracking is -0.035em, wordmark tracking -0.045em. Interface weights are 400, 500 and 600. Data uses tabular numerals. No third typeface.
+The welcome greeting also uses Figtree. Other interface text uses Inter: headings, metadata, forms, controls, status labels and body copy. Fonts come from Google Fonts, self-hosted by Next.js. All headings are upright. Display tracking is -0.035em, wordmark tracking -0.045em. Interface weights are 400, 500 and 600. Data uses tabular numerals. No third typeface.
 
 ## Theme
 
@@ -27,19 +27,35 @@ All web colours and font families reference named tokens from `tokens.css`. Fram
 
 ## Spacing and shape
 
-4-point named spacing scale. Controls and touch targets are at least 44 px. Page gutters expand from 16 px on phones to 48 px on desktop. Controls use an 8 px radius, posters 12 px, dialogs 16 px. Layout tracks containing images use `minmax(0, 1fr)`. Dialogs fit the viewport and scroll internally. Root overflow uses clip, never hidden.
+4-point named spacing scale. Controls and touch targets are at least 44 px. Page gutters expand from 16 px on phones to 48 px on desktop. Controls use an 8 px radius, posters 12 px, dialogs 16 px. Secondary metadata is 13 px; page titles range from 24 to 32 px. Layout tracks containing images use `minmax(0, 1fr)`. Dialogs fit the viewport and scroll internally. Below 640px they anchor to the bottom edge, with safe-area padding and a persistent Done action below their internally scrolling content. Desktop dialogs remain centered. Root overflow uses clip, never hidden. When enlarged text leaves too little room for search, the header places search on a second row while keeping the wordmark and account controls together. Navigation groups and action labels wrap when necessary to remain readable and reachable.
 
 ## Motion and states
 
-No decorative reveals, floating cards or image zoom. Controls use short transform/opacity feedback; dialogs use an opacity crossfade. Focus rings appear immediately. Reduced motion removes spatial movement. Loading spinners convey actual pending work. Every interactive family distinguishes default, hover, focus, active, disabled, loading, error and success states where applicable.
+Routine page loads do not play entrance sequences or image zoom. Poster buttons lift 4px on fine-pointer hover; a 350ms intentional hover opens a collision-aware film preview, with a 180ms opacity/scale entrance. The preview contains existing metadata, the same bounded synopsis and release information in Library and Discover, and never fetches details. Discover restores missing stored synopses for only the displayed page in one authenticated batch; unavailable text uses a shared, explicit fallback. Escape dismisses it; clicking opens full details. Preview state unmounts for touch, disabled and selection modes. Touch opens full details directly. Reduced motion removes the lift and preview entrance. Explicit action controls use a subtle 0.97 scale with 100ms press and 160ms release; primary section switches fade in live content with a directional 24px entrance over 260ms while navigation stays fixed. The selected tab underline and filter pill travel to the selected control. User-requested filter/sort results fade in with opacity only over 220ms once data arrives; polling and pagination do not replay this transition. Section and results motion never freezes content into a snapshot: loading states and decoded images remain visible throughout. Destination requests start with navigation so an unloaded section shows its skeleton from the first frame. Cold posters fade in over 180ms after decoding; cached posters appear immediately, with no replayed placeholder or fade. Loading tiles use a quiet film icon; unavailable artwork retains its explicit label. Grid/list switches move card positions and uniformly scale poster artwork over 280ms, leaving text unscaled. Keyboard changes are immediate, reduced motion uses brief fades, and repeated pointer changes interrupt from the current position. Dialog panel and backdrop crossfade together over 180ms in and 120ms out, retaining modality and content until exit finishes. Mobile panels also translate from the bottom over 260ms in and 180ms out; reduced motion uses a 120ms opacity transition and keyboard actions are immediate. These are dismissible sheets with buttons, not draggable surfaces. Menus use 120ms opacity; pointer-opened search keeps its restrained 4px entry over 180ms, while keyboard search opens immediately. Transitions reverse from their current state. Focus rings appear immediately, and closing overlays never steal focus from a newly chosen control. Reduced motion removes spatial feedback, retains brief opacity continuity, and uses static pending icons with readable labels. Loading indicators convey actual pending work. Initial collections use static, noninteractive poster and text skeletons matching grid/list geometry, with a single accessible loading announcement. Loaded collections stay visible during background refresh. Save confirmation is distinct from ancillary refresh, and background refresh preserves loaded pages and the visible film position. Confirmed library changes draw the save check, fade removed cards and move nearby films over 180–260ms. Undo reverses from the current visual position. Temporary exit copies are inert and hidden from assistive technology; failures and routine refreshes do not replay membership motion. Every interactive family distinguishes default, hover, focus, active, disabled, loading, error and success states where applicable. Shared hover styles live in `app/interactions.css`: a 140ms change of surface, border or text contrast, without shifting the surrounding layout. Poster hover is the explicit exception: the artwork lifts within its reserved space while metadata and neighboring cards remain fixed. Neutral hover tokens derive from the active theme; text actions retain readable ink and reveal an underline. Inactive segments show a stronger neutral tone while selected segments retain their marker. Destructive actions retain their semantic colour. Fine-pointer hover is gated by both hover capability and pointer precision. Keyboard focus reveals poster actions and has an immediate blue outline; reduced motion makes control-state changes immediate.
+
+Authentication artwork starts with a small embedded, softly blurred preview. The decoded full image reveals over 1200ms using the shared ease-in-out curve, including cached images. A CSS animation starts reliably even if decoding finishes before the first painted frame. The form and image caption remain available throughout, failed decorative artwork retains its preview, and reduced motion shortens the fade to 120ms. The blur is static, never animated.
+
+After successful email confirmation or the legacy sign-in callback, a unique, non-sensitive arrival marker enables a one-time “Welcome home.” greeting. The wordmark and greeting enter over 400ms, with an 8px translation. A 1600ms reading beat precedes an 800ms opacity crossfade into the live site; data and posters load underneath. Ordinary visits and reloads do not replay it. The marker is removed from the URL, repeat markers are remembered in optional session storage, and keyboard/pointer input can skip the greeting. Reduced motion bypasses the hold and spatial movement. CSS completes the reveal even without hydration, with a bounded JavaScript cleanup fallback. The greeting never traps focus or waits for every image.
 
 ## Actions and copy
+
+Use title case for interface headings, navigation, menu items, form labels and short
+actions (Your Library, This Week, View Upcoming). Keep articles, conjunctions and
+short prepositions lowercase within titles. Explanatory text, full-sentence status
+messages and errors stay in sentence case. Preserve source-provided movie titles
+and the exact link-preview description. Never apply CSS capitalization to content.
 
 Primary: solid charcoal (light) or near-white (dark), clear action verb. Secondary: neutral bordered surface. Destructive: red with an existing explicit confirmation flow. Preserve existing optimistic updates, Undo, source certainty, release-date semantics, private-account behavior and calendar identities. Avoid decorative slogans where a functional label is clearer.
 
 ## Screen allowances
 
-Movie details prioritize the title, saved state, release evidence and synopsis. Calendar/account use grouped settings rows. Search keeps its keyboard controls. Real posters are product content, not enrichment. Privacy and emails share the typography and brand. No screen invents a new palette or changes the meaning of a release status.
+Movie details use a 940px composition on desktop: a 216px poster beside the title, a compact save/watched action group and the synopsis, with aligned release rows underneath. At tablet width the poster is 176px and the synopsis spans the reading column's full width. Below 640px, a 104px poster shares the identity row in a scrollable bottom sheet; actions wrap at small widths, and Done stays reachable. All main listing, release evidence and synopsis links live in a dedicated button row near the bottom. Matching source buttons show their purpose and provider; duplicate URLs appear once. The row wraps on smaller screens. One final row says “Sources checked on [actual date]” using the recorded check date, with no visible Sources heading or repeated disclaimer. Long source names wrap, and missing artwork has an explicit fallback. Mutation and refresh errors appear beside the personal actions; release uncertainty stays beside the release record. Calendar/account use grouped settings rows. Search keeps its keyboard controls. Real posters are product content, not enrichment. Privacy and emails share the typography and brand. No screen invents a new palette or changes the meaning of a release status.
+
+Your Library separates To Watch from Watched with the shared segmented-control pattern and counts. Watched is personal history, sorted by most recently watched by default; its cards show watched dates instead of release metadata. Details offer Mark as Watched and Mark as Unwatched for saved films. Watched films remain saved, leave release calendars and upcoming summaries, and return to tracking when marked unwatched. Undo after removal preserves the original watched date. Shelf switches keep the displayed heading, summary, controls and films coherent until the destination is ready, then fade the new content together with no spatial entrance. The shelf tabs remain stationary and the requested tab shows pending feedback. Fresh visited library queries retain their appended pages for up to one minute in bounded, account-local memory; mutations, revisions and release-day changes invalidate them. Known empty destinations open immediately. Empty shelves remain visible during replacement requests, and To Watch explains when every saved film has been watched.
+
+This Week uses a compact release agenda: prominent tabular day numerals, small portrait artwork, clear film titles and understated release metadata. Three entries form a compact strip inside a neutral surface on desktop and a horizontal, scroll-snapping strip below 900px, keeping the film shelf near the first screen. Quiet weeks use a subtle neutral surface with the next release separated below; dates retain their uncertainty labels. The entire release row opens the film, with no decorative colour.
+
+Calendar settings place Subscribe and copy/download controls before summary counts and optional Setup help. Feed inclusion never claims that an external calendar is connected; tentative upcoming dates retain an explicit Unconfirmed label. A dismissible, nonmodal setup reminder appears after a confirmed first save during the visit, without shifting an existing library on initial load. Available uses newest-first release dates; Coming Soon remains nearest-first.
 
 ## Verification
 
@@ -101,13 +117,13 @@ Load Figtree and Inter before using these portable exports. The app’s `tokens.
   --space-3xl: 64px;
   --space-page: 72px;
   --space-wide: 80px;
-  --text-xs: 0.75rem;
+  --text-xs: 0.8125rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
   --text-md: 1.125rem;
   --text-lg: 1.25rem;
   --text-xl: 1.75rem;
-  --text-display: clamp(1.75rem, 3vw, 2.25rem);
+  --text-display: clamp(1.5rem, 2.4vw, 2rem);
   --radius-sm: 8px;
   --radius-md: 8px;
   --radius-lg: 16px;
@@ -201,13 +217,13 @@ Use with the root tokens and their dark override.
   --spacing-3xl: 64px;
   --spacing-page: 72px;
   --spacing-wide: 80px;
-  --text-xs: 0.75rem;
+  --text-xs: 0.8125rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
   --text-md: 1.125rem;
   --text-lg: 1.25rem;
   --text-xl: 1.75rem;
-  --text-display: clamp(1.75rem, 3vw, 2.25rem);
+  --text-display: clamp(1.5rem, 2.4vw, 2rem);
   --radius-sm: 8px;
   --radius-md: 8px;
   --radius-lg: 16px;
@@ -540,7 +556,28 @@ Use with the root tokens above.
 }
 ```
 
+The A-List tagline is “Cinema at home”, used on authentication screens and the library footer.
+
 ## Shared terminology and inline search
+
+The library's “This week” summary initially shows three saved films releasing in the
+next seven days, with today included in the US release timezone. When more films qualify,
+“Show all N releases” expands the complete week, and “Show fewer releases” restores the
+preview. Desktop adds rows; phones keep a horizontally scrollable list. No database cap
+silently hides additional films. It comes from the
+full private library, independent of the visible page and filter, and respects
+the unconfirmed-date preference. Compact date blocks lead to film details. Fine-pointer
+hover gives each row a stronger neutral surface, lifts its artwork 2px and nudges its
+arrow. Gaps separate the items, without divider lines beside hover highlights; reduced motion keeps the surface feedback without movement. Empty weeks say so
+and retain the next known release when available.
+
+Collection view and selection actions sit beside the collection heading. Below 640px,
+filtering uses a native select alongside sorting, exposing every filter without a
+horizontal strip; larger screens keep the animated filter tabs. Both presentations
+share the same query state. Grid/list controls have 44px targets for every input type.
+Card metadata places the film year above the release date and platform, keeping the
+certainty marker attached to its date and long platform names free to wrap. Mobile
+intro and toolbar spacing is tighter so artwork appears earlier in the viewport.
 
 Use **Available**, **Coming Soon**, and **TBA** for release timing throughout the app. **Unconfirmed** is a certainty qualifier, replacing the ambiguous “Reported” label; it must never imply a verified release or availability. Storage/API confidence values stay unchanged. Calendar titles use `[Unconfirmed]` and preserve their existing event identities and 1pm GMT alarms.
 

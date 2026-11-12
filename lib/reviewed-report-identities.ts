@@ -1,4 +1,5 @@
 import { titleKey } from './film-identity';
+import { sameReleaseTitle } from './release-evidence';
 
 export type ReviewedReportIdentity = {
   sourceFilmId: string;
@@ -72,7 +73,7 @@ export function profileReference(
     (link) => attribute(link[0], 'rel') === 'canonical',
   );
   const href = canonical && attribute(canonical[0], 'href');
-  if (!id || !heading || titleKey(heading[1]) !== titleKey(title) || !href) return;
+  if (!id || !heading || !sameReleaseTitle(heading[1], title) || !href) return;
   try {
     const url = new URL(href);
     if (
@@ -151,6 +152,7 @@ export function reviewedReportIdentity(
   title: string,
   readText: (html: string) => string,
   identities: readonly ReviewedReportIdentity[] = reviewedReportIdentities,
+  expectedImdbId?: string,
 ): ReviewedReportIdentity | undefined {
   const reference = reportReference(html, title, readText);
   if (!reference) return;
@@ -158,8 +160,13 @@ export function reviewedReportIdentity(
     (mapping) =>
       mapping.sourceFilmId === reference.sourceFilmId &&
       mapping.sourceFilmUrl === reference.sourceFilmUrl &&
-      mapping.year === reference.year &&
-      titleKey(mapping.title) === titleKey(reference.title),
+      sameReleaseTitle(mapping.title, reference.title),
   );
-  return mappings.length === 1 ? mappings[0] : undefined;
+  if (mappings.length !== 1) return;
+  const mapping = mappings[0];
+  return mapping.year === reference.year ||
+    mapping.imdbId === expectedImdbId ||
+    profileReference(html, title, readText)
+    ? mapping
+    : undefined;
 }

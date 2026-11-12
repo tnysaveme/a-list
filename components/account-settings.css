@@ -72,16 +72,10 @@
 .appearance-option input:checked + span {
   background: var(--color-surface);
   color: var(--color-ink);
-  box-shadow: 0 1px 3px var(--color-shadow);
 }
 .appearance-option input:focus-visible + span {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
-}
-@media (hover: hover) {
-  .appearance-option:hover span {
-    color: var(--color-ink);
-  }
 }
 .account-confirm {
   margin-top: var(--space-lg);
@@ -113,14 +107,14 @@
   gap: var(--space-xs);
   margin-top: var(--space-md);
 }
-.account-danger,
+.button.account-danger,
 .account-error {
   color: var(--color-danger);
 }
-.account-danger-action {
-  background: var(--color-danger) !important;
-  border-color: var(--color-danger) !important;
-  color: var(--color-surface) !important;
+.button.account-danger-action {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-surface);
 }
 .account-error,
 .account-message {
@@ -148,5 +142,31 @@
 @media (max-width: 39.99rem) {
   .account-actions .button {
     width: 100%;
+  }
+}
+
+.account-confirm-presence {
+  transform: none;
+  transition:
+    opacity var(--dur-medium) var(--ease-out),
+    transform var(--dur-medium) var(--ease-out);
+}
+.account-confirm-presence[data-state='closed'] {
+  transform: translateY(4px);
+}
+@starting-style {
+  .account-confirm-presence[data-state='open'] {
+    transform: translateY(4px);
+  }
+}
+html[data-motion-input='keyboard'] .account-confirm-presence {
+  transition: none;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-confirm-presence {
+    transform: none !important;
+    transition-property: opacity;
+    transition-duration: var(--dur-short);
   }
 }

@@ -7,6 +7,7 @@ import {
   parseDetail,
   parseReports,
   parseReportDetail,
+  parseVerifiedReport,
   dateFromText,
 } from '../lib/sources';
 import { mergeMovies, nextRelease, type Movie } from '../lib/model';
@@ -208,6 +209,14 @@ test('calendar content is escaped and UTF-8 lines are folded at 75 bytes', () =>
   for (const line of calendar.split('\r\n')) assert.ok(Buffer.byteLength(line) <= 75);
   assert.match(calendar, /\\nBEGIN:VEVENT/);
 });
+test('calendar folding preserves mixed-width Unicode at byte boundaries', () => {
+  const title = 'Aé中🎬'.repeat(40);
+  const calendar = makeCalendar([{ ...sample, title }]);
+  for (const line of calendar.split('\r\n')) assert.ok(Buffer.byteLength(line) <= 75);
+  const unfolded = calendar.replace(/\r\n /g, '');
+  assert.ok(unfolded.includes(`SUMMARY:${title} · Digital\r\n`));
+  assert.equal((calendar.match(/BEGIN:VEVENT\r\n/g) || []).length, 1);
+});
 test('unknown films do not create fake events; next release chooses upcoming window', () => {
   assert.doesNotMatch(makeCalendar([{ ...sample, releases: [] }]), /BEGIN:VEVENT/);
   assert.equal(
@@ -277,4 +286,32 @@ test('accented release-report titles retain the whole subject rather than a suff
     assert.equal(parseReports(xml)[0].title, title.replace('&Ntilde;', 'Ñ'));
     assert.equal(parseReports(xml)[0].release.date, '2026-10-27');
   }
+});
+
+test('studio platform wording retains the named subscription service and ignores the following theatrical date', () => {
+  const copy =
+    'Amazon MGM Studios is set to release their mockumentary ALI G: WHO IZ I? on the Prime Video streaming platform, arriving on October 28th, 2026. The film launched in US theaters on October 23rd, 2026.';
+  const xml = `<item><title>ALI G: WHO IZ I? Gets Prime Video Streaming Release Date</title><link>https://whentostream.com/ali-g-who-iz-i-gets-prime-video-streaming-release-date/</link><description>${copy}</description></item>`;
+  const report = parseReports(xml)[0];
+  assert.equal(report.title, 'ALI G: WHO IZ I?');
+  assert.equal(report.release.date, '2026-10-28');
+  assert.equal(report.release.kind, 'Subscription');
+  assert.equal(report.release.platform, 'Prime Video');
+  assert.equal(
+    parseReportDetail(`<div itemprop="articleBody"><p>${copy}</p></div>`, report.release)?.date,
+    '2026-10-28',
+  );
+  assert.deepEqual(parseReports(xml.replaceAll('Prime Video', 'Unrecognised Service')), []);
+});
+
+test('targeted lookups recognise full titles in restoration or title-case announcements without supplying identity from the headline', () => {
+  const xml = `<item><title>Guillermo del Toro’s PAN’S LABYRINTH 20th Anniversary 4K Restoration Gets Digital Streaming Release Date</title><link>https://whentostream.com/restoration-release/</link><description>The restoration arrives on VOD and digital on November 3, 2026.</description></item>`;
+  const report = parseReports(xml, { title: "Pan's Labyrinth" })[0];
+  assert.equal(report.title, "Pan's Labyrinth");
+  assert.equal(report.release.date, '2026-11-03');
+  assert.equal(report.imdbId, undefined);
+  assert.equal(
+    parseVerifiedReport('<h1>Pan’s Labyrinth</h1><p>No source identity supplied.</p>', report),
+    null,
+  );
 });

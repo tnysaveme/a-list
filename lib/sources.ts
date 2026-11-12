@@ -14,7 +14,9 @@ import {
   type ReviewedReportIdentity,
 } from './reviewed-report-identities';
 import { releaseConfidence } from './release-confidence';
+import { sameReleaseTitle, profileFields } from './release-evidence';
 export type ReleaseReport = {
+  inventory?: boolean;
   title: string;
   year?: string;
   publishedAt?: string;
@@ -116,7 +118,7 @@ export function parseListing(
     if (!path || !image || !alt) continue;
     if (/\bTV (?:Mini )?Series\b/i.test(text(alt))) continue;
     const id = path.match(/\/movies\/(\d+)/)![1];
-    const source = BASE + path;
+    const source = BASE + text(path);
     const title = text(alt)
       .replace(/\s*(?:\(\d{4}\))?\s*DVD Release Date.*$/i, '')
       .trim();
@@ -161,7 +163,8 @@ export function parseSearchResults(html: string, checkedAt = new Date().toISOStr
   const canonical = [...results.matchAll(/<link\b[^>]*>/gi)].find(
     (link) => sourceAttribute(link[0], 'rel') === 'canonical',
   );
-  const source = canonical ? sourceAttribute(canonical[0], 'href') : undefined;
+  const sourceAttributeValue = canonical ? sourceAttribute(canonical[0], 'href') : undefined;
+  const source = sourceAttributeValue ? text(sourceAttributeValue) : undefined;
   if (source) {
     const url = new URL(source),
       id = url.pathname.match(/^\/movies\/(\d{1,8})\/[^/]+\/?$/)?.[1];
@@ -179,10 +182,16 @@ export function parseSearchResults(html: string, checkedAt = new Date().toISOStr
       const headings = [...results.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)];
       if (headings.length === 1 && /\(\s*TV (?:Mini )?Series\b/i.test(text(headings[0][1])))
         return [];
-      const heading =
+      const titleWithYear =
         headings.length === 1
           ? text(headings[0][1]).match(/^(.*?)\s+\(\s*((?:18|19|20)\d{2})\s*\)$/)
           : null;
+      const fullHeading = headings.length === 1 ? text(headings[0][1]) : '';
+      const heading =
+        titleWithYear ||
+        (fullHeading && !/[()]/.test(fullHeading) && listingImdbId(results)
+          ? [fullHeading, fullHeading, '']
+          : null);
       if (!heading) throw new Error('Search detail format changed');
       const image = [...results.matchAll(/<img\b[^>]*>/gi)].find(
         (image) => sourceAttribute(image[0], 'itemprop') === 'image',
@@ -212,6 +221,16 @@ export function parseDetail(
   movie: Movie,
   checkedAt = new Date().toISOString(),
 ): Movie {
+  const decodedSource = text(movie.source);
+  if (decodedSource !== movie.source)
+    movie = {
+      ...movie,
+      source: decodedSource,
+      releases: movie.releases.map((release) =>
+        release.source === movie.source ? { ...release, source: decodedSource } : release,
+      ),
+      ...(movie.overviewSource === movie.source ? { overviewSource: decodedSource } : {}),
+    };
   assertListingSource(movie);
   const heading = text(html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i)?.[1] || '');
   const sourceId = listingImdbId(html),
@@ -325,15 +344,21 @@ export function parseSynopsis(html: string): string | undefined {
   }
   return undefined;
 }
-export function parseReports(xml: string): ReleaseReport[] {
+export function parseReports(xml: string, target?: Pick<Movie, 'title'>): ReleaseReport[] {
   const result: ReleaseReport[] = [];
   for (const item of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
     const title = text(item[1].match(/<title>([\s\S]*?)<\/title>/)?.[1] || '');
     const description = text(item[1].match(/<description>([\s\S]*?)<\/description>/)?.[1] || '');
     const source = text(item[1].match(/<link>([\s\S]*?)<\/link>/)?.[1] || '');
-    const film = title.match(
-      /(?<![\p{L}\p{N}])([\p{Lu}][\p{Lu}\p{M}0-9 ’':,!?.&-]{2,}?)\s+(?:Sets|Gets|Digital|Streaming)/u,
-    )?.[1];
+    const targeted =
+      target &&
+      ` ${titleKey(title)} `.includes(` ${titleKey(target.title)} `) &&
+      /\b(?:digital|streaming|pvod|tvod|svod|vod)\b/i.test(title);
+    const film = targeted
+      ? target.title
+      : title.match(
+          /(?<![\p{L}\p{N}])([\p{Lu}][\p{Lu}\p{M}0-9 ’':,!?.&-]{2,}?)\s+(?:Sets|Gets|Digital|Streaming|Now Available|Is Now|Will Stream)/u,
+        )?.[1];
     const date = reportDate(description, title);
     if (!film || !date || !source.startsWith('https://whentostream.com/')) continue;
     const platform = reportPlatform(description);
@@ -364,7 +389,7 @@ export function parseReportProfiles(xml: string, movie: Pick<Movie, 'title' | 'y
       /^(.*?)\s+\(((?:18|19|20)\d{2})\)$/,
     );
     const source = text(item[1].match(/<link>([\s\S]*?)<\/link>/)?.[1] || '');
-    if (!title || titleKey(title[1]) !== titleKey(movie.title)) continue;
+    if (!title || !sameReleaseTitle(title[1], movie.title)) continue;
     try {
       const url = new URL(source);
       if (
@@ -403,22 +428,28 @@ export function profileReleaseEvidence(html: string, reference: ReportReference)
     native.year !== reference.year
   )
     throw new Error('Source film identity changed');
-  const body = html.match(/<article\b[^>]*>[\s\S]*?<\/article>/i)?.[0] || '';
-  const paragraphs = [...body.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)].map((p) => text(p[1]));
-  if (!paragraphs.some((p) => /^(?:VOD|PVOD|SVOD) Release Date\s*:/i.test(p)))
+  const labels = profileFields(html, text);
+  if (
+    !['vod release date', 'pvod release date', 'svod release date'].some((label) =>
+      labels.has(label),
+    )
+  )
     throw new Error('Release profile format changed');
   const reports: ReleaseReport[] = [];
   const withdrawnKinds: Release['kind'][] = [],
-    unknownKinds: Release['kind'][] = [];
+    unknownKinds: Release['kind'][] = [],
+    absentKinds: Release['kind'][] = [],
+    malformedKinds: Release['kind'][] = [];
   for (const [label, kind] of [
     ['VOD', 'Digital'],
     ['PVOD', 'PVOD'],
     ['SVOD', 'Subscription'],
   ] as const) {
-    const fields = paragraphs.filter((p) => new RegExp(`^${label} Release Date\\s*:`, 'i').test(p));
+    const fields = labels.get(`${label.toLowerCase()} release date`) || [];
     if (fields.length > 1) throw new Error('Ambiguous profile release dates');
     const field = fields[0];
     if (!field) {
+      absentKinds.push(kind);
       unknownKinds.push(kind);
       continue;
     }
@@ -445,6 +476,7 @@ export function profileReleaseEvidence(html: string, reference: ReportReference)
     ];
     const date = dates.length === 1 ? dateFromText(dates[0][0]) : null;
     if (!date) {
+      malformedKinds.push(kind);
       unknownKinds.push(kind);
       continue;
     }
@@ -468,7 +500,7 @@ export function profileReleaseEvidence(html: string, reference: ReportReference)
       },
     });
   }
-  return { reports, withdrawnKinds, unknownKinds };
+  return { reports, withdrawnKinds, unknownKinds, absentKinds, malformedKinds };
 }
 export function parseProfileReports(
   html: string,
@@ -486,6 +518,10 @@ const reportPlatform = (description: string) => {
     /\b(?:arriving|(?:will )?begin streaming|streaming|(?:will )?launch|(?:will )?premiere|(?:will )?debut) on (HBO Max|Netflix|Shudder|Hulu|Peacock|Disney\+|Prime Video|Paramount\+|MGM\+|Apple TV\+?)(?=\W|$)/i,
   )?.[1];
   if (arriving) return arriving;
+  const platform = description.match(
+    /\bon (?:the )?(HBO Max|Netflix|Shudder|Hulu|Peacock|Disney\+|Prime Video|Paramount\+|MGM\+|Apple TV\+?)\s+(?:streaming\s+)?platform\b/i,
+  )?.[1];
+  if (platform) return platform;
   // Some original-film announcements name the service first, then refer to its platform.
   const original = description.match(
     /^(Netflix|Shudder|Hulu|Peacock|Disney\+|Prime Video|Paramount\+|MGM\+|Apple TV\+?)(?=\W|$)[\s\S]*?\b(?:will launch|will begin streaming|premieres?|debuts?) on (?:their|its) platform on\b/i,
@@ -561,7 +597,7 @@ export function parseVerifiedReport(
   }
   const structured = structuredFilmIdentity(html, report.title);
   if (structured.ambiguous) return null;
-  const reviewed = reviewedReportIdentity(html, report.title, text, identities);
+  const reviewed = reviewedReportIdentity(html, report.title, text, identities, report.imdbId);
   if (structured.imdbId && reviewed && structured.imdbId !== reviewed.imdbId) return null;
   // Structured provenance belongs to this article's explicit Movie data, not a cached crosswalk.
   if (!structured.imdbId && reviewed?.method === 'structured') return null;
@@ -593,6 +629,9 @@ export function parseVerifiedReport(
     : null;
 }
 export async function fetchSource(url: string, init?: RequestInit): Promise<string> {
+  // Older persisted listing hrefs contain HTML entities; decode before URL parsing
+  // so an apostrophe's &#039; cannot turn the rest of the path into a fragment.
+  url = text(url);
   const u = new URL(url);
   if (
     !['www.dvdsreleasedates.com', 'whentostream.com'].includes(u.hostname) ||

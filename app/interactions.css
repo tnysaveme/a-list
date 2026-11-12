@@ -1,0 +1,304 @@
+/* One interaction language across routes. Hover never moves artwork or layout. */
+.movie-meta,
+.film-metadata,
+.load-more,
+.tracked-list {
+  font-variant-numeric: tabular-nums;
+}
+
+:is(
+  .button,
+  .icon-button,
+  .text-link,
+  .wordmark,
+  .privacy-home,
+  .app-header-control,
+  .app-header-search-clear,
+  .search-mobile-action,
+  .app-header-menu-item,
+  .film-control,
+  .nav-tabs > button,
+  .filter-list > button,
+  .library-sections > button,
+  .layout-toggle > button,
+  .week-release,
+  .search-result,
+  .calendar-help > summary,
+  .appearance-option > span,
+  .sort-control,
+  .login-input,
+  .account-confirm input,
+  .batch-bar > button,
+  .toast button,
+  .poster-checkbox
+) {
+  transition:
+    background-color var(--dur-hover) var(--ease-out),
+    border-color var(--dur-hover) var(--ease-out),
+    color var(--dur-hover) var(--ease-out),
+    text-decoration-color var(--dur-hover) var(--ease-out),
+    opacity var(--dur-short) var(--ease-out),
+    scale var(--dur-release) var(--ease-out);
+}
+
+/* Text actions retain their contrast; an underline supplies the feedback. */
+.text-link,
+.film-read-more,
+.wordmark,
+.privacy-home,
+.calendar-help > summary {
+  text-decoration: underline;
+  text-decoration-color: var(--color-clear);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+.wordmark .brand-wordmark,
+.privacy-home .brand-wordmark {
+  text-decoration: underline;
+  text-decoration-color: var(--color-clear);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: text-decoration-color var(--dur-hover) var(--ease-out);
+}
+:is(.wordmark, .privacy-home):focus-visible .brand-wordmark {
+  text-decoration-color: currentColor;
+}
+:is(.text-link, .film-read-more, .wordmark, .privacy-home, .calendar-help > summary):focus-visible {
+  text-decoration-color: currentColor;
+}
+.sort-control:focus-within {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.sort-control select:focus-visible {
+  outline: none;
+}
+.poster-checkbox:has(input:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+.preference-row input::before {
+  transition:
+    background-color var(--dur-hover) var(--ease-out),
+    border-color var(--dur-hover) var(--ease-out);
+}
+
+.app-header-signout[data-highlighted] {
+  background: var(--color-danger-wash);
+  color: var(--color-danger);
+}
+
+/* Preview fixtures use the same tones as real pointer feedback. */
+.app-header-control.is-hover,
+.film-control.is-hover {
+  background: var(--color-hover);
+  color: var(--color-ink);
+}
+.film-control.film-save.is-hover {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+  color: var(--color-accent-ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :is(.wordmark, .privacy-home):hover .brand-wordmark {
+    text-decoration-color: currentColor;
+  }
+  :is(
+      .button,
+      .icon-button,
+      .app-header-control,
+      .app-header-search-clear,
+      .search-mobile-action,
+      .film-control,
+      .week-release
+    ):hover:where(
+      :not(:disabled, [aria-disabled='true'], .disabled, [aria-busy='true'], [data-state='loading'])
+    ) {
+    background: var(--color-hover);
+    color: var(--color-ink);
+  }
+  :is(.button, .film-control):hover:where(
+      :not(:disabled, [aria-disabled='true'], .disabled, [aria-busy='true'], [data-state='loading'])
+    ) {
+    border-color: var(--color-rule-strong);
+  }
+  .button.primary:hover:where(
+      :not(:disabled, [aria-disabled='true'], .disabled, [aria-busy='true'])
+    ),
+  .film-control.film-save:hover:where(:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
+    background: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+    color: var(--color-accent-ink);
+  }
+  .film-control.film-saved:hover:where(
+      :not(:disabled, [aria-disabled='true'], [aria-busy='true'])
+    ) {
+    background: var(--color-hover);
+    border-color: var(--color-rule-strong);
+    color: var(--color-ink);
+  }
+  .button.danger:hover:where(:not(:disabled, [aria-disabled='true'], [aria-busy='true'])),
+  .button.account-danger:hover:where(:not(:disabled, [aria-disabled='true'], [aria-busy='true'])),
+  .app-header-signout:hover:where(:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
+    background: var(--color-danger-wash);
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+  }
+  .button.primary.account-danger-action:hover:where(
+      :not(:disabled, [aria-disabled='true'], [aria-busy='true'])
+    ) {
+    background: color-mix(in oklch, var(--color-danger) 85%, var(--color-ink));
+    border-color: var(--color-danger);
+    color: var(--color-surface);
+  }
+  :is(.filter-list, .library-sections)
+    > button:hover:where(:not(.active, :disabled, [aria-disabled='true'])) {
+    background: var(--color-hover-strong);
+    color: var(--color-ink);
+  }
+  .nav-tabs > button:hover:where(:not(:disabled, [aria-disabled='true'])),
+  .layout-toggle > button:hover:where(:not([aria-pressed='true'], :disabled)) {
+    color: var(--color-ink);
+  }
+  .layout-toggle > button:hover:where(:not([aria-pressed='true'], :disabled)) {
+    background: var(--color-hover);
+  }
+  :is(.text-link, .film-read-more, .wordmark, .privacy-home, .calendar-help > summary):hover:where(
+      :not(:disabled, [aria-disabled='true'], [aria-busy='true'])
+    ) {
+    text-decoration-color: currentColor;
+  }
+  .film-control:is(.film-source, .film-read-more):hover {
+    color: var(--color-ink);
+    border-color: var(--color-clear);
+    background: var(--color-clear);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  .appearance-option:hover input:not(:checked, :disabled) + span {
+    background: var(--color-hover-strong);
+    color: var(--color-ink);
+  }
+  .preference-row:hover input:not(:disabled)::before {
+    border-color: var(--color-ink);
+  }
+  .preference-row:hover input:checked:not(:disabled)::before {
+    background: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+  }
+  .sort-control:hover:where(:not(:has(:disabled))) {
+    border-color: var(--color-rule-strong);
+  }
+  .login-input:hover:where(:not(:has(:disabled))),
+  .account-confirm input:hover:where(:not(:disabled)) {
+    border-color: var(--color-ink);
+  }
+  :is(.app-header-menu-item, .search-result):hover:where(
+      :not([data-disabled], [aria-disabled='true'])
+    ) {
+    background: var(--color-hover);
+  }
+  .movie-card-poster
+    .save-button:hover:where(:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
+    background: var(--color-artwork-ink);
+    color: var(--color-on-dark);
+  }
+  .movie-card-poster
+    .save-button.is-saved:hover:where(:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
+    background: var(--color-artwork-surface);
+    color: var(--color-artwork-ink);
+  }
+  .movie-list
+    .movie-card-poster
+    .save-button:hover:where(:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
+    background: var(--color-hover-strong);
+    color: var(--color-ink);
+  }
+  .poster-checkbox:hover {
+    background: var(--color-on-dark);
+  }
+  .batch-bar > button:hover:where(:not(:disabled, [aria-disabled='true'])) {
+    background: var(--color-on-action-hover);
+    color: var(--color-accent-ink);
+  }
+  .toast > button:hover:where(:not(:disabled, [aria-disabled='true'])) {
+    background: var(--color-hover);
+    color: var(--color-ink);
+  }
+  :is(.about-dialog, .account-data-note, .login-note, .privacy-page) a:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+
+/* Hover must never resurrect controls that are unavailable or still saving. */
+:is(.button, .icon-button, .app-header-control, .film-control, .save-button)[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+:is(.button, .icon-button, .app-header-control, .film-control, .save-button):active:where(
+    [aria-disabled='true'],
+    [aria-busy='true'],
+    [data-state='loading']
+  ) {
+  scale: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .preference-row input::before {
+    transition: none;
+  }
+  :is(
+    button,
+    a,
+    input,
+    select,
+    summary,
+    .appearance-option > span,
+    .sort-control,
+    .login-input,
+    .app-header-menu-item,
+    .search-result,
+    .poster-checkbox,
+    .wordmark .brand-wordmark,
+    .privacy-home .brand-wordmark
+  ) {
+    transition: none;
+  }
+}
+
+/* Small directional cues keep control surfaces and hit targets still. */
+:is(.button, .text-link, .film-source) > :is(.lucide-arrow-right, .lucide-arrow-up-right) {
+  transition: transform var(--dur-release) var(--ease-out);
+}
+.preference-row input::after {
+  transition:
+    transform var(--dur-medium) var(--ease-out),
+    background-color var(--dur-hover) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :is(.button, .text-link, .film-source):hover:where(
+      :not(:disabled, [aria-disabled='true'], [aria-busy='true'])
+    )
+    > .lucide-arrow-right {
+    transform: translateX(2px);
+  }
+  :is(.text-link, .film-source):hover:where(
+      :not(:disabled, [aria-disabled='true'], [aria-busy='true'])
+    )
+    > .lucide-arrow-up-right {
+    transform: translate(2px, -2px);
+  }
+}
+:is(.button, .text-link, .film-source):focus-visible
+  > :is(.lucide-arrow-right, .lucide-arrow-up-right) {
+  transition: none;
+  transform: none;
+}
+html[data-motion-input='keyboard'] .preference-row input::after {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.button, .text-link, .film-source) > :is(.lucide-arrow-right, .lucide-arrow-up-right),
+  .preference-row input::after {
+    transition: none;
+  }
+}

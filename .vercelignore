@@ -12,6 +12,7 @@ coverage/
 .wrangler/
 .sites-runtime/
 .hallmark/
+.impeccable/
 
 # Local credentials, project links and tool state stay on this machine.
 .env*

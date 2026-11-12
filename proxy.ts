@@ -12,6 +12,15 @@ export async function proxy(request: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return response;
   const supabase = createServerClient(url, key, {
+    global: {
+      fetch: (input, init) =>
+        fetch(input, {
+          ...init,
+          signal: init?.signal
+            ? AbortSignal.any([init.signal, AbortSignal.timeout(2000)])
+            : AbortSignal.timeout(2000),
+        }),
+    },
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll(values) {

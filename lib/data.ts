@@ -1,6 +1,10 @@
+import { releaseDay } from './release-day';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { beforeDeadline } from './request-deadline';
 import { interactiveResult } from './interactive-refresh';
-import { singleFlight } from './single-flight';
+import { versionedCache } from './versioned-cache';
+import { movieCard } from './catalogue-view';
+import { sharedSearch } from './shared-search';
 import { getDb } from '../db';
 import type { AccountRow, LibraryRow } from '../db/schema';
 import snapshot from './catalogue.json';
@@ -22,79 +26,119 @@ import { lookupReleaseReports } from './release-lookup';
 import { TRANSIENT_RETRY_MS } from './source-health';
 import { recordSourceCheck } from './source-checks';
 import { cataloguePage, type CatalogueOptions, type CataloguePage } from './catalogue-view';
-import { movieRows } from './movie-rows';
 import { failedRefreshMovie } from './source-errors';
-export { checked } from './db-result';
 export type DataContext = { db: SupabaseClient; userId: string };
 export async function context(userId: string): Promise<DataContext> {
   return { db: await getDb(), userId };
 }
-export async function membership(ctx: DataContext, movies: Movie[]): Promise<Movie[]> {
+export async function membership(
+  ctx: DataContext,
+  movies: Movie[],
+  signal = AbortSignal.timeout(3000),
+): Promise<Movie[]> {
   if (!movies.length) return [];
   const rows = checked(
     await ctx.db
       .from('a_list_library')
-      .select('movie_id,tracked,added_at')
+      .select('movie_id,tracked,added_at,watched_at')
       .eq('user_id', ctx.userId)
       .in(
         'movie_id',
         movies.map((m) => m.id),
-      ),
-  ) as Pick<LibraryRow, 'movie_id' | 'tracked' | 'added_at'>[];
+      )
+      .abortSignal(signal),
+  ) as Pick<LibraryRow, 'movie_id' | 'tracked' | 'added_at' | 'watched_at'>[];
   const saved = new Map(rows.map((r) => [r.movie_id, r]));
   return movies.map((m) => ({
     ...sanitizeMovie(m),
     saved: saved.has(m.id),
     tracked: saved.get(m.id)?.tracked || false,
     addedAt: saved.get(m.id)?.added_at,
+    watchedAt: saved.get(m.id)?.watched_at || null,
   }));
 }
 type Catalogue = { movies: Movie[]; checkedAt: string | null; provenance?: 'live' | 'fallback' };
 async function sharedCatalogue(ctx: DataContext): Promise<Catalogue> {
-  let result = await cached<Catalogue>('catalogue');
-  if (!result)
-    result = await singleFlight('catalogue', async () => {
-      const again = await cached<Catalogue>('catalogue');
-      if (again) return again;
-      try {
+  let result: Catalogue;
+  try {
+    result = await versionedCache<Catalogue>('catalogue:v2', {
+      version: async () =>
+        String(
+          checked(
+            await ctx.db
+              .from('a_list_source_status')
+              .select('catalogue_version')
+              .eq('id', true)
+              .abortSignal(AbortSignal.timeout(1500))
+              .single(),
+          )!.catalogue_version,
+        ),
+      read: cached,
+      lease: (key, work) => withLease(key, 15, work),
+      load: async () => {
         const row = checked(
-          await ctx.db
-            .from('a_list_source_status')
-            .select('catalogue,catalogue_success_at')
-            .eq('id', true)
-            .single(),
-        )!;
-        const listing = (row.catalogue.length ? row.catalogue : snapshot) as Movie[];
-        const fresh = await movieRows(
-          ctx.db,
-          listing.map((m) => m.id),
-        );
-        const canonical = new Map(fresh.map((r) => [r.id, r.movie as Movie]));
-        result = {
-          movies: listing.map((m) => canonical.get(m.id) || m),
-          checkedAt: row.catalogue_success_at,
+          await ctx.db.rpc('a_list_catalogue_snapshot').abortSignal(AbortSignal.timeout(3000)),
+        ) as Catalogue;
+        if (!row) throw new Error('Catalogue unavailable');
+        return {
+          ...row,
+          movies: (row.movies.length ? row.movies : (snapshot as Movie[])).map(movieCard),
         };
-        await remember('catalogue', result, 300);
-        await remember('catalogue:last-good', result, 86400);
-        return result;
-      } catch (error) {
-        const previous = await cached<Catalogue>('catalogue:last-good');
-        if (previous) return { ...previous, provenance: 'fallback' as const };
-        throw error;
-      }
+      },
+      write: async (key, value) => {
+        await Promise.all([
+          remember(key, value, 300),
+          remember('catalogue:last-good:v2', value, 86400),
+        ]);
+      },
     });
+  } catch (error) {
+    const previous = await cached<Catalogue>('catalogue:last-good:v2');
+    if (!previous) throw error;
+    result = { ...previous, provenance: 'fallback' };
+  }
   return { ...result, movies: result.movies.filter((movie) => movie.mediaType !== 'series') };
 }
+
 export async function getCatalogue(
   ctx: DataContext,
   options: CatalogueOptions = {},
 ): Promise<CataloguePage> {
   const result = await sharedCatalogue(ctx),
-    day = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    day = releaseDay();
   const page = cataloguePage(result.movies, options, day);
+  // The shared SQL snapshot omits synopses. Restore only this page's stored text
+  // so both collections can render the same preview without requests on hover.
+  const missing = page.movies.filter((movie) => !movie.overview);
+  const readSynopses = async (): Promise<{ id: string; overview: string | null }[]> => {
+    if (!missing.length) return [];
+    try {
+      return checked(
+        await ctx.db
+          .from('a_list_movies')
+          .select('id,overview:movie->>overview')
+          .in(
+            'id',
+            missing.map((movie) => movie.id),
+          )
+          .abortSignal(AbortSignal.timeout(1500)),
+      ) as { id: string; overview: string | null }[];
+    } catch {
+      // Release browsing remains usable when optional synopsis reads fail.
+      after(() => metric('catalogue_preview_unavailable'));
+      return [];
+    }
+  };
+  const [personal, rows] = await Promise.all([membership(ctx, page.movies), readSynopses()]);
+  const synopses = new Map(
+    (rows || []).filter((row) => row.overview).map((row) => [row.id, row.overview!.slice(0, 320)]),
+  );
+  const movies = personal.map((movie) =>
+    synopses.has(movie.id) ? { ...movie, overview: synopses.get(movie.id) } : movie,
+  );
   return {
     ...page,
-    movies: await membership(ctx, page.movies),
+    movies,
     checkedAt: result.checkedAt,
     provenance: result.provenance || (result.checkedAt ? 'live' : 'fallback'),
     stale:
@@ -103,25 +147,29 @@ export async function getCatalogue(
       Date.now() - Date.parse(result.checkedAt) > 7 * 3600_000,
   };
 }
-async function searchUpstream(ctx: DataContext, query: string): Promise<Movie[]> {
-  const key = `search:v5:${privateKey(query.trim().toLowerCase())}`;
-  let found = await cached<Movie[]>(key);
-  if (!found) {
-    const loaded = await withLease(key, 20, async () => {
-      const again = await cached<Movie[]>(key);
-      if (again) return again;
-      const { movies, metadata, degraded } = await searchProviders(query);
+async function searchUpstream(
+  ctx: DataContext,
+  query: string,
+  signal: AbortSignal,
+): Promise<Movie[]> {
+  const key = `search:v6:${privateKey(query.trim().toLowerCase())}`;
+  const found = await sharedSearch<Movie[]>(key, {
+    read: () => cached<Movie[]>(key),
+    lease: (work) => withLease(key, 20, work),
+    load: async () => {
+      const { movies, metadata, degraded } = await searchProviders(query, 4500, signal);
       // Keep existing stable IDs when a previously linked film is returned only by metadata.
       if (metadata.length) {
         const linked =
           checked(
-            await ctx.db
+            await adminDb()
               .from('a_list_movies')
               .select('id,movie')
               .in(
                 'movie->>imdbId',
                 metadata.map((m) => m.id),
-              ),
+              )
+              .abortSignal(signal),
           ) || [];
         const index = filmIndex(linked.map((row) => row.movie as Movie));
         for (let i = 0; i < movies.length; i++) {
@@ -139,14 +187,13 @@ async function searchUpstream(ctx: DataContext, query: string): Promise<Movie[]>
             .upsert(
               unique.map((movie) => ({ id: movie.id, movie })),
               { onConflict: 'id', ignoreDuplicates: true },
-            ),
+            )
+            .abortSignal(signal),
         );
       await remember(key, unique, degraded ? 60 : 3600);
       return unique;
-    });
-    if (!loaded) throw new Error('Search is already refreshing; try again shortly');
-    found = loaded;
-  }
+    },
+  });
   if (!found.length) return [];
   const fresh =
     checked(
@@ -156,7 +203,8 @@ async function searchUpstream(ctx: DataContext, query: string): Promise<Movie[]>
         .in(
           'id',
           found.map((m) => m.id),
-        ),
+        )
+        .abortSignal(signal),
     ) || [];
   const canonical = new Map(fresh.map((r) => [r.id, r.movie as Movie]));
   return found
@@ -166,10 +214,17 @@ async function searchUpstream(ctx: DataContext, query: string): Promise<Movie[]>
     })
     .filter((movie) => movie.mediaType !== 'series');
 }
-export async function searchMovies(ctx: DataContext, query: string): Promise<Movie[]> {
+export async function searchMovies(
+  ctx: DataContext,
+  query: string,
+  parent?: AbortSignal,
+  budgetMs = 6500,
+): Promise<Movie[]> {
+  const own = AbortSignal.timeout(Math.max(1, budgetMs - 750));
+  const signal = parent ? AbortSignal.any([parent, own]) : own;
   const [remote, local] = await Promise.allSettled([
-    searchUpstream(ctx, query),
-    sharedCatalogue(ctx),
+    beforeDeadline(searchUpstream(ctx, query, signal), signal),
+    beforeDeadline(sharedCatalogue(ctx), signal),
   ]);
   const term = query.trim().toLowerCase(),
     catalogue =
@@ -182,6 +237,7 @@ export async function searchMovies(ctx: DataContext, query: string): Promise<Mov
   return membership(
     ctx,
     [...results, ...catalogue.filter((movie) => !ids.has(movie.id))].slice(0, 24),
+    parent || AbortSignal.timeout(750),
   );
 }
 export async function getMovie(
@@ -344,15 +400,25 @@ async function refreshStoredMovie(ctx: DataContext, id: string): Promise<Movie |
   }
   return (await membership(ctx, [movie]))[0];
 }
-export async function account(ctx: DataContext): Promise<AccountRow> {
+export async function account(ctx: DataContext, signal?: AbortSignal): Promise<AccountRow> {
+  const read = () =>
+    ctx.db
+      .from('a_list_accounts')
+      .select('id,feed_token,include_rumors')
+      .eq('id', ctx.userId)
+      .abortSignal(signal || AbortSignal.timeout(10000))
+      .maybeSingle();
+  const existing = checked(await read());
+  if (existing) return existing as AccountRow;
   checked(
     await ctx.db
       .from('a_list_accounts')
-      .upsert({ id: ctx.userId }, { onConflict: 'id', ignoreDuplicates: true }),
+      .upsert({ id: ctx.userId }, { onConflict: 'id', ignoreDuplicates: true })
+      .abortSignal(signal || AbortSignal.timeout(10000)),
   );
-  return checked(
-    await ctx.db.from('a_list_accounts').select('*').eq('id', ctx.userId).single(),
-  ) as AccountRow;
+  const created = checked(await read());
+  if (!created) throw new Error('Account initialization did not complete');
+  return created as AccountRow;
 }
 export async function getLibraryPage(
   ctx: DataContext,
@@ -363,36 +429,45 @@ export async function getLibraryPage(
     limit?: number;
     tracked?: boolean;
   } = {},
+  signal?: AbortSignal,
 ): Promise<LibraryPage> {
   const limit = options.limit || 25,
     offset = options.offset || 0;
   const page = checked(
-    await ctx.db.rpc('a_list_library_page', {
-      p_sort: options.sort || 'release',
-      p_filter: options.filter || 'all',
-      p_offset: offset,
-      p_limit: limit,
-      p_tracked: !!options.tracked,
-    }),
+    await ctx.db
+      .rpc('a_list_library_page', {
+        p_sort: options.sort || 'release',
+        p_filter: options.filter || 'all',
+        p_offset: offset,
+        p_limit: limit,
+        p_tracked: !!options.tracked,
+      })
+      .abortSignal(signal || AbortSignal.timeout(10000)),
   ) as Omit<LibraryPage, 'nextOffset'>;
   return {
     ...page,
     movies: page.movies.map(sanitizeMovie),
+    weekReleases: page.weekReleases?.map((entry) => ({
+      ...entry,
+      movie: sanitizeMovie(entry.movie),
+    })),
     nextOffset:
       offset + page.movies.length < page.filteredTotal ? offset + page.movies.length : null,
   };
 }
-export async function updateLibrary(ctx: DataContext, action: string, ids: string[]) {
-  await account(ctx);
-  await writeLibrary(ctx.db, ctx.userId, action, ids);
+export async function updateLibrary(
+  ctx: DataContext,
+  action: string,
+  ids: string[],
+  restored?: Record<string, string | null>,
+) {
+  await writeLibrary(ctx.db, ctx.userId, action, ids, restored);
 }
 export async function updateSettings(ctx: DataContext, includeRumors: boolean) {
-  await account(ctx);
   checked(
     await ctx.db
       .from('a_list_accounts')
-      .update({ include_rumors: includeRumors })
-      .eq('id', ctx.userId),
+      .upsert({ id: ctx.userId, include_rumors: includeRumors }, { onConflict: 'id' }),
   );
 }
 type FeedState = {
@@ -441,4 +516,15 @@ export async function getCalendarFeed(token: string): Promise<FeedDocument | nul
     return document;
   }
   throw new Error('Calendar changed during refresh; retry');
+}
+
+/** One bounded private bootstrap for server rendering and the explicit init retry. */
+export async function initializeLibrary(ctx: DataContext, signal = AbortSignal.timeout(10000)) {
+  const [owner, page] = await Promise.all([account(ctx, signal), getLibraryPage(ctx, {}, signal)]);
+  return {
+    ...page,
+    feedPath: `/api/feed/${owner.feed_token}.ics`,
+    includeRumors: owner.include_rumors,
+    feedPublic: true,
+  };
 }

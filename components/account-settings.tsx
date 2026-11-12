@@ -2,18 +2,39 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowDownToLine, CalendarDays, LoaderCircle, Trash2, X } from 'lucide-react';
 import { AppearanceSetting } from './appearance-setting';
+import { Dialog } from './dialog';
+import { FeedbackSurface } from './feedback-surface';
+import { requestData, RequestError } from '../lib/client-request';
+import type { LibraryInit } from '../lib/api-contract';
 import './account-settings.css';
 
 export default function AccountSettings({
+  open = true,
+  onAfterClose,
   onClose,
   onFeedReset,
   onCalendar,
+  feedPath,
 }: {
+  open?: boolean;
+  onAfterClose?: () => void;
   onClose: () => void;
   onFeedReset: (path: string) => void;
   onCalendar: () => void;
+  feedPath: string;
 }) {
-  const dialog = useRef<HTMLDialogElement>(null);
+  const activeRequest = useRef<AbortController | null>(null);
+  const outcomeButton = useRef<HTMLButtonElement>(null);
+  const [exporting, setExporting] = useState(false);
+  const [uncertain, setUncertain] = useState<'reset' | 'delete' | null>(null);
+  useEffect(() => () => activeRequest.current?.abort(), []);
+  useEffect(() => {
+    if (!open && exporting) activeRequest.current?.abort();
+  }, [open, exporting]);
+  function close() {
+    if (exporting) activeRequest.current?.abort();
+    onClose();
+  }
   const confirmationInput = useRef<HTMLInputElement>(null),
     resetButton = useRef<HTMLButtonElement>(null),
     deleteButton = useRef<HTMLButtonElement>(null),
@@ -25,15 +46,8 @@ export default function AccountSettings({
     [message, setMessage] = useState(''),
     [reset, setReset] = useState(false);
   useEffect(() => {
-    const element = dialog.current!;
-    element.showModal();
-    const before = document.body.style.overflow;
-    document.body.style.overflow = 'clip';
-    return () => {
-      element.close();
-      document.body.style.overflow = before;
-    };
-  }, []);
+    if (uncertain && !busy) outcomeButton.current?.focus();
+  }, [uncertain, busy]);
   useEffect(() => {
     if (confirm) confirmationInput.current?.focus();
   }, [confirm]);
@@ -48,16 +62,21 @@ export default function AccountSettings({
     setMessage('');
   }
   async function download() {
+    if (activeRequest.current) return;
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    setExporting(true);
     setBusy(true);
     setError('');
     setMessage('');
     try {
-      const response = await fetch('/api/account/export');
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Your library could not be exported.');
-      }
-      const url = URL.createObjectURL(await response.blob()),
+      const blob = await requestData<Blob>('/api/account/export', {
+        blob: true,
+        signal: controller.signal,
+        redirectUnauthorized: true,
+      });
+      controller.signal.throwIfAborted();
+      const url = URL.createObjectURL(blob),
         link = document.createElement('a');
       link.href = url;
       link.download = `a-list-library-${new Date().toISOString().slice(0, 10)}.json`;
@@ -67,83 +86,135 @@ export default function AccountSettings({
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       setMessage('Your library export has been downloaded.');
     } catch (e) {
-      setError((e as Error).message);
+      if (!controller.signal.aborted) setError((e as Error).message);
     } finally {
+      if (activeRequest.current === controller) activeRequest.current = null;
+      setExporting(false);
+      setBusy(false);
+    }
+  }
+  function completeReset(path: string) {
+    onFeedReset(path);
+    setReset(true);
+    setConfirm(null);
+    setUncertain(null);
+    setTyped('');
+    setError('');
+    setMessage(
+      'Your old calendar link no longer works. Remove the old subscription from your calendar app, then subscribe again with the new link.',
+    );
+  }
+  async function checkOutcome() {
+    if (!uncertain || busy || activeRequest.current) return;
+    const action = uncertain;
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    setBusy(true);
+    try {
+      const data = await requestData<LibraryInit>('/api/init', {
+        body: {},
+        readOnly: true,
+        signal: controller.signal,
+      });
+      if (action === 'reset' && data.feedPath !== feedPath) completeReset(data.feedPath);
+      else
+        setError(
+          action === 'reset'
+            ? 'Your link has not changed yet. The original request may still finish. Check again before attempting another reset.'
+            : 'Your account is still available. The original request may still finish. Check again before attempting deletion.',
+        );
+    } catch (e) {
+      if (controller.signal.aborted) return;
+      if (action === 'delete' && e instanceof RequestError && e.status === 401)
+        window.location.replace('/login');
+      else setError('The outcome could not be checked. Check your connection, then check again.');
+    } finally {
+      if (activeRequest.current === controller) activeRequest.current = null;
       setBusy(false);
     }
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!confirm || typed !== (confirm === 'reset' ? 'RESET' : 'DELETE')) return;
+    if (
+      activeRequest.current ||
+      busy ||
+      uncertain ||
+      !confirm ||
+      typed !== (confirm === 'reset' ? 'RESET' : 'DELETE')
+    )
+      return;
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setBusy(true);
     setError('');
     setMessage('');
     try {
-      const response = await fetch(
+      const data = await requestData<{ feedPath: string }>(
         `/api/account/${confirm === 'reset' ? 'reset-calendar' : 'delete'}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ confirmation: typed }),
-        },
+        { body: { confirmation: typed }, signal: controller.signal, redirectUnauthorized: true },
       );
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'This action could not be completed.');
       if (confirm === 'delete') {
         window.location.replace('/login?deleted=1');
         return;
       }
-      onFeedReset(data.feedPath);
-      setReset(true);
-      setConfirm(null);
-      setTyped('');
-      setMessage(
-        'Your old calendar link no longer works. Remove the old subscription from your calendar app, then subscribe again with the new link.',
-      );
+      completeReset(data.feedPath);
     } catch (e) {
-      setError((e as Error).message);
+      if (controller.signal.aborted) return;
+      if (e instanceof RequestError && e.uncertain) {
+        setUncertain(confirm);
+        setError(
+          'This change could not be confirmed. It may still complete. Check the outcome before trying again.',
+        );
+      } else setError((e as Error).message);
     } finally {
+      if (activeRequest.current === controller) activeRequest.current = null;
       setBusy(false);
     }
   }
   return (
-    <dialog
-      ref={dialog}
-      className="dialog account-dialog"
-      aria-labelledby="account-title"
-      onCancel={(e) => {
-        if (busy) e.preventDefault();
-      }}
-      onClose={onClose}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !busy) onClose();
-      }}
+    <Dialog
+      open={open}
+      className="account-dialog"
+      labelledBy="account-title"
+      busy={busy && !exporting}
+      onClose={close}
+      onAfterClose={onAfterClose}
     >
-      <div className="dialog-inner">
+      <>
         <button
           className="dialog-close icon-button"
           aria-label="Close account settings"
-          disabled={busy}
-          onClick={onClose}
+          disabled={busy && !exporting}
+          onClick={close}
         >
           <X aria-hidden="true" size={20} />
         </button>
-        <h2 id="account-title">Your account</h2>
+        <h2 id="account-title">Your Account</h2>
         <p className="account-intro">A few simple controls for your collection and calendar.</p>
         <AppearanceSetting />
         <section className="account-section">
-          <h3>Your library, to keep.</h3>
+          <h3>Your Library, to Keep.</h3>
           <p>
             Download your saved films, including films waiting for a date, and your calendar
             preference as a JSON file. Your secret calendar link is excluded.
           </p>
-          <button className="button subtle" onClick={download} disabled={busy}>
-            <ArrowDownToLine aria-hidden="true" size={16} />
-            Export library
+          <button
+            className="button subtle"
+            onClick={download}
+            disabled={busy && !exporting}
+            aria-disabled={busy}
+            aria-busy={exporting}
+          >
+            {exporting ? (
+              <LoaderCircle aria-hidden="true" size={16} className="spin" />
+            ) : (
+              <ArrowDownToLine aria-hidden="true" size={16} />
+            )}
+            {exporting ? 'Exporting…' : 'Export Library'}
           </button>
         </section>
         <section className="account-section">
-          <h3>A fresh calendar link.</h3>
+          <h3>A Fresh Calendar Link.</h3>
           <p>
             Anyone with your calendar link can read its events. Reset it if it has been shared
             accidentally.
@@ -152,14 +223,14 @@ export default function AccountSettings({
             ref={resetButton}
             className="button subtle"
             onClick={() => choose('reset')}
-            disabled={busy}
+            disabled={busy || !!uncertain}
           >
             <CalendarDays aria-hidden="true" size={16} />
-            Reset calendar link
+            Reset Calendar Link
           </button>
         </section>
         <section className="account-section">
-          <h3>Close your account.</h3>
+          <h3>Close Your Account.</h3>
           <p>
             Delete your sign-in account, saved films and calendar settings. Your shared movie
             catalogue stays available to your friends.
@@ -168,18 +239,18 @@ export default function AccountSettings({
             ref={deleteButton}
             className="button subtle account-danger"
             onClick={() => choose('delete')}
-            disabled={busy}
+            disabled={busy || !!uncertain}
           >
             <Trash2 aria-hidden="true" size={16} />
-            Delete account
+            Delete Account
           </button>
         </section>
-        {confirm && (
+        <FeedbackSurface open={!!confirm} className="account-confirm-presence">
           <form className="account-confirm" onSubmit={submit}>
             <h3>
               {confirm === 'reset'
-                ? 'Reset your calendar link?'
-                : 'Delete your account permanently?'}
+                ? 'Reset Your Calendar Link?'
+                : 'Delete Your Account Permanently?'}
             </h3>
             <p>
               {confirm === 'reset'
@@ -203,10 +274,13 @@ export default function AccountSettings({
             <div className="account-actions">
               <button
                 className={`button primary ${confirm === 'delete' ? 'account-danger-action' : ''}`}
-                disabled={busy || typed !== (confirm === 'reset' ? 'RESET' : 'DELETE')}
+                aria-busy={busy && !exporting}
+                disabled={
+                  busy || !!uncertain || typed !== (confirm === 'reset' ? 'RESET' : 'DELETE')
+                }
               >
                 {busy ? <LoaderCircle aria-hidden="true" size={16} className="spin" /> : null}
-                {confirm === 'reset' ? 'Reset link' : 'Delete account permanently'}
+                {confirm === 'reset' ? 'Reset Link' : 'Delete Account Permanently'}
               </button>
               <button
                 type="button"
@@ -218,11 +292,21 @@ export default function AccountSettings({
               </button>
             </div>
           </form>
-        )}
+        </FeedbackSurface>
         {error && (
           <p className="account-error" role="alert">
             {error}
           </p>
+        )}
+        {uncertain && (
+          <button
+            ref={outcomeButton}
+            className="button subtle"
+            disabled={busy}
+            onClick={() => void checkOutcome()}
+          >
+            {busy ? 'Checking…' : 'Check Outcome'}
+          </button>
         )}
         {message && (
           <p className="account-message" role="status">
@@ -236,21 +320,21 @@ export default function AccountSettings({
             disabled={busy}
             onClick={onCalendar}
           >
-            Open calendar settings
+            Open Calendar Settings
           </button>
         )}
         <form action="/auth/signout" method="post">
           <button className="button subtle account-signout" disabled={busy}>
-            Sign out
+            Sign Out
           </button>
         </form>
         <p className="account-data-note">
           Your email is used for sign-in. Your library belongs to your account.{' '}
           <a href="/privacy" target="_blank" rel="noreferrer">
-            How your data is used
+            How Your Data Is Used
           </a>
         </p>
-      </div>
-    </dialog>
+      </>
+    </Dialog>
   );
 }

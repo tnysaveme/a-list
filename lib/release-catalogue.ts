@@ -1,7 +1,9 @@
-import { mergeMovies } from './model';
+import { mergeMovies, type Movie } from './model';
 import { fetchSource, parseListing, parseReports } from './sources';
 import { enrichCatalogueReports } from './source-verification';
 import type { ReviewedReportIdentity } from './reviewed-report-identities';
+
+export type CataloguePartitions = Record<string, { movies: Movie[]; checkedAt: string }>;
 
 // Include the last twelve months so a theatrical listing cannot hide an
 // already-released film just because its digital date was in an earlier month.
@@ -17,11 +19,29 @@ export async function loadCatalogue(
   now = new Date(),
   identities?: readonly ReviewedReportIdentity[],
   reportFeed?: Promise<string>,
-  { enrichReports = true, signal }: { enrichReports?: boolean; signal?: AbortSignal } = {},
+  {
+    enrichReports = true,
+    signal,
+    previousPartitions = {},
+    previousCatalogue = [],
+    onPartitions,
+  }: {
+    enrichReports?: boolean;
+    signal?: AbortSignal;
+    previousPartitions?: CataloguePartitions;
+    previousCatalogue?: Movie[];
+    onPartitions?: (partitions: CataloguePartitions) => void;
+  } = {},
 ) {
   const urls = digitalListingUrls(now);
   const pages = await Promise.allSettled([
-    ...urls.map((url) => fetchSource(url, { cache: 'no-store', signal })),
+    ...urls.map((url, i) =>
+      i < 10 &&
+      previousPartitions[url] &&
+      now.getTime() - Date.parse(previousPartitions[url].checkedAt) < 48 * 3600_000
+        ? Promise.resolve(null)
+        : fetchSource(url, { cache: 'no-store', signal }),
+    ),
     fetchSource(`https://www.dvdsreleasedates.com/new-movies-${now.getUTCFullYear()}/`, {
       cache: 'no-store',
       signal,
@@ -34,14 +54,37 @@ export async function loadCatalogue(
   // must not block updates from the other release sources.
   if (pages[11].status === 'rejected' || pages[13].status === 'rejected')
     throw new Error('Current release listings unavailable');
+  const partitions: CataloguePartitions = {};
+  const listingUrls = [
+    ...urls,
+    `https://www.dvdsreleasedates.com/new-movies-${now.getUTCFullYear()}/`,
+  ];
+  const unseededFailure = pages
+    .slice(0, 13)
+    .some((page, i) => page.status === 'rejected' && !previousPartitions[urls[i]]);
+  if (unseededFailure && previousCatalogue.length)
+    partitions.__baseline = { movies: previousCatalogue, checkedAt: now.toISOString() };
   const movies = mergeMovies(
-    pages
-      .slice(0, 14)
-      .flatMap((page, i) => (page.status === 'fulfilled' ? parseListing(page.value, i < 13) : [])),
+    [
+      pages.slice(0, 14).flatMap((page, i) => {
+        const url = listingUrls[i];
+        const parsed =
+          page.status === 'fulfilled' && page.value !== null
+            ? parseListing(page.value, i < 13)
+            : [];
+        // An empty archive response may be a source layout change, not a withdrawal.
+        const next = parsed.length
+          ? { movies: parsed, checkedAt: now.toISOString() }
+          : previousPartitions[url];
+        if (next) partitions[url] = next;
+        return next?.movies || [];
+      }),
+      ...(partitions.__baseline?.movies || []),
+    ].flat(),
   );
   if (movies.length < 10) throw new Error('Source format or coverage changed');
   const feed = pages[14],
-    reports = feed.status === 'fulfilled' ? parseReports(feed.value) : [];
+    reports = feed.status === 'fulfilled' && feed.value ? parseReports(feed.value) : [];
   const enriched = enrichReports
     ? await enrichCatalogueReports(movies, reports, identities, signal)
     : { movies, decisions: { matched: 0, unresolved: 0, ambiguous: 0, conflict: 0 } };
@@ -54,5 +97,6 @@ export async function loadCatalogue(
         failed: pages.filter((page) => page.status === 'rejected').length,
       }),
     );
+  onPartitions?.(partitions);
   return enriched.movies;
 }

@@ -22,7 +22,7 @@ export function AppearanceSetting() {
       <h3 id="appearance-title">Appearance</h3>
       <p id="appearance-description">Choose a theme for this browser.</p>
       <fieldset className="appearance-pill" aria-describedby="appearance-description">
-        <legend className="sr-only">Color theme</legend>
+        <legend className="sr-only">Color Theme</legend>
         {options.map(({ value, label }) => (
           <label className="appearance-option" key={value}>
             <input

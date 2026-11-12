@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 
-test('saved-film lookups rotate independently of primary refreshes, enforce permissions, and preserve calendar content revisions', async () => {
+test('catalogue lookups include unsaved films, prioritise saved films, enforce permissions and preserve calendar revisions', async () => {
   const db = new PGlite();
   try {
     await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;
@@ -66,7 +66,13 @@ test('saved-film lookups rotate independently of primary refreshes, enforce perm
       (
         await db.query<{ id: string }>('select id from public.a_list_report_lookup_candidates(8)')
       ).rows.map((r) => r.id);
-    assert.deepEqual(await ids(), ['tt7000000', 'tt7000001', 'tt7000003']);
+    assert.deepEqual(await ids(), [
+      'tt7000000',
+      'tt7000001',
+      'tt7000003',
+      'tt7000004',
+      'tt7000005',
+    ]);
     const before = (
       await db.query<{ stamp: string }>(
         "select calendar_updated_at::text as stamp from public.a_list_movies where id='tt7000000'",
@@ -75,7 +81,7 @@ test('saved-film lookups rotate independently of primary refreshes, enforce perm
     await db.query(
       "update public.a_list_movies set report_lookup_after=now()+interval '1 day' where id='tt7000000'",
     );
-    assert.deepEqual(await ids(), ['tt7000001', 'tt7000003']);
+    assert.deepEqual(await ids(), ['tt7000001', 'tt7000003', 'tt7000004', 'tt7000005']);
     assert.equal(
       (
         await db.query<{ stamp: string }>(

@@ -1,8 +1,8 @@
-import type { PostResponses, MovieResponse } from '../../../lib/api-contract';
+import type { MovieResponse } from '../../../lib/api-contract';
 import { ConfigurationError } from '../../../lib/configuration';
 import { getUser } from '../../../lib/auth';
 import {
-  account,
+  initializeLibrary,
   context,
   getCatalogue,
   getLibraryPage,
@@ -16,17 +16,19 @@ import { pageOptions } from '../../../lib/pagination';
 import { feedResponse } from '../../../lib/feed-cache';
 import { throttle, clientAddress, metric } from '../../../lib/infrastructure';
 import { sameOrigin } from '../../../lib/request-origin';
+import { beforeDeadline } from '../../../lib/request-deadline';
 import { after } from 'next/server';
 import { InvalidRequest, settingsInput, libraryInput } from '../../../lib/api-validation';
 import { validMovieId } from '../../../lib/model';
 import { exportLibrary, privacyAction } from '../../../lib/privacy-api';
-import { MovieOnlyError, readLibraryMembership } from '../../../lib/library-mutations';
+import { MovieOnlyError, readLibraryState } from '../../../lib/library-mutations';
+import { checked } from '../../../lib/db-result';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 const json = (data: unknown, status = 200) =>
   Response.json(data, { status, headers: { 'Cache-Control': 'private, no-store' } });
-async function handle(request: Request) {
+async function handle(request: Request, deadline?: { signal: AbortSignal; endsAt: number }) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/^\/api\//, '');
   try {
@@ -45,15 +47,22 @@ async function handle(request: Request) {
     if (!user) return json({ error: 'Sign in to open your personal library.' }, 401);
     const blocked = await throttle('api', user.id);
     if (blocked) return blocked;
+    deadline?.signal.throwIfAborted();
     const ctx = await context(user.id);
     after(() => metric('api_requests'));
+    if (request.method === 'GET' && path === 'revision') {
+      const revision = checked(await ctx.db.rpc('a_list_collection_revision'));
+      if (typeof revision !== 'string' || !/^[a-f0-9]{32}$/.test(revision))
+        throw new Error('Collection revision unavailable');
+      return json({ revision });
+    }
     if (request.method === 'GET' && path === 'account/export')
       return exportLibrary(ctx, user.email);
     if (request.method === 'GET' && path === 'library/membership') {
       const ids = [...new Set((url.searchParams.get('ids') || '').split(','))];
       if (ids.length > 100 || ids.some((id) => !validMovieId(id)))
         return json({ error: 'Choose up to 100 valid films.' }, 400);
-      return json({ membership: await readLibraryMembership(ctx.db, ctx.userId, ids) });
+      return json(await readLibraryState(ctx.db, ctx.userId, ids));
     }
     if (request.method === 'GET' && path === 'catalogue') {
       let options;
@@ -62,7 +71,8 @@ async function handle(request: Request) {
       } catch {
         return json({ error: 'Invalid catalogue page' }, 400);
       }
-      if (options.sort === 'added') return json({ error: 'Invalid catalogue sort' }, 400);
+      if (options.sort === 'added' || options.filter === 'watched')
+        return json({ error: 'Invalid catalogue page' }, 400);
       return json(await getCatalogue(ctx, options));
     }
     if (request.method === 'GET' && path === 'library') {
@@ -78,7 +88,17 @@ async function handle(request: Request) {
       const limited = await throttle('search', user.id);
       if (limited) return limited;
       const query = (url.searchParams.get('q') || '').trim().slice(0, 50);
-      return json({ movies: query.length < 2 ? [] : await searchMovies(ctx, query) });
+      return json({
+        movies:
+          query.length < 2
+            ? []
+            : await searchMovies(
+                ctx,
+                query,
+                deadline?.signal,
+                deadline ? Math.max(1, deadline.endsAt - Date.now()) : undefined,
+              ),
+      });
     }
     if (request.method === 'GET' && path.startsWith('movie/') && validMovieId(path.slice(6))) {
       const movie = await getMovie(ctx, path.slice(6), url.searchParams.get('cached') === 'true');
@@ -103,17 +123,7 @@ async function handle(request: Request) {
       return json({ error: 'Invalid request' }, 400);
     const privacy = await privacyAction(ctx, user, path, body);
     if (privacy) return privacy;
-    if (path === 'init') {
-      const owner = await account(ctx);
-      const page = await getLibraryPage(ctx);
-      const response: PostResponses['init'] = {
-        ...page,
-        feedPath: `/api/feed/${owner.feed_token}.ics`,
-        includeRumors: owner.include_rumors,
-        feedPublic: true,
-      };
-      return json(response);
-    }
+    if (path === 'init') return json(await initializeLibrary(ctx));
     if (path === 'settings') {
       await updateSettings(ctx, settingsInput(body));
       return json({ ok: true });
@@ -128,7 +138,9 @@ async function handle(request: Request) {
         409,
       );
     const input = libraryInput(body);
-    await updateLibrary(ctx, input.action, input.ids);
+    await updateLibrary(ctx, input.action, input.ids, input.watchedAt);
+    if (input.action === 'watch' || input.action === 'unwatch')
+      return json({ ok: true, ...(await readLibraryState(ctx.db, ctx.userId, input.ids)) });
     return json({ ok: true });
   } catch (error) {
     if (error instanceof ConfigurationError) {
@@ -140,8 +152,7 @@ async function handle(request: Request) {
     console.error('A-List request:', error instanceof Error ? error.message : 'Request failed');
     return json(
       {
-        error:
-          'A-List could not refresh this request. Your saved films are safe. Please try again.',
+        error: 'A-List could not complete this request. Please try again shortly.',
       },
       503,
     );
@@ -149,7 +160,19 @@ async function handle(request: Request) {
 }
 async function observed(request: Request) {
   const started = performance.now();
-  const response = await handle(request);
+  const search = new URL(request.url).pathname === '/api/search';
+  const deadline = search
+    ? {
+        signal: AbortSignal.any([request.signal, AbortSignal.timeout(7000)]),
+        endsAt: Date.now() + 7000,
+      }
+    : undefined;
+  const work = handle(request, deadline);
+  const response = deadline
+    ? await beforeDeadline(work, deadline.signal).catch(() =>
+        json({ error: 'Search took too long. Please try again.' }, 503),
+      )
+    : await work;
   console.log(
     JSON.stringify({
       event: 'api_request',

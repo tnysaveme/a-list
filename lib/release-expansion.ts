@@ -19,11 +19,18 @@ import {
 } from './reviewed-report-identities';
 import {
   parseSourceProfile,
+  unchangedProfile,
   profileFingerprint,
   SourceProfileConflict,
   type SourceProfile,
 } from './release-profile';
-import { getMetadataEvidence, searchMetadata, type MetadataEvidence } from './metadata';
+import {
+  getMetadataEvidence,
+  findListingEvidence,
+  searchMetadata,
+  type MetadataEvidence,
+  UnsupportedMediaType,
+} from './metadata';
 import { titleKey, verifiedIdentityId } from './film-identity';
 import {
   automaticEvidence,
@@ -33,6 +40,7 @@ import {
   mergeReleaseFeed,
   dueReleaseEntries,
   SIX_HOURS,
+  WTS_DISCOVERY_CACHE_MS,
   MATCH_RULE_VERSION,
   UnresolvedRelease,
   type FeedEntry,
@@ -42,6 +50,15 @@ import { invalidateReleaseCaches } from './release-store';
 import { mergeMovies, type Movie } from './model';
 import { recordSourceCheck } from './source-checks';
 import { TRANSIENT_RETRY_MS } from './source-health';
+import { releaseSearchTitle } from './release-evidence';
+import { reconcileReleaseDates, type ReleaseAudit } from './release-reconciliation';
+import {
+  releaseDiagnostic,
+  type ReleaseDiagnostic,
+  type ReleaseStage,
+} from './release-diagnostics';
+import { knownProfileMovies, corroborateCandidates } from './release-matching';
+import { fetchVerifiedReport } from './source-verification';
 
 type Db = ReturnType<typeof adminDb>;
 export type ReleaseFeedState = { wts_feed?: FeedEntry[]; wts_feed_after?: string | null };
@@ -51,7 +68,9 @@ export async function expansionFeed(
   db = adminDb(),
 ): Promise<FeedEntry[]> {
   const previous = state.wts_feed || [];
-  if (state.wts_feed_after && Date.parse(state.wts_feed_after) > Date.now()) return previous;
+  const cachedUntil = Date.parse(state.wts_feed_after || '');
+  // Ignore the old six-hour discovery cache during rollout; keep short failure retries.
+  if (cachedUntil > Date.now() && cachedUntil <= Date.now() + 15 * 60_000) return previous;
   const results = await Promise.allSettled(
     ['https://whentostream.com/feed/', 'https://whentostream.com/feed/?paged=2'].map(
       async (url) => {
@@ -68,7 +87,9 @@ export async function expansionFeed(
     available = results.some((result) => result.status === 'fulfilled');
   const feed = available ? mergeReleaseFeed(previous, good, new Date().toISOString()) : previous;
   // A partial feed is retried sooner; it never erases the other page's work.
-  const delay = results.every((result) => result.status === 'fulfilled') ? SIX_HOURS : 15 * 60_000;
+  const delay = results.every((result) => result.status === 'fulfilled')
+    ? WTS_DISCOVERY_CACHE_MS
+    : 15 * 60_000;
   checked(
     await db
       .from('a_list_source_status')
@@ -101,7 +122,11 @@ async function canonicalMovie(
       .limit(3)
       .abortSignal(signal),
   ) as Row[];
-  if (rows.length > 1) throw new UnresolvedRelease('duplicate_catalogue_identity');
+  if (rows.length > 1 && rows.some((row) => verifiedIdentityId(row.movie) !== id))
+    throw new UnresolvedRelease('unverified_catalogue_identity');
+  // Legacy metadata and primary listings can share a verified ID. Publish to the native
+  // record; the database mirrors the verified windows to aliases without changing UIDs.
+  rows.sort((a, b) => Number(a.id === id) - Number(b.id === id) || a.id.localeCompare(b.id));
   let native: Movie | undefined;
   if (!rows.length) {
     const html = await fetchSource('https://www.dvdsreleasedates.com/search/', {
@@ -111,7 +136,10 @@ async function canonicalMovie(
       body: new URLSearchParams({ searchStr: title }).toString(),
     });
     const candidates = parseSearchResults(html).filter(
-      (movie) => titleKey(movie.title) === titleKey(title) && (!movie.year || movie.year === year),
+      (movie) => titleKey(movie.title) === titleKey(title),
+    );
+    candidates.sort(
+      (a, b) => Math.abs(Number(a.year) - Number(year)) - Math.abs(Number(b.year) - Number(year)),
     );
     if (candidates.length > 3) throw new UnresolvedRelease('ambiguous_native_identity');
     const verified = await Promise.all(
@@ -164,7 +192,9 @@ export async function expandReleases(
     db = adminDb(),
     checkpoint = true,
     expectedImdbId,
+    expectedMovie,
     sourcePages,
+    knownMovies = [],
   }: {
     dryRun?: boolean;
     publishUnknown?: boolean;
@@ -174,7 +204,9 @@ export async function expandReleases(
     db?: Db;
     checkpoint?: boolean;
     expectedImdbId?: string;
+    expectedMovie?: Movie;
     sourcePages?: ReadonlyMap<string, string>;
+    knownMovies?: Movie[];
   } = {},
 ) {
   const start = Date.now(),
@@ -194,7 +226,20 @@ export async function expandReleases(
       method?: string;
       movieId?: string;
       partial?: boolean;
+      diagnostic?: ReleaseDiagnostic;
+      audit?: ReleaseAudit;
     }[] = [];
+  const fetched = new Map<string, Promise<string>>();
+  const sourcePage = (url: string) => {
+    const supplied = sourcePages?.get(url);
+    if (supplied !== undefined) return Promise.resolve(supplied);
+    let pending = fetched.get(url);
+    if (!pending) {
+      pending = fetchSource(url, { cache: 'no-store', signal });
+      fetched.set(url, pending);
+    }
+    return pending;
+  };
   let changed = false;
   for (let offset = 0; offset < work.length && !signal.aborted; offset += 2) {
     await Promise.all(
@@ -202,25 +247,35 @@ export async function expandReleases(
         let profile: SourceProfile | undefined,
           row: MatchRow | undefined,
           profileCheckedAt: string | undefined;
-        const now = new Date().toISOString();
+        const now = new Date().toISOString(),
+          entryStarted = Date.now();
+        let stage: ReleaseStage = 'profile';
+        let articleWithdrawn = 0;
+        const auditFor = (...args: Parameters<typeof reconcileReleaseDates>) => {
+          const audit = reconcileReleaseDates(...args);
+          audit.withdrawn += articleWithdrawn;
+          return audit;
+        };
         try {
-          const html =
-              sourcePages?.get(entry.report.release.source) ||
-              (await fetchSource(entry.report.release.source, {
-                cache: 'no-store',
-                signal,
-              })),
+          const html = await sourcePage(entry.report.release.source),
             explicit = structuredFilmIdentity(html, entry.report.title);
           if (explicit.ambiguous) throw new UnresolvedRelease('conflicting_source_identity');
           const nativeProfile = profileReference(html, entry.report.title, text);
           if (nativeProfile && nativeProfile.sourceFilmUrl !== entry.report.release.source)
             throw new UnresolvedRelease('conflicting_source_identity');
           const reference = reportReference(html, entry.report.title, text);
+          if (
+            entry.report.inventory &&
+            (!nativeProfile || nativeProfile.sourceFilmId !== entry.sourceId)
+          )
+            throw new UnresolvedRelease('conflicting_source_identity');
+          let profileHtml = nativeProfile ? html : undefined;
           let mapping: ReviewedReportIdentity | undefined,
             metadata: Movie | undefined,
             evidence: MetadataEvidence | undefined;
           if (reference) {
             entry.sourceId = reference.sourceFilmId;
+            stage = 'database';
             row = checked(
               await db
                 .from('a_list_release_candidates')
@@ -229,32 +284,27 @@ export async function expandReleases(
                 .abortSignal(signal)
                 .maybeSingle(),
             ) as MatchRow | undefined;
-            const fresh =
-              !nativeProfile &&
-              row?.status === 'approved' &&
-              Date.now() - Date.parse(row.profile_checked_at || row.checked_at) < SIX_HOURS &&
-              row.profile.sourceFilmUrl === reference.sourceFilmUrl &&
-              row.profile.year === reference.year &&
-              titleKey(row.profile.title) === titleKey(reference.title);
-            if (fresh && row) {
-              profile = row.profile;
-              profileCheckedAt = row.profile_checked_at || row.checked_at;
-            } else {
-              const source = nativeProfile
-                ? html
-                : await fetchSource(reference.sourceFilmUrl, { signal });
-              try {
-                profile = parseSourceProfile(source, reference);
-                profileCheckedAt = now;
-              } catch (error) {
-                if (error instanceof SourceProfileConflict)
-                  throw new UnresolvedRelease('conflicting_source_profile');
-                throw error;
-              }
+            stage = 'profile';
+            const source = nativeProfile ? html : await sourcePage(reference.sourceFilmUrl);
+            profileHtml = source;
+            try {
+              profile = parseSourceProfile(source, reference);
+              if (profile.facts?.series) throw new UnresolvedRelease('not_movie');
+              profileCheckedAt = now;
+            } catch (error) {
+              if (error instanceof SourceProfileConflict)
+                throw new UnresolvedRelease('conflicting_source_profile');
+              throw error;
             }
             const fingerprint = profileFingerprint(profile),
               cached = row ? cachedIdentity(row) : undefined;
-            if (cached && cached.profileFingerprint === fingerprint) mapping = cached;
+            if (cached && unchangedProfile(profile, cached))
+              mapping = {
+                ...cached,
+                title: profile.title,
+                year: profile.year,
+                profileFingerprint: fingerprint,
+              };
             if (!mapping && !row) {
               const seed = reviewedReportIdentities.find(
                 (identity) =>
@@ -268,6 +318,7 @@ export async function expandReleases(
             if (mapping && explicit.imdbId && mapping.imdbId !== explicit.imdbId)
               throw new UnresolvedRelease('conflicting_source_identity');
             if (!mapping) {
+              stage = 'identity';
               if (!publishUnknown && !dryRun) throw new UnresolvedRelease('imports_paused');
               if (explicit.imdbId)
                 evidence = automaticEvidence(
@@ -275,18 +326,53 @@ export async function expandReleases(
                   [await getMetadataEvidence(explicit.imdbId, signal)],
                   explicit.imdbId,
                 );
-              else {
-                const candidates = (await searchMetadata(profile.title, signal)).filter(
-                  (movie) => titleKey(movie.title) === titleKey(profile!.title),
-                );
-                if (candidates.length > 3) throw new UnresolvedRelease('ambiguous_identity');
-                // A failed candidate lookup cannot establish uniqueness among the remaining candidates.
-                evidence = automaticEvidence(
-                  profile,
-                  await Promise.all(
-                    candidates.map((movie) => getMetadataEvidence(movie.id, signal)),
-                  ),
-                );
+              else if (expectedImdbId) {
+                // This film's ID is already independently verified by its native source.
+                // Corroborate that exact subject; broad title searches add namesakes, not proof.
+                try {
+                  evidence = automaticEvidence(profile, [
+                    await getMetadataEvidence(expectedImdbId, signal),
+                  ]);
+                } catch (error) {
+                  if (error instanceof UnsupportedMediaType)
+                    throw new UnresolvedRelease('not_movie');
+                  if (
+                    signal.aborted ||
+                    !expectedMovie ||
+                    verifiedIdentityId(expectedMovie) !== expectedImdbId
+                  )
+                    throw error;
+                  const primary = await findListingEvidence(expectedMovie, signal);
+                  if (!primary) throw error;
+                  evidence = automaticEvidence(profile, [primary]);
+                }
+              } else {
+                const local = knownProfileMovies(profile, knownMovies);
+                if (local.length) {
+                  try {
+                    evidence = await corroborateCandidates(profile, local, signal);
+                  } catch (error) {
+                    if (
+                      !(error instanceof UnresolvedRelease) ||
+                      error.message !== 'insufficient_evidence'
+                    )
+                      throw error;
+                  }
+                }
+                if (!evidence) {
+                  const candidates = knownProfileMovies(
+                    profile,
+                    await searchMetadata(
+                      releaseSearchTitle(
+                        profile.title,
+                        profile.facts?.nonfiction,
+                        profile.directors,
+                      ),
+                      signal,
+                    ),
+                  );
+                  evidence = await corroborateCandidates(profile, candidates, signal);
+                }
               }
               mapping = inferredIdentity(
                 profile,
@@ -320,32 +406,111 @@ export async function expandReleases(
             )
               throw new UnresolvedRelease('conflicting_source_identity');
           }
+          stage = 'profile';
           const id = mapping?.imdbId || explicit.imdbId;
           if (expectedImdbId && id !== expectedImdbId)
             throw new UnresolvedRelease('different_film_identity');
-          const profileEvidence = nativeProfile
-            ? profileReleaseEvidence(html, nativeProfile)
+          if (mapping && !profileHtml) profileHtml = await sourcePage(mapping.sourceFilmUrl);
+          const releaseProfile = profileHtml
+            ? profileReference(profileHtml, entry.report.title, text)
             : undefined;
-          const verifiedReports = (
-            profileEvidence
-              ? profileEvidence.reports.map((report) => ({ ...report, imdbId: id }))
-              : [entry.report]
-          )
-            .map((report) => parseVerifiedReport(html, report, mapping ? [mapping] : []))
+          const profileEvidence =
+            releaseProfile &&
+            (nativeProfile || /(?:VOD|PVOD|SVOD) Release Date\s*:/i.test(text(profileHtml!)))
+              ? profileReleaseEvidence(profileHtml!, releaseProfile)
+              : undefined;
+          const verifiedReports = (profileEvidence?.reports || [])
+            .map((report) =>
+              parseVerifiedReport(
+                profileHtml!,
+                { ...report, imdbId: id },
+                mapping ? [mapping] : [],
+              ),
+            )
             .filter((report) => report !== null);
+          // Approved announcements can fill fields the native page still leaves TBA.
+          // Check their current source; an old report snapshot never restores a date.
+          if (nativeProfile && mapping && row?.reports.length) {
+            const pages = new Map([[mapping.sourceFilmUrl, Promise.resolve(profileHtml!)]]);
+            const retired = new Set<string>();
+            const articles = [
+              ...new Map(
+                row.reports
+                  .filter(
+                    (report) =>
+                      report.imdbId === id &&
+                      report.release.filmImdbId === id &&
+                      report.release.source !== mapping.sourceFilmUrl &&
+                      report.release.sourceName === 'When To Stream',
+                  )
+                  .map((report) => [`${report.release.source}:${report.release.kind}`, report]),
+              ).values(),
+            ].slice(0, 3);
+            for (const report of articles) {
+              if (
+                retired.has(report.release.source) ||
+                verifiedReports.some((r) => r.release.kind === report.release.kind)
+              )
+                continue;
+              const current = await fetchVerifiedReport(report, [mapping], signal, pages, true);
+              if (current) verifiedReports.push(current);
+              else {
+                const before = await canonicalMovie(id!, mapping.title, mapping.year, signal, db);
+                articleWithdrawn +=
+                  before.movie?.releases.filter((r) => r.source === report.release.source).length ||
+                  0;
+                if (!dryRun)
+                  checked(
+                    await db
+                      .rpc('a_list_withhold_release_report', { p_source: report.release.source })
+                      .abortSignal(signal),
+                  );
+                retired.add(report.release.source);
+                changed ||= !dryRun;
+              }
+            }
+          }
+          // Both discovery and title lookups prefer current profile fields. An article can
+          // fill a window the profile still leaves TBA; its own subject is verified too.
+          if (
+            !nativeProfile &&
+            !verifiedReports.some((r) => r.release.kind === entry.report.release.kind)
+          ) {
+            const article = parseVerifiedReport(html, entry.report, mapping ? [mapping] : []);
+            if (article) verifiedReports.push(article);
+          }
           if (!verifiedReports.length) {
-            if (profileEvidence && !profileEvidence.withdrawnKinds.length)
+            if (
+              profileEvidence &&
+              !profileEvidence.withdrawnKinds.length &&
+              !profileEvidence.malformedKinds.length
+            )
               throw new Error('Release profile date format changed');
+            const existingRows =
+              profileEvidence && id
+                ? (checked(
+                    await db
+                      .from('a_list_movies')
+                      .select('movie,updated_at')
+                      .or(`id.eq.${id},movie->>imdbId.eq.${id}`)
+                      .limit(3)
+                      .abortSignal(signal),
+                  ) as { movie: Movie; updated_at: string }[])
+                : [];
+            const existingRow = existingRows.find((row) => verifiedIdentityId(row.movie) === id);
+            const current = existingRow
+              ? { movie: existingRow.movie, version: existingRow.updated_at }
+              : undefined;
+            stage = 'publication';
             if (!dryRun) {
               if (profileEvidence && id) {
-                const current = await canonicalMovie(id, mapping!.title, mapping!.year, signal, db);
-                if (current.movie)
+                if (current?.movie && profileEvidence.withdrawnKinds.length)
                   checked(
                     await db
                       .rpc('a_list_withdraw_release_windows', {
                         p_movie_id: current.movie.id,
                         p_imdb_id: id,
-                        p_source: entry.report.release.source,
+                        p_source: releaseProfile!.sourceFilmUrl,
                         p_kinds: profileEvidence.withdrawnKinds,
                         p_version: current.version,
                       })
@@ -361,10 +526,70 @@ export async function expandReleases(
                 );
               changed = true;
             }
-            entry.outcome = 'withheld';
+            if (!dryRun && profile && mapping && id) {
+              checked(
+                await db
+                  .rpc('a_list_store_release_identity', {
+                    p_match: {
+                      source_id: profile.sourceFilmId,
+                      profile,
+                      fingerprint: profileFingerprint(profile),
+                      imdb_id: id,
+                      method: mapping.method || 'reviewed',
+                      rule_version: MATCH_RULE_VERSION,
+                      rationale: mapping.evidence.corroboration,
+                    },
+                    p_movie_id: current?.movie?.id || null,
+                  })
+                  .abortSignal(signal),
+              );
+              changed = true;
+            }
+            const partial =
+              !!profileEvidence?.malformedKinds.length ||
+              !!current?.movie?.releases.some(
+                (release) =>
+                  release.source === releaseProfile?.sourceFilmUrl &&
+                  profileEvidence?.absentKinds.includes(release.kind),
+              );
+            const outcome =
+              articleWithdrawn ||
+              current?.movie?.releases.some(
+                (release) =>
+                  release.source === releaseProfile?.sourceFilmUrl &&
+                  profileEvidence?.withdrawnKinds.includes(release.kind),
+              )
+                ? 'withheld'
+                : 'verified_no_date';
+            entry.outcome = outcome;
             entry.checkedAt = now;
-            entry.nextCheckAt = new Date(Date.now() + SIX_HOURS).toISOString();
-            decisions.push({ source: entry.report.release.source, outcome: 'withheld' });
+            entry.nextCheckAt = new Date(
+              Date.now() + (partial ? TRANSIENT_RETRY_MS : SIX_HOURS),
+            ).toISOString();
+            decisions.push({
+              source: entry.report.release.source,
+              outcome,
+              movieId: current?.movie?.id,
+              ...(partial
+                ? {
+                    partial: true,
+                    diagnostic: releaseDiagnostic(
+                      new Error('Release profile format changed'),
+                      'profile',
+                      Date.now() - entryStarted,
+                    ),
+                  }
+                : {}),
+              audit: profileEvidence
+                ? auditFor(
+                    current?.movie,
+                    [],
+                    releaseProfile!.sourceFilmUrl,
+                    profileEvidence.withdrawnKinds,
+                    profileEvidence.unknownKinds,
+                  )
+                : undefined,
+            });
             return;
           }
           if (!id || verifiedReports.some((report) => report.imdbId !== id))
@@ -382,23 +607,25 @@ export async function expandReleases(
             verifiedReports.map((report) => report.release),
             existing.movie,
             profileEvidence?.withdrawnKinds.map((kind) => ({
-              source: entry.report.release.source,
+              source: releaseProfile!.sourceFilmUrl,
               kind,
             })),
           );
           const partial =
             !!profileEvidence &&
-            !!existing.movie?.releases.some(
-              (release) =>
-                release.source === entry.report.release.source &&
-                profileEvidence.unknownKinds.includes(release.kind),
-            );
+            (!!profileEvidence.malformedKinds.length ||
+              !!existing.movie?.releases.some(
+                (release) =>
+                  release.source === releaseProfile?.sourceFilmUrl &&
+                  profileEvidence.unknownKinds.includes(release.kind),
+              ));
           if (partial)
             movie.releaseCheck = {
               status: 'partial',
               attemptedAt: now,
               issues: [{ provider: 'wts', category: 'format_changed' }],
             };
+          stage = 'publication';
           if (!dryRun) {
             const p_match =
               profile && mapping
@@ -407,7 +634,7 @@ export async function expandReleases(
                     profile,
                     fingerprint: profileFingerprint(profile),
                     profile_checked_at: profileCheckedAt,
-                    reports: [entry.report],
+                    reports: verifiedReports,
                     suggestions: evidence ? [evidence] : row?.suggestions || [],
                     method: mapping.method || 'reviewed',
                     imdb_id: id,
@@ -437,6 +664,13 @@ export async function expandReleases(
           decisions.push({
             source: entry.report.release.source,
             outcome: 'matched',
+            audit: auditFor(
+              existing.movie,
+              verifiedReports.map((report) => report.release),
+              releaseProfile?.sourceFilmUrl || entry.report.release.source,
+              profileEvidence?.withdrawnKinds,
+              profileEvidence?.unknownKinds,
+            ),
             ...(partial ? { partial: true } : {}),
             imdbId: id,
             method: verifiedReports[0].release.filmIdentityMethod,
@@ -468,7 +702,8 @@ export async function expandReleases(
             ((profile &&
               profileFingerprint(profile) !== row.fingerprint &&
               !['source_unavailable', 'budget_exhausted', 'imports_paused'].includes(outcome)) ||
-              outcome.startsWith('conflicting_')) &&
+              outcome.startsWith('conflicting_') ||
+              outcome === 'not_movie') &&
             !signal.aborted
           ) {
             const invalidated = profile || row.profile;
@@ -490,7 +725,11 @@ export async function expandReleases(
                 .abortSignal(signal),
             );
             changed = true;
-          } else if (!dryRun && outcome.startsWith('conflicting_') && !signal.aborted) {
+          } else if (
+            !dryRun &&
+            (outcome.startsWith('conflicting_') || outcome === 'not_movie') &&
+            !signal.aborted
+          ) {
             checked(
               await db
                 .rpc('a_list_withhold_release_report', { p_source: entry.report.release.source })
@@ -498,7 +737,21 @@ export async function expandReleases(
             );
             changed = true;
           }
-          decisions.push({ source: entry.report.release.source, outcome });
+          const diagnostic = releaseDiagnostic(
+            error,
+            stage,
+            Date.now() - entryStarted,
+            signal.aborted,
+          );
+          decisions.push({ source: entry.report.release.source, outcome, diagnostic });
+          console.warn(
+            JSON.stringify({
+              event: 'wts_verification_deferred',
+              sourceId: entry.sourceId,
+              outcome,
+              ...diagnostic,
+            }),
+          );
         }
       }),
     );
@@ -509,7 +762,7 @@ export async function expandReleases(
       checked(
         await db
           .from('a_list_source_status')
-          .update({ wts_feed: entries })
+          .update({ wts_feed: entries.filter((entry) => !entry.report.inventory) })
           .eq('id', true)
           .abortSignal(parent || AbortSignal.timeout(3000)),
       );
@@ -518,7 +771,9 @@ export async function expandReleases(
   const result = {
     processed: decisions.length,
     matched: decisions.filter((d) => d.outcome === 'matched').length,
-    unresolved: decisions.filter((d) => !['matched', 'withheld'].includes(d.outcome)).length,
+    unresolved: decisions.filter(
+      (d) => !['matched', 'withheld', 'verified_no_date'].includes(d.outcome),
+    ).length,
     changed,
     dryRun,
     durationMs: Date.now() - start,

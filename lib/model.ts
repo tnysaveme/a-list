@@ -1,3 +1,4 @@
+import { releaseDay, validReleaseDate } from './release-day';
 export type Release = {
   kind: 'Digital' | 'PVOD' | 'Subscription';
   date: string;
@@ -39,6 +40,8 @@ export type Movie = {
   checkedAt: string;
   calendarUpdatedAt?: string;
   addedAt?: string;
+  /** Personal library state; excluded from the release calendar when set. */
+  watchedAt?: string | null;
   tracked?: boolean;
   saved?: boolean;
   discoveredFrom?: 'When To Stream';
@@ -62,8 +65,10 @@ export type ReleaseCheck = {
 export const verifiedReleases = (movie: Movie) =>
   movie.releases.filter(
     (release) =>
-      release.sourceName !== 'When To Stream' ||
-      (!!release.filmImdbId && release.filmImdbId === verifiedIdentityId(movie)),
+      validReleaseDate(release.date) &&
+      (release.confidence === 'listed' || release.confidence === 'rumored') &&
+      (release.sourceName !== 'When To Stream' ||
+        (!!release.filmImdbId && release.filmImdbId === verifiedIdentityId(movie))),
   );
 export const sanitizeMovie = (movie: Movie): Movie => ({
   ...movie,
@@ -74,23 +79,41 @@ export const releaseCheckDue = (movie: Movie, now = Date.now()) =>
   !movie.releaseCheckedAt ||
   !Number.isFinite(Date.parse(movie.releaseCheckedAt)) ||
   now - Date.parse(movie.releaseCheckedAt) >= 6 * 3600_000;
-export const availableRelease = (
-  movie: Movie,
-  today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }),
-) =>
-  verifiedReleases(movie)
-    .filter((r) => r.confidence === 'listed' && r.date <= today)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .at(-1);
-export const nextRelease = (
-  movie: Movie,
-  today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }),
-) => {
-  const sorted = verifiedReleases(movie).sort((a, b) => a.date.localeCompare(b.date));
-  return sorted.find((r) => r.date >= today) || sorted.at(-1);
-};
-export const displayRelease = (movie: Movie, today?: string) =>
-  availableRelease(movie, today) || nextRelease(movie, today);
+/** Select from verified windows in one pass, preserving date/confidence tie ordering. */
+export function selectRelease(releases: readonly Release[], today: string, filter = 'all') {
+  let available: Release | undefined, upcoming: Release | undefined, latest: Release | undefined;
+  for (const release of releases) {
+    if (filter === 'rumored' && release.confidence !== 'rumored') continue;
+    if (
+      release.confidence === 'listed' &&
+      release.date <= today &&
+      (!available || release.date >= available.date)
+    )
+      available = release;
+    if (
+      (filter === 'soon' ? release.date > today : release.date >= today) &&
+      (!upcoming || compareReleaseDays(release, upcoming) < 0)
+    )
+      upcoming = release;
+    if (
+      !latest ||
+      release.date > latest.date ||
+      (release.date === latest.date &&
+        (filter === 'rumored' || compareReleaseDays(release, latest) < 0))
+    )
+      latest = release;
+  }
+  if (filter === 'available') return available;
+  if (filter === 'soon') return upcoming;
+  if (filter === 'next' || filter === 'rumored') return upcoming || latest;
+  return available || upcoming || latest;
+}
+export const availableRelease = (movie: Movie, today = releaseDay()) =>
+  selectRelease(verifiedReleases(movie), today, 'available');
+export const nextRelease = (movie: Movie, today = releaseDay()) =>
+  selectRelease(verifiedReleases(movie), today, 'next');
+export const displayRelease = (movie: Movie, today = releaseDay()) =>
+  selectRelease(verifiedReleases(movie), today);
 export function mergeMovies(movies: Movie[]): Movie[] {
   const map = new Map<string, Movie>();
   for (const movie of movies) {
@@ -120,24 +143,30 @@ export function mergeMovies(movies: Movie[]): Movie[] {
   return [...map.values()].map(sanitizeMovie);
 }
 
-export function calendarReleases(movie: Movie, includeRumors = true) {
-  return verifiedReleases(movie).filter((r) => {
-    const parsed = new Date(`${r.date}T13:00:00Z`);
-    return (
-      (includeRumors || r.confidence === 'listed') &&
-      /^\d{4}-\d{2}-\d{2}$/.test(r.date) &&
-      Number.isFinite(parsed.getTime()) &&
-      parsed.toISOString().slice(0, 10) === r.date
-    );
-  });
-}
-export function calendarRelease(
-  movie: Movie,
-  includeRumors = true,
-  today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }),
-) {
-  const releases = calendarReleases(movie, includeRumors).sort((a, b) =>
-    a.date.localeCompare(b.date),
+/** Prefer a listed release when several windows share the same calendar day. */
+export function compareReleaseDays(a: Release, b: Release) {
+  return (
+    a.date.localeCompare(b.date) ||
+    Number(a.confidence === 'rumored') - Number(b.confidence === 'rumored')
   );
-  return releases.find((r) => r.date >= today) || releases.at(-1);
+}
+export function calendarReleases(movie: Movie, includeRumors = true) {
+  return verifiedReleases(movie).filter((r) => includeRumors || r.confidence === 'listed');
+}
+/** One reminder per movie/date; a fixed kind order keeps the surviving legacy UID predictable. */
+export function calendarReleaseGroups(movie: Movie, includeRumors = true): Release[][] {
+  const kinds: Release['kind'][] = ['Digital', 'PVOD', 'Subscription'];
+  const releases = calendarReleases(movie, includeRumors).sort(
+    (a, b) => kinds.indexOf(a.kind) - kinds.indexOf(b.kind),
+  );
+  const groups = new Map<string, Release[]>();
+  for (const release of releases) {
+    const group = groups.get(release.date);
+    if (group) group.push(release);
+    else groups.set(release.date, [release]);
+  }
+  return [...groups.values()];
+}
+export function calendarRelease(movie: Movie, includeRumors = true, today = releaseDay()) {
+  return selectRelease(calendarReleases(movie, includeRumors), today, 'next');
 }

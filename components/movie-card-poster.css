@@ -1,12 +1,16 @@
 /* Hallmark · component: movie card · genre: modern-minimal · theme: A-List neutral
  * states: default · hover · focus · active · disabled · loading · error · success
  * pre-emit critique: P5 H5 E5 S5 R5 V4
- * Feedback only: artwork and metadata stay still; controls use a 120ms fade. */
+ * Artwork lifts on pointer hover; metadata and neighbors stay fixed. Rich previews live in cinema.css. */
 .movie-card-poster .poster-button {
   color: var(--color-ink);
   background: var(--color-paper-2);
 }
 .movie-card-poster .poster-button img {
+  opacity: 0;
+  transition: opacity var(--dur-medium) var(--ease-out);
+}
+.movie-card-poster[data-artwork='ready'] .poster-button img {
   opacity: 1;
 }
 .movie-card-poster .card-artwork-placeholder {
@@ -21,17 +25,16 @@
   color: var(--color-muted);
   text-align: center;
   pointer-events: none;
+  transition: opacity var(--dur-medium) var(--ease-out);
+}
+.movie-card-poster[data-artwork='ready'] .card-artwork-placeholder {
+  opacity: 0;
+}
+.movie-card-poster[data-artwork-instant='true'] :is(img, .card-artwork-placeholder) {
+  transition: none;
 }
 .card-artwork-note {
   font-size: var(--text-xs);
-}
-.movie-card-poster[data-artwork='loading'] .card-artwork-note::before {
-  content: '';
-  display: block;
-  width: var(--space-lg);
-  height: var(--rule-hair);
-  margin: 0 auto var(--space-sm);
-  background: var(--color-rule-strong);
 }
 .card-view-cue {
   position: absolute;
@@ -75,7 +78,12 @@
   display: none;
 }
 .movie-card-poster .save-button {
-  transition: opacity var(--dur-short) var(--ease-out);
+  transition:
+    opacity var(--dur-short) var(--ease-out),
+    scale var(--dur-release) var(--ease-out);
+}
+.movie-card-poster .save-button[aria-busy='true'] {
+  opacity: 1;
 }
 .movie-card-poster .save-button:active:not(:disabled) {
   opacity: 0.7;
@@ -97,13 +105,10 @@
     opacity: 0;
   }
   .movie-card-poster:hover .save-button:not(:disabled),
+  .movie-card-poster:focus-within .save-button:not(:disabled),
   .movie-card-poster.is-hover .save-button:not(:disabled),
   .movie-card-poster .save-button:not(.is-saved):focus-visible {
     opacity: 1;
-  }
-  .movie-card-poster .save-button:hover:not(:disabled) {
-    background: var(--color-artwork-ink);
-    color: var(--color-on-dark);
   }
 }
 .movie-list .card-view-cue,
@@ -117,6 +122,8 @@
   opacity: 1;
 }
 @media (prefers-reduced-motion: reduce) {
+  .movie-card-poster .poster-button img,
+  .movie-card-poster .card-artwork-placeholder,
   .card-view-cue,
   .movie-card-poster .save-button {
     transition: none;

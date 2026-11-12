@@ -31,6 +31,10 @@
   --color-artwork-surface: oklch(100% 0 0 / 0.96);
   --color-artwork-ink: oklch(21% 0 0);
   --color-clear: oklch(0% 0 0 / 0);
+  /* Relative tones keep interaction contrast consistent in either appearance. */
+  --color-hover: color-mix(in oklch, var(--color-ink) 6%, var(--color-surface));
+  --color-hover-strong: color-mix(in oklch, var(--color-ink) 11%, var(--color-surface));
+  --color-on-action-hover: color-mix(in oklch, var(--color-accent-ink) 12%, var(--color-action));
   --font-brand: var(--font-figtree), sans-serif;
   --font-body: var(--font-inter), sans-serif;
   --font-display: var(--font-body);
@@ -51,13 +55,13 @@
   --space-3xl: 64px;
   --space-page: 72px;
   --space-wide: 80px;
-  --text-xs: 0.75rem;
+  --text-xs: 0.8125rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
   --text-md: 1.125rem;
   --text-lg: 1.25rem;
   --text-xl: 1.75rem;
-  --text-display: clamp(1.75rem, 3vw, 2.25rem);
+  --text-display: clamp(1.5rem, 2.4vw, 2rem);
   --radius-sm: 8px;
   --radius-md: 8px;
   --radius-lg: 16px;
@@ -68,7 +72,18 @@
   --ease-in: cubic-bezier(0.7, 0, 0.84, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --dur-short: 120ms;
+  --dur-hover: 140ms;
   --dur-medium: 180ms;
+  --dur-press: 100ms;
+  --dur-release: 160ms;
+  --dur-view: 260ms;
+  --dur-results: 220ms;
+  --dur-layout: 280ms;
+  /* The rare sign-in greeting gets a short reading beat and a gentler page reveal. */
+  --dur-welcome-enter: 400ms;
+  --dur-artwork-reveal: 1200ms;
+  --dur-welcome-hold: 1600ms;
+  --dur-welcome-fade: 800ms;
   --z-dropdown: 40;
 }
 :root[data-theme='dark'] {

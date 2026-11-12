@@ -1,0 +1,38 @@
+{
+  "deploymentId": "dpl_F8iix6V6fMXkTrq4zND3juoNnAyP",
+  "url": "https://a-list-nine.vercel.app",
+  "target": "production",
+  "state": "READY",
+  "framework": "Next.js",
+  "source": "Tested current workspace, including uncommitted changes",
+  "uploadEntries": 424,
+  "buildDurationMs": 154441,
+  "remoteUnitAndDatabaseTestsPassed": 261,
+  "smoke": {
+    "base": "https://a-list-nine.vercel.app",
+    "checks": [
+      "Mobile login renders with usable controls and no horizontal overflow",
+      "Desktop dark login renders",
+      "Privacy page returns 200",
+      "/api/library/membership remains private (401, no-store)",
+      "/api/health remains private (401, no-store)",
+      "Unauthenticated home redirects to login",
+      "Public readiness is healthy"
+    ],
+    "browserErrors": [],
+    "status": "passed"
+  },
+  "runtimeErrorScan": {
+    "type": "summary",
+    "recordsReturned": 0,
+    "timeRange": {
+      "start": "2026-11-05T18:48:16.242Z",
+      "end": "2026-11-05T18:58:16.242Z"
+    },
+    "pagination": {
+      "hasMore": false,
+      "next": null
+    },
+    "excludedIntervals": []
+  }
+}

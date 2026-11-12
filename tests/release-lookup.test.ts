@@ -26,7 +26,8 @@ const movie: Movie = {
   checkedAt: '2026-10-25T00:00:00Z',
   releases: [],
 };
-const db = {} as NonNullable<Parameters<typeof lookupReleaseReports>[1]>['db'];
+const rpc = () => ({ abortSignal: async () => ({ data: {}, error: null }) });
+const db = { rpc } as unknown as NonNullable<Parameters<typeof lookupReleaseReports>[1]>['db'];
 const empty = '<rss><channel>' + '.'.repeat(600) + '</channel></rss>';
 function cache() {
   const values = new Map<string, LookupState>(),
@@ -102,6 +103,48 @@ test('daily title lookups cache empty results, skip complete windows, and retain
     globalThis.fetch = original;
   }
 });
+
+test('cached negative checks cannot hide a window that has disappeared since the successful check', async () => {
+  const original = globalThis.fetch,
+    fake = cache();
+  let requests = 0;
+  const rental = {
+    kind: 'Digital' as const,
+    date: '2026-10-27',
+    confidence: 'listed' as const,
+    source: 'https://whentostream.com/filipinana-2026/',
+    sourceName: 'When To Stream',
+    filmImdbId: movie.id,
+  };
+  try {
+    globalThis.fetch = async () => {
+      requests++;
+      return new Response(empty);
+    };
+    const dated = { ...movie, releases: [rental] };
+    assert.equal(
+      (await lookupReleaseReports(dated, { db, lookupCache: fake.api })).outcome,
+      'no_report',
+    );
+    assert.equal(
+      (await lookupReleaseReports(dated, { db, lookupCache: fake.api })).attempted,
+      false,
+    );
+    assert.equal(requests, 1);
+    assert.equal(
+      (await lookupReleaseReports(movie, { db, lookupCache: fake.api })).attempted,
+      true,
+    );
+    assert.equal(requests, 2);
+    assert.equal(
+      (await lookupReleaseReports(movie, { db, lookupCache: fake.api })).attempted,
+      false,
+    );
+    assert.equal(requests, 2, 'An ordinary undated negative result still keeps its daily cache');
+  } finally {
+    globalThis.fetch = original;
+  }
+});
 test('already-dated films look for missing streaming windows and prefer them over repeated rental reports', async () => {
   const original = globalThis.fetch,
     fake = cache(),
@@ -133,6 +176,7 @@ test('already-dated films look for missing streaming windows and prefer them ove
         '</channel></rss>',
     );
   const fakeDb = {
+    rpc,
     from() {
       const q = {
         select() {
@@ -174,14 +218,14 @@ test('already-dated films look for missing streaming windows and prefer them ove
     assert.equal(result.movie.releases[0], rental);
     assert.equal(result.movie.releases[1].platform, 'Netflix');
     assert.equal(
-      (await lookupReleaseReports(dated, { db: fakeDb, lookupCache: fake.api })).attempted,
+      (await lookupReleaseReports(result.movie, { db: fakeDb, lookupCache: fake.api })).attempted,
       false,
     );
   } finally {
     globalThis.fetch = original;
   }
 });
-test('cached candidates advance their due time without consuming the one network-attempt slot', async () => {
+test('a bounded catalogue batch advances cached entries and performs at most two lookups concurrently', async () => {
   const candidates = [movie, { ...movie, id: 'tt7777777' }, { ...movie, id: 'tt8888888' }],
     updates: string[] = [],
     calls: string[] = [];
@@ -192,6 +236,12 @@ test('cached candidates advance their due time without consuming the one network
         const url = new URL(String(input));
         if (url.pathname.endsWith('/a_list_report_lookup_candidates'))
           return Response.json(candidates.map((m) => ({ id: m.id, movie: m })));
+        if (url.pathname.endsWith('/a_list_checkpoint_report_lookup')) {
+          const body = JSON.parse(String(init?.body));
+          updates.push(body.p_id);
+          assert.ok(body.p_after);
+          return Response.json(null);
+        }
         if (url.pathname.includes('/rpc/')) return Response.json(null);
         updates.push(url.searchParams.get('id')!);
         assert.ok(JSON.parse(String(init?.body)).report_lookup_after);
@@ -212,10 +262,10 @@ test('cached candidates advance their due time without consuming the one network
       };
     },
   });
-  assert.deepEqual(calls, [movie.id, 'tt7777777']);
-  assert.equal(updates.length, 2);
-  assert.equal(result.attempts, 1);
-  assert.equal(result.scanned, 2);
+  assert.deepEqual(calls, [movie.id, 'tt7777777', 'tt8888888']);
+  assert.equal(updates.length, 3);
+  assert.equal(result.attempts, 2);
+  assert.equal(result.scanned, 3);
 });
 
 test('a completed publication can be read and cached after the source deadline, within a bounded settling window', async () => {
@@ -229,6 +279,7 @@ test('a completed publication can be read and cached after the source deadline, 
         '</channel></rss>',
     );
   const fakeDb = {
+    rpc,
     from() {
       const q = {
         select() {
@@ -299,6 +350,7 @@ test('native film profiles are verified before announcements and complete profil
     return new Response(String(url).includes('/feed/') ? feed : page);
   };
   const fakeDb = {
+    rpc,
     from() {
       const q = {
         select() {
@@ -447,6 +499,7 @@ test('announcements fill an absent subscription window without replacing a verif
   let current = movie;
   const calls: string[] = [];
   const fakeDb = {
+    rpc,
     from() {
       const q = {
         select() {
@@ -531,4 +584,94 @@ test('a stale feed year cannot veto the current native profile before credit ver
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test('unverified native records establish their explicit IMDb identity with a row-version guard before WTS search', async () => {
+  const original = globalThis.fetch;
+  const native: Movie = {
+    ...movie,
+    id: '123',
+    imdbId: undefined,
+    source: 'https://www.dvdsreleasedates.com/movies/123/filipinana',
+  };
+  const version = movie.checkedAt;
+  let saved = false,
+    searches = 0;
+  const db = createClient('https://bootstrap.test', 'test', {
+    auth: { persistSession: false },
+    global: {
+      fetch: async (input, init) => {
+        const url = new URL(String(input));
+        if (init?.method === 'PATCH') {
+          assert.equal(url.searchParams.get('updated_at'), `eq.${version}`);
+          const value = JSON.parse(String(init.body)).movie as Movie;
+          assert.equal(value.id, native.id);
+          assert.equal(value.imdbId, movie.id);
+          assert.ok(value.identityVerifiedAt);
+          saved = true;
+          return Response.json({ movie: value });
+        }
+        return Response.json({ movie: native, updated_at: version });
+      },
+    },
+  });
+  globalThis.fetch = async (url) => {
+    if (String(url) === native.source)
+      return new Response(
+        `<link rel="canonical" href="${native.source}"><h1>Filipiñana (2026)</h1><a itemprop="sameAs" href="https://www.imdb.com/title/${movie.id}/">IMDb</a>${'.'.repeat(600)}`,
+      );
+    assert.ok(saved, 'WTS lookup must follow the guarded primary identity write');
+    searches++;
+    return new Response(empty);
+  };
+  try {
+    const result = await lookupReleaseReports(native, { db, lookupCache: cache().api });
+    assert.equal(result.outcome, 'no_report');
+    assert.equal(result.movie.imdbId, movie.id);
+    assert.equal(searches, 1);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('catalogue sweep keeps at most two lookups active and stops dispatch after its deadline', async () => {
+  const candidates = Array.from({ length: 8 }, (_, i) => ({ ...movie, id: `tt${7000000 + i}` }));
+  const controller = new AbortController();
+  let active = 0,
+    peak = 0,
+    calls = 0;
+  const db = createClient('https://sweep.test', 'test', {
+    auth: { persistSession: false },
+    global: {
+      fetch: async (input) =>
+        new URL(String(input)).pathname.endsWith('/a_list_report_lookup_candidates')
+          ? Response.json(candidates.map((m) => ({ id: m.id, movie: m })))
+          : Response.json(null),
+    },
+  });
+  await refreshReportLookups({
+    db,
+    signal: controller.signal,
+    lookup: async (m) => {
+      active++;
+      calls++;
+      peak = Math.max(active, peak);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active--;
+      controller.abort();
+      return { movie: m, attempted: false, outcome: 'busy' };
+    },
+  });
+  assert.equal(calls, 2);
+  assert.equal(peak, 2);
+});
+
+test('old unsaved negatives back off, but saved/recent films stay daily', async () => {
+  const { lookupCadence } = await import('../lib/release-lookup');
+  const old = { ...movie, year: '2020' };
+  assert.equal(lookupCadence(old, false, 0), 2 * 86400);
+  assert.equal(lookupCadence(old, false, 1), 4 * 86400);
+  assert.equal(lookupCadence(old, false, 4), 7 * 86400);
+  assert.equal(lookupCadence(old, true, 4), 86400);
+  assert.equal(lookupCadence(movie, false, 4, Date.parse('2026-11-02')), 86400);
 });

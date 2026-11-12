@@ -1,13 +1,24 @@
 import { createHash } from 'node:crypto';
 import { titleKey } from './film-identity';
-import { text } from './sources';
-import { sourceAttribute, type ReportReference } from './reviewed-report-identities';
+import { text, dateFromText } from './sources';
+import { profileReference, type ReportReference } from './reviewed-report-identities';
 import type { MetadataEvidence } from './metadata';
+import {
+  sameReleaseTitle,
+  runtimeMinutes,
+  sharedSynopsisWords,
+  closeDirector,
+  type FilmFacts,
+  profileFields,
+  releaseSearchTitle,
+  samePersonName,
+} from './release-evidence';
 
 export type SourceProfile = ReportReference & {
   directors: string[];
   cast: string[];
   overview: string;
+  facts?: FilmFacts;
 };
 
 export class SourceProfileUnavailable extends Error {
@@ -24,47 +35,17 @@ export class SourceProfileConflict extends Error {
 }
 
 export function parseSourceProfile(html: string, reference: ReportReference): SourceProfile {
-  const native = html.match(/<article\b[^>]*\bid=['"]post-(\d+)['"][^>]*>/i)?.[1];
-  const heading = text(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || '').match(
-    /^(.*?)\s+\(((?:18|19|20)\d{2})\)$/,
-  );
-  const canonical = [...html.matchAll(/<link\b[^>]*>/gi)].find(
-    (link) => sourceAttribute(link[0], 'rel') === 'canonical',
-  );
-  if (!native || !heading || !canonical || !sourceAttribute(canonical[0], 'href'))
-    throw new SourceProfileUnavailable();
-  try {
-    const canonicalUrl = new URL(sourceAttribute(canonical[0], 'href')!);
-    if (
-      canonicalUrl.origin !== 'https://whentostream.com' ||
-      canonicalUrl.username ||
-      canonicalUrl.password ||
-      canonicalUrl.search ||
-      canonicalUrl.hash
-    )
-      throw new SourceProfileUnavailable();
-  } catch {
-    throw new SourceProfileUnavailable();
-  }
+  const native = profileReference(html, reference.title, text);
+  if (!native) throw new SourceProfileUnavailable();
   if (
-    native !== reference.sourceFilmId ||
-    !heading ||
-    titleKey(heading[1]) !== titleKey(reference.title) ||
-    heading[2] !== reference.year ||
-    !canonical ||
-    sourceAttribute(canonical[0], 'href') !== reference.sourceFilmUrl
+    native.sourceFilmId !== reference.sourceFilmId ||
+    native.sourceFilmUrl !== reference.sourceFilmUrl
   )
     throw new SourceProfileConflict();
-  const paragraphs = [...html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)].map((match) =>
-    text(match[1]),
-  );
-  const field = (label: string) =>
-    paragraphs
-      .find((p) => p.startsWith(`${label}:`))
-      ?.slice(label.length + 1)
-      .trim() || '';
+  const fields = profileFields(html, text);
+  const field = (label: string) => fields.get(label.toLowerCase())?.[0] || '';
   const directors = field('Director')
-    .split(/,|\s+and\s+/)
+    .split(/,|\s+(?:and|&)\s+/)
     .map((s) => s.trim())
     .filter(Boolean)
     .slice(0, 10);
@@ -74,11 +55,36 @@ export function parseSourceProfile(html: string, reference: ReportReference): So
     .filter(Boolean)
     .slice(0, 30);
   const overview = field('Synopsis').slice(0, 4000);
-  if (!directors.length || !cast.length || !overview)
+  if (
+    !directors.length ||
+    !overview ||
+    (!cast.length && !/\b(?:documentary|concert)\b/i.test(field('Genre')))
+  )
     throw new SourceProfileUnavailable('Source film evidence incomplete');
-  return { ...reference, title: heading[1], directors, cast, overview };
+  const runtime = runtimeMinutes(field('Runtime')),
+    theatrical = dateFromText(field('Theater Date')) || undefined;
+  const nonfiction = /\b(?:documentary|concert)\b/i.test(field('Genre'));
+  const facts = {
+    ...(runtime ? { runtime } : {}),
+    ...(theatrical ? { theatrical } : {}),
+    ...(nonfiction ? { nonfiction: true } : {}),
+    ...(/\b(?:TV (?:Mini )?Series|Television|Episodes?)\b/i.test(field('Genre'))
+      ? { series: true }
+      : {}),
+  };
+  return { ...native, directors, cast, overview, ...(Object.keys(facts).length ? { facts } : {}) };
 }
-export function profileFingerprint(profile: SourceProfile): string {
+/** Display-year corrections do not change a known page's film when its identity-bearing content agrees. */
+export function unchangedProfile(
+  profile: SourceProfile,
+  mapping: { year: string; profileFingerprint?: string },
+) {
+  return (
+    !!mapping.profileFingerprint &&
+    profileFingerprint({ ...profile, year: mapping.year }) === mapping.profileFingerprint
+  );
+}
+export function profileFingerprint(profile: SourceProfile, version: 1 | 2 = 2): string {
   return createHash('sha256')
     .update(
       JSON.stringify({
@@ -89,17 +95,69 @@ export function profileFingerprint(profile: SourceProfile): string {
         directors: profile.directors.map(titleKey).sort(),
         cast: profile.cast.map(titleKey).sort(),
         overview: profile.overview.normalize('NFKC').trim(),
+        ...(version === 2
+          ? {
+              evidenceVersion: 2,
+              facts: {
+                runtime: profile.facts?.runtime ?? null,
+                theatrical: profile.facts?.theatrical ?? null,
+                nonfiction: profile.facts?.nonfiction === true,
+                series: profile.facts?.series === true,
+              },
+            }
+          : {}),
       }),
     )
     .digest('hex');
 }
 export function evidenceAgreement(profile: SourceProfile, evidence: MetadataEvidence) {
-  const directors = new Set(evidence.directors.map(titleKey)),
-    cast = new Set(evidence.cast.map(titleKey));
+  const sourceNames = profile.cast.map(titleKey),
+    castField = ` ${sourceNames.join(' ')} `,
+    cast = [...new Map(evidence.cast.map((name) => [titleKey(name), name])).values()].filter(
+      (name) => {
+        const key = titleKey(name);
+        return (key.includes(' ') || sourceNames.includes(key)) && castField.includes(` ${key} `);
+      },
+    );
+  const sourceSynopsis = titleKey(profile.overview),
+    metadataSynopsis = titleKey(evidence.movie.overview || '');
+  const [shorterSynopsis, longerSynopsis] = [sourceSynopsis, metadataSynopsis].sort(
+    (a, b) => a.length - b.length,
+  );
   return {
-    title: titleKey(profile.title) === titleKey(evidence.movie.title),
+    title:
+      sameReleaseTitle(profile.title, evidence.movie.title, profile.facts?.nonfiction) ||
+      sameReleaseTitle(
+        releaseSearchTitle(profile.title, profile.facts?.nonfiction, profile.directors),
+        evidence.movie.title,
+        profile.facts?.nonfiction,
+      ),
     year: profile.year === evidence.movie.year,
-    director: profile.directors.some((name) => directors.has(titleKey(name))),
-    cast: profile.cast.filter((name) => cast.has(titleKey(name))),
+    director: profile.directors.some((name) =>
+      evidence.directors.some((other) => samePersonName(name, other)),
+    ),
+    closeDirector: profile.directors.some((name) =>
+      evidence.directors.some((other) => closeDirector(name, other)),
+    ),
+    sharedSynopsis: sharedSynopsisWords(profile.overview, evidence.movie.overview || ''),
+    runtime:
+      !!profile.facts?.runtime &&
+      !!evidence.facts?.runtime &&
+      Math.abs(profile.facts.runtime - evidence.facts.runtime) <= 2,
+    theatrical:
+      !!profile.facts?.theatrical && profile.facts.theatrical === evidence.facts?.theatrical,
+    // The source sometimes omits a comma between two actors. Match whole credited names,
+    // never substrings inside names, against this film's bounded Cast field.
+    cast: cast.filter(
+      (name) =>
+        !cast.some(
+          (other) => other !== name && ` ${titleKey(other)} `.includes(` ${titleKey(name)} `),
+        ),
+    ),
+    // A long exact synopsis supplies independent evidence when a source lists only a lead actor.
+    synopsis:
+      shorterSynopsis.length >= 120 &&
+      shorterSynopsis.split(' ').length >= 20 &&
+      ` ${longerSynopsis} `.includes(` ${shorterSynopsis} `),
   };
 }

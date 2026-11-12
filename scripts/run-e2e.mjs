@@ -11,6 +11,7 @@ for (const file of [
   'package-lock.json',
   'tsconfig.json',
   'next.config.ts',
+  'proxy.ts',
   'postcss.config.mjs',
   'tokens.css',
   'eslint.config.mjs',

@@ -1,13 +1,15 @@
 import { createHash } from 'node:crypto';
 import { imdbId, titleKey, verifiedIdentityId } from './film-identity';
-import { evidenceAgreement, type SourceProfile } from './release-profile';
+import { evidenceAgreement, profileFingerprint, type SourceProfile } from './release-profile';
 import type { MetadataEvidence } from './metadata';
 import type { Movie, Release } from './model';
 import type { ReleaseReport } from './sources';
 import type { ReviewedReportIdentity } from './reviewed-report-identities';
 
-export const MATCH_RULE_VERSION = 2;
+export const MATCH_RULE_VERSION = 8;
 export const SIX_HOURS = 6 * 3600_000;
+// Leave one minute of room for jitter in the existing ten-minute scheduler.
+export const WTS_DISCOVERY_CACHE_MS = 9 * 60_000;
 export type MatchMethod = 'reviewed' | 'structured' | 'corroborated';
 export type FeedEntry = {
   report: ReleaseReport;
@@ -18,6 +20,9 @@ export type FeedEntry = {
   sourceId?: string;
   movieId?: string;
   outcome?: string;
+  priority?: number;
+  saved?: boolean;
+  dueAt?: string;
 };
 export type MatchRow = {
   source_id: string;
@@ -54,8 +59,24 @@ export function automaticEvidence(
     if (explicitId) return candidate.movie.id === explicitId;
     // Providers can use festival, production or distribution years. A disagreement needs
     // a third distinct shared cast member; title/year alone never supplies identity.
+    const cast = new Set(agreement.cast.map(titleKey)).size;
     return (
-      agreement.director && new Set(agreement.cast.map(titleKey)).size >= (agreement.year ? 2 : 3)
+      (agreement.director &&
+        (cast >= (agreement.year ? 2 : 3) || (agreement.year && agreement.synopsis))) ||
+      // Four independent cast names and the primary page's explicit IMDb subject
+      // tolerate spelling/nickname differences in the director field. Keep year drift tight.
+      (candidate.primaryIdentityVerified === true &&
+        cast >= 4 &&
+        Math.abs(Number(profile.year) - Number(candidate.movie.year)) <= 1) ||
+      // Sparse nonfiction is corroborated by other independent film facts, never title/year alone.
+      (profile.facts?.nonfiction === true &&
+        agreement.runtime &&
+        Math.abs(Number(profile.year) - Number(candidate.movie.year)) <= 1 &&
+        ((agreement.director && (agreement.theatrical || (cast >= 1 && agreement.year))) ||
+          (candidate.primaryIdentityVerified === true &&
+            agreement.closeDirector &&
+            cast >= 1 &&
+            agreement.sharedSynopsis >= 8)))
     );
   });
   if (matches.length !== 1)
@@ -70,7 +91,10 @@ export function cachedIdentity(row: MatchRow): ReviewedReportIdentity | undefine
   )
     return;
   // Rule 1's exact-year matches remain valid under the stricter evidence required for year drift.
-  if (row.match_method === 'corroborated' && ![1, MATCH_RULE_VERSION].includes(row.rule_version))
+  if (
+    row.match_method === 'corroborated' &&
+    ![1, 2, 3, 4, 5, 6, 7, MATCH_RULE_VERSION].includes(row.rule_version)
+  )
     return;
   return {
     sourceFilmId: row.source_id,
@@ -80,7 +104,11 @@ export function cachedIdentity(row: MatchRow): ReviewedReportIdentity | undefine
     imdbId: row.approved_imdb_id,
     reviewedAt: row.reviewed_at || row.checked_at,
     method: row.match_method || 'reviewed',
-    profileFingerprint: row.fingerprint,
+    // Upgrade legacy proof from its stored evidence, not from a newly fetched page.
+    profileFingerprint:
+      row.fingerprint === profileFingerprint(row.profile, 1)
+        ? profileFingerprint(row.profile)
+        : row.fingerprint,
     evidence: {
       metadata: `https://v3-cinemeta.strem.io/meta/movie/${row.approved_imdb_id}.json`,
       releaseSource: `https://www.imdb.com/title/${row.approved_imdb_id}/`,
@@ -107,6 +135,7 @@ export function inferredIdentity(
   now: string,
   fingerprint: string,
 ): ReviewedReportIdentity {
+  const agreement = evidenceAgreement(profile, evidence);
   return {
     sourceFilmId: profile.sourceFilmId,
     sourceFilmUrl: profile.sourceFilmUrl,
@@ -122,7 +151,7 @@ export function inferredIdentity(
       corroboration:
         method === 'structured'
           ? 'Explicit source Movie identity'
-          : `Rule ${MATCH_RULE_VERSION}: unique title/director match and ${profile.year === evidence.movie.year ? 'two' : 'three'} distinct shared cast members; source year ${profile.year}, metadata year ${evidence.movie.year}`,
+          : `Rule ${MATCH_RULE_VERSION}: title match; exact director ${agreement.director}; near director ${agreement.closeDirector}; ${new Set(agreement.cast.map(titleKey)).size} shared cast; complete synopsis ${agreement.synopsis}; shared synopsis words ${agreement.sharedSynopsis}; runtime ${agreement.runtime}; theatrical date ${agreement.theatrical}; primary IMDb verified ${evidence.primaryIdentityVerified === true}; source year ${profile.year}, metadata year ${evidence.movie.year}; evidence ${evidence.movie.overviewSource || evidence.movie.source}`,
     },
   };
 }
@@ -206,12 +235,33 @@ export function mergeReleaseFeed(
   ].slice(0, 80);
 }
 export function dueReleaseEntries(entries: FeedEntry[], now: number, limit = 5) {
-  return entries
+  const rank = (entry: FeedEntry) =>
+    entry.priority === 2
+      ? 0
+      : entry.dueAt && Date.parse(entry.dueAt) < now - 86400_000
+        ? 1
+        : entry.saved
+          ? 2
+          : !entry.checkedAt || entry.priority === 1
+            ? 3
+            : 4;
+  const due = entries
     .filter((entry) => !entry.nextCheckAt || Date.parse(entry.nextCheckAt) <= now)
     .sort(
       (a, b) =>
-        Number(!!a.checkedAt) - Number(!!b.checkedAt) ||
-        (Date.parse(a.checkedAt || '') || 0) - (Date.parse(b.checkedAt || '') || 0),
-    )
-    .slice(0, Math.min(5, Math.max(0, limit)));
+        rank(a) - rank(b) ||
+        (Date.parse(a.dueAt || a.checkedAt || a.seenAt) || 0) -
+          (Date.parse(b.dueAt || b.checkedAt || b.seenAt) || 0),
+    );
+  const cap = Math.min(5, Math.max(0, limit));
+  const selected = due.slice(0, cap);
+  // Reserve one slot for each source of work unless higher-priority repairs fill it.
+  for (const inventory of [true, false]) {
+    const candidate = due.find((entry) => !!entry.report.inventory === inventory);
+    if (!cap || !candidate || selected.some((entry) => !!entry.report.inventory === inventory))
+      continue;
+    const replace = selected.findLastIndex((entry) => rank(entry) >= 3);
+    if (replace >= 0) selected[replace] = candidate;
+  }
+  return selected;
 }

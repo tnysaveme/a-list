@@ -7,5 +7,5 @@ export type LibraryRow = {
   movie: Movie;
   tracked: boolean;
   added_at: string;
+  watched_at: string | null;
 };
-export type CacheRow = { user_id: string; key: string; value: unknown; updated_at: string };

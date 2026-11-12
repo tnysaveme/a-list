@@ -61,7 +61,48 @@ test('unverified reports cannot leak into discovery filters from a bundled or ca
   assert.equal(discoverMovies([report], 'unknown', 'release', '2026-10-24').length, 1);
 });
 
-test('catalogue filters and search cover unloaded films while pages omit detail payloads', () => {
+test('Available puts recent listed releases first, with stable ties and pagination; Coming Soon stays nearest first', () => {
+  const films = [
+    make('1', 'Older', '2026-01-01'),
+    make('2', 'Yesterday Z', '2026-10-29'),
+    make('3', 'Today', '2026-10-30'),
+    make('4', 'Yesterday A', '2026-10-29'),
+    make('5', 'Tomorrow', '2026-10-31'),
+    make('6', 'Later', '2026-11-03'),
+    make('7', 'Unknown'),
+    {
+      ...make('8', 'Estimate'),
+      releases: [
+        { ...make('8', 'Estimate', '2026-10-30').releases[0], confidence: 'rumored' as const },
+      ],
+    },
+  ];
+  // A future streaming window must not determine its position under Available.
+  films[0].releases.push({ ...films[0].releases[0], kind: 'Subscription', date: '2026-12-01' });
+  const options = { filter: 'available', sort: 'release', limit: 2 };
+  const first = cataloguePage(films, options, '2026-10-30');
+  const second = cataloguePage(films, { ...options, offset: first.nextOffset! }, '2026-10-30');
+  assert.deepEqual(
+    first.movies.map((m) => m.id),
+    ['3', '4'],
+  );
+  assert.deepEqual(
+    second.movies.map((m) => m.id),
+    ['2', '1'],
+  );
+  assert.equal(first.filteredTotal, 4);
+  assert.equal(second.nextOffset, null);
+  assert.deepEqual(
+    discoverMovies(films, 'soon', 'release', '2026-10-30').map((m) => m.id),
+    ['5', '6', '1'],
+  );
+  assert.deepEqual(
+    discoverMovies(films, 'available', 'title', '2026-10-30').map((m) => m.id),
+    ['1', '3', '4', '2'],
+  );
+});
+
+test('catalogue filters and search cover unloaded films while hover synopses stay bounded', () => {
   const films = Array.from({ length: 60 }, (_, index) => ({
     ...make(
       String(index + 1),
@@ -83,7 +124,7 @@ test('catalogue filters and search cover unloaded films while pages omit detail 
   assert.equal(last.nextOffset, null);
   assert.ok(
     first.movies.every(
-      (movie) => movie.overview === undefined && movie.metadataCheckedAt === undefined,
+      (movie) => movie.overview?.length === 320 && movie.metadataCheckedAt === undefined,
     ),
   );
   assert.ok(films[0].overview.length > 3000);
@@ -119,6 +160,51 @@ test('Coming soon sorts and displays the upcoming window rather than a previousl
     releases: [earlier.releases[0], { ...earlier.releases[1], confidence: 'rumored' as const }],
   };
   assert.equal(releaseForView(reported, 'rumored', '2026-10-25')?.confidence, 'rumored');
+});
+
+test('release selection preserves same-day window ties and available versus upcoming intent', async () => {
+  const { releaseForView } = await import('../lib/catalogue-view');
+  const { availableRelease, nextRelease, calendarRelease } = await import('../lib/model');
+  const movie = make('1', 'Same day windows', '2026-11-05');
+  const digital = movie.releases[0];
+  const premium = { ...digital, kind: 'PVOD' as const };
+  const streaming = { ...digital, kind: 'Subscription' as const, date: '2026-11-10' };
+  movie.releases = [digital, premium, streaming];
+  assert.equal(availableRelease(movie, '2026-11-05'), premium);
+  assert.equal(nextRelease(movie, '2026-11-05'), digital);
+  assert.equal(calendarRelease(movie, true, '2026-11-06'), streaming);
+  assert.equal(releaseForView(movie, 'all', '2026-11-06'), premium);
+  assert.equal(releaseForView(movie, 'soon', '2026-11-06'), streaming);
+  movie.releases = [
+    { ...digital, confidence: 'rumored' },
+    { ...premium, confidence: 'rumored' },
+  ];
+  assert.equal(releaseForView(movie, 'rumored', '2026-11-06'), movie.releases[1]);
+  assert.equal(nextRelease(movie, '2026-11-06'), movie.releases[0]);
+  assert.equal(releaseForView(movie, 'available', '2026-11-06'), undefined);
+});
+
+test('catalogue title ordering retains Unicode code-point order, prefixes and stable ID ties', () => {
+  const movies = [
+    make('9', '😀'),
+    make('8', '𐀀'),
+    make('7', '\ue000'),
+    make('2', 'a'),
+    make('10', 'A'),
+    make('3', 'aa'),
+    make('4', ''),
+  ];
+  const expected = ['4', '10', '2', '3', '7', '8', '9'];
+  for (const sort of ['title', 'release', 'added', 'theatrical']) {
+    assert.deepEqual(
+      discoverMovies(movies, 'all', sort, '2026-11-05').map((movie) => movie.id),
+      expected,
+    );
+  }
+  assert.deepEqual(
+    movies.map((movie) => movie.id),
+    ['9', '8', '7', '2', '10', '3', '4'],
+  );
 });
 
 test('identified series are excluded before catalogue counts and pagination, while sparse movie metadata remains discoverable', () => {

@@ -208,6 +208,55 @@ test('automatic publication is private, atomic, uncapped over time, preserves pr
       ),
       /Conflicting previous/,
     );
+    // A historical metadata/native duplicate must receive the same verified window,
+    // while each row keeps its identity, saved state and primary-source date.
+    const alias = {
+      ...movie,
+      id: '123',
+      identityVerifiedAt: movie.checkedAt,
+      source: primary.source,
+      releases: [primary],
+    };
+    await db.query('insert into public.a_list_movies(id,movie) values($1,$2::jsonb)', [
+      alias.id,
+      JSON.stringify(alias),
+    ]);
+    const latest = await current();
+    await save(mapping, movie, latest.updated_at);
+    assert.deepEqual(
+      (
+        await db.query<{ movie: typeof movie }>(
+          "select movie from public.a_list_movies where id='123'",
+        )
+      ).rows[0].movie.releases,
+      [primary, release],
+    );
+    const aliasVersion = (
+      await db.query<{ v: string }>(
+        "select updated_at::text as v from public.a_list_movies where id='123'",
+      )
+    ).rows[0].v;
+    await db.query(
+      "select public.a_list_withdraw_release_windows('123','tt7777777',$1,array['Subscription'],$2)",
+      [source, aliasVersion],
+    );
+    for (const id of ['123', movie.id])
+      assert.deepEqual(
+        (
+          await db.query<{ movie: typeof movie }>(
+            'select movie from public.a_list_movies where id=$1',
+            [id],
+          )
+        ).rows[0].movie.releases,
+        [primary],
+      );
+    await db.query(
+      "update public.a_list_movies set movie=movie-'identityVerifiedAt' where id='123'",
+    );
+    await assert.rejects(
+      save(mapping, movie, (await current()).updated_at),
+      /Unverified duplicate/,
+    );
   } finally {
     await db.close();
   }

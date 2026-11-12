@@ -1,6 +1,8 @@
 import type { Movie } from './model';
-import { text } from './sources';
-import { filmIndex, imdbId } from './film-identity';
+import { text, fetchSource, parseSynopsis, parseSearchResults, dateFromText } from './sources';
+import { filmIndex, imdbId, verifiedIdentityId, titleKey } from './film-identity';
+import { assertListingSource, listingImdbId, listingSubjectMatches } from './source-identity';
+import { runtimeMinutes, type FilmFacts } from './release-evidence';
 export { imdbId } from './film-identity';
 const BASE = 'https://v3-cinemeta.strem.io';
 const object = (value: unknown): value is Record<string, unknown> =>
@@ -87,7 +89,94 @@ export async function searchMetadata(query: string, signal?: AbortSignal): Promi
     await fetchMetadata(`/catalog/movie/top/search=${encodeURIComponent(query)}.json`, signal),
   );
 }
-export type MetadataEvidence = { movie: Movie; directors: string[]; cast: string[] };
+export type MetadataEvidence = {
+  movie: Movie;
+  directors: string[];
+  cast: string[];
+  primaryIdentityVerified?: boolean;
+  facts?: FilmFacts;
+};
+export class UnsupportedMediaType extends Error {}
+/** The existing main source can corroborate credits when metadata supplies only a short cast list. */
+export function parseListingEvidence(html: string, movie: Movie): MetadataEvidence {
+  if (
+    movie.mediaType === 'series' ||
+    /\(\s*TV (?:Mini )?Series\b/i.test(text(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || ''))
+  )
+    throw new Error('TV series evidence is not supported');
+  movie = { ...movie, source: text(movie.source) };
+  assertListingSource(movie);
+  const id = verifiedIdentityId(movie);
+  if (!id || listingImdbId(html) !== id || !listingSubjectMatches(html, movie, text))
+    throw new Error('Film source identity mismatch');
+  const credits = (kind: string) =>
+    [
+      ...html.matchAll(
+        new RegExp(`<[^>]+\\bitemprop=['"]${kind}['"][^>]*>([\\s\\S]*?)<\\/a>`, 'gi'),
+      ),
+    ]
+      .map((match) => text(match[1].match(/itemprop=['"]name['"][^>]*>([\s\S]*?)<\//i)?.[1] || ''))
+      .filter(Boolean)
+      .slice(0, 100);
+  return {
+    primaryIdentityVerified: true,
+    facts: {
+      runtime: runtimeMinutes(
+        text(html.match(/Runtime:\s*<\/span>\s*<span[^>]*>([\s\S]*?)<\/span>/i)?.[1] || ''),
+      ),
+      theatrical:
+        dateFromText(
+          text(
+            html.match(
+              /Theater date[\s\S]{0,80}?<span\b[^>]*class=['"]mediumtext['"][^>]*>([\s\S]*?)<\/span>/i,
+            )?.[1] || '',
+          ),
+        ) || undefined,
+    },
+    movie: {
+      ...movie,
+      id,
+      imdbId: id,
+      overview: parseSynopsis(html),
+      overviewSource: movie.source,
+    },
+    directors: credits('director'),
+    cast: credits('actor'),
+  };
+}
+export async function getListingEvidence(movie: Movie, signal: AbortSignal) {
+  return parseListingEvidence(
+    await fetchSource(movie.source, { signal, cache: 'no-store' }),
+    movie,
+  );
+}
+export async function findListingEvidence(movie: Movie, signal: AbortSignal) {
+  if (movie.source.startsWith('https://www.dvdsreleasedates.com/movies/'))
+    return getListingEvidence(movie, signal);
+  const id = verifiedIdentityId(movie);
+  if (!id || movie.source !== `https://www.imdb.com/title/${id}/`) return;
+  const html = await fetchSource('https://www.dvdsreleasedates.com/search/', {
+    signal,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ searchStr: movie.title }).toString(),
+  });
+  const candidates = parseSearchResults(html)
+    .filter((candidate) => titleKey(candidate.title) === titleKey(movie.title))
+    .sort(
+      (a, b) =>
+        Math.abs(Number(a.year) - Number(movie.year)) -
+        Math.abs(Number(b.year) - Number(movie.year)),
+    )
+    .slice(0, 2);
+  for (const candidate of candidates) {
+    const subject = { ...candidate, imdbId: id, identityVerifiedAt: new Date().toISOString() };
+    if (listingSubjectMatches(html, candidate, text) && listingImdbId(html) === id)
+      return parseListingEvidence(html, subject);
+    const detail = await fetchSource(candidate.source, { signal, cache: 'no-store' });
+    if (listingImdbId(detail) === id) return parseListingEvidence(detail, subject);
+  }
+}
 export async function getMetadataEvidence(
   id: string,
   signal?: AbortSignal,
@@ -95,6 +184,8 @@ export async function getMetadataEvidence(
   if (!imdbId(id)) throw new Error('Invalid movie metadata ID');
   const data = await fetchMetadata(`/meta/movie/${id}.json`, signal),
     raw = object(data) ? data.meta : null;
+  if (object(raw) && typeof raw.type === 'string' && raw.type !== 'movie')
+    throw new UnsupportedMediaType('TV series and other media are not supported');
   const movie = parseMetadata(raw);
   if (!movie && (!object(raw) || raw.id === id)) throw new Error('Movie metadata not listed');
   if (!movie || movie.id !== id) throw new Error('Movie metadata identity mismatch');
@@ -109,8 +200,37 @@ export async function getMetadataEvidence(
         : [];
   return {
     movie,
-    directors: object(raw) ? names(raw.director) : [],
-    cast: object(raw) ? names(raw.cast) : [],
+    facts: object(raw)
+      ? {
+          runtime: runtimeMinutes(typeof raw.runtime === 'string' ? raw.runtime : ''),
+          theatrical:
+            typeof raw.released === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(raw.released)
+              ? raw.released.slice(0, 10)
+              : undefined,
+        }
+      : undefined,
+    directors: object(raw)
+      ? [
+          ...new Set([
+            ...names(raw.director),
+            ...(Array.isArray(raw.credits_crew)
+              ? raw.credits_crew
+                  .filter((v) => object(v) && v.job === 'Director')
+                  .flatMap((v) => (object(v) ? names(v.name) : []))
+              : []),
+          ]),
+        ].slice(0, 30)
+      : [],
+    cast: object(raw)
+      ? [
+          ...new Set([
+            ...names(raw.cast),
+            ...(Array.isArray(raw.credits_cast)
+              ? raw.credits_cast.slice(0, 100).flatMap((v) => (object(v) ? names(v.name) : []))
+              : []),
+          ]),
+        ].slice(0, 100)
+      : [],
   };
 }
 export async function getMetadata(id: string, signal?: AbortSignal): Promise<Movie> {

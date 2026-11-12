@@ -3,7 +3,9 @@ import type { Movie } from './model';
 export function fallbackMovies(snapshot: Movie[], known: ReadonlyMap<string, Movie>): Movie[] {
   return snapshot.map((movie) => {
     const recent = known.get(movie.id);
-    return recent ? { ...recent } : { ...movie, saved: undefined, tracked: undefined };
+    return recent
+      ? { ...recent }
+      : { ...movie, saved: undefined, tracked: undefined, watchedAt: undefined };
   });
 }
 export function catalogueFreshness(page: {

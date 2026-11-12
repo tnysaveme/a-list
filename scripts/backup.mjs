@@ -53,7 +53,7 @@ async function verify(backup) {
         if (keys.some((key) => !columns.has(key) || !/^\w+$/.test(key)))
           throw Error('Unexpected backup column');
         await db.query(
-          `insert into public.${table}(${keys.map((key) => '"' + key + '"').join(',')}) values(${keys.map((_, i) => '$' + (i + 1)).join(',')})`,
+          `insert into public.${table}(${keys.map((key) => '"' + key + '"').join(',')}) overriding system value values(${keys.map((_, i) => '$' + (i + 1)).join(',')})`,
           keys.map((key) =>
             typeof row[key] === 'object' && row[key] !== null ? JSON.stringify(row[key]) : row[key],
           ),

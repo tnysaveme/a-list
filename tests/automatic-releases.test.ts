@@ -74,11 +74,11 @@ test('native profiles bind their canonical URL, page ID, title/year and credits 
   assert.deepEqual(parseSourceProfile(html, profile), profile);
   for (const broken of [
     html.replace('post-7001', 'post-9999'),
-    html.replace('(2026)', '(2006)'),
     html.replace('rel="canonical"', 'rel="alternate"'),
     html.replace('Director:', 'Writer:'),
   ])
     assert.throws(() => parseSourceProfile(broken, profile));
+  assert.equal(parseSourceProfile(html.replace('(2026)', '(2006)'), profile).year, '2006');
   assert.equal(
     profileFingerprint(profile),
     profileFingerprint({ ...profile, cast: [...profile.cast].reverse() }),
@@ -121,6 +121,40 @@ test('automatic credit inference requires a unique exact title/year, director an
     evidence.movie.id,
   );
   assert.throws(() => automaticEvidence(profile, [evidence], 'tt1111111'), /insufficient/);
+});
+test('sparse credits require exact year, director and a complete long shared synopsis across unique candidates', () => {
+  const overview =
+    'A retired musician travels across the country to reconnect with his estranged daughter after discovering a box of letters that reveals a carefully hidden family secret.';
+  const source = { ...profile, cast: ['First Actor'], overview };
+  const candidate = { ...evidence, cast: ['First Actor'], movie: { ...evidence.movie, overview } };
+  assert.equal(automaticEvidence(source, [candidate]).movie.id, candidate.movie.id);
+  for (const bad of [
+    { ...candidate, directors: ['Someone Else'] },
+    { ...candidate, movie: { ...candidate.movie, year: '2025' } },
+    {
+      ...candidate,
+      movie: {
+        ...candidate.movie,
+        overview: 'An entirely different plot about a missing treasure and a new expedition.',
+      },
+    },
+  ])
+    assert.throws(() => automaticEvidence(source, [bad]), /insufficient/);
+  assert.throws(
+    () =>
+      automaticEvidence({ ...source, overview: 'A family searches.' }, [
+        { ...candidate, movie: { ...candidate.movie, overview: 'A family searches.' } },
+      ]),
+    /insufficient/,
+  );
+  assert.throws(
+    () =>
+      automaticEvidence(source, [
+        candidate,
+        { ...candidate, movie: { ...candidate.movie, id: 'tt8888888', imdbId: 'tt8888888' } },
+      ]),
+    /ambiguous/,
+  );
 });
 test('year disagreements need three distinct shared cast members and a unique director/title match', () => {
   const source = { ...profile, year: '2026', cast: ['First Actor', 'Second Actor', 'Third Actor'] };
@@ -166,6 +200,10 @@ test('persisted reviewed identities retain their method and inference never masq
     undefined,
   );
   assert.equal(cachedIdentity({ ...row, fingerprint: 'changed' }), undefined);
+  assert.equal(
+    cachedIdentity({ ...row, match_method: 'corroborated', rule_version: 5 })?.method,
+    'corroborated',
+  );
   assert.equal(cachedIdentity({ ...row, status: 'pending' }), undefined);
   assert.equal(activeReleaseIdentities([], [identity]).length, 1);
   assert.equal(activeReleaseIdentities([{ ...row, status: 'pending' }], [identity]).length, 0);
@@ -315,4 +353,119 @@ test('a WTS outage retains its last known window while primary dates update; a p
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test('director ampersands and cast line breaks retain distinct source credits', () => {
+  const html = `<link rel="canonical" href="${profile.sourceFilmUrl}"><article id="post-7001"><h1>A Film (2026)</h1><p>Director: A Director & Another Director</p><p>Cast: First Actor<br/>Second Actor</p><p>Synopsis: ${profile.overview}</p></article>`;
+  const parsed = parseSourceProfile(html, profile);
+  assert.deepEqual(parsed.directors, ['A Director', 'Another Director']);
+  assert.deepEqual(parsed.cast, ['First Actor', 'Second Actor']);
+});
+
+test('missing cast separators still match whole independently credited names without accepting partial names', () => {
+  const source = { ...profile, cast: ['First Actor Second Actor', 'Third Actor'] };
+  assert.equal(
+    automaticEvidence(source, [
+      { ...evidence, cast: ['First Actor', 'Second Actor', 'Third Actor'] },
+    ]).movie.id,
+    evidence.movie.id,
+  );
+  assert.throws(
+    () => automaticEvidence(source, [{ ...evidence, cast: ['First', 'Actor'] }]),
+    /insufficient/,
+  );
+});
+
+test('documentaries with no cast need the exact director/year and a complete distinctive shared synopsis', () => {
+  const overview =
+    'Four children travel across a remote mountain region to preserve their village history, interviewing their grandparents and recording songs that have never been written down before.';
+  const source = { ...profile, cast: [], overview };
+  const candidate = {
+    ...evidence,
+    cast: [],
+    movie: { ...evidence.movie, overview: overview + ' The journey lasts for two years.' },
+  };
+  assert.equal(automaticEvidence(source, [candidate]).movie.id, candidate.movie.id);
+  for (const bad of [
+    { ...candidate, directors: ['Another Director'] },
+    { ...candidate, movie: { ...candidate.movie, year: '2025' } },
+    {
+      ...candidate,
+      movie: { ...candidate.movie, overview: 'An unrelated documentary with a different subject.' },
+    },
+  ])
+    assert.throws(() => automaticEvidence(source, [bad]), /insufficient/);
+  const html = `<link rel='canonical' href='${source.sourceFilmUrl}'><article id='post-7001'><h1>A Film (2026)</h1><p>Genre: Documentary</p><p>Director: A Director</p><p>Synopsis: ${overview}</p></article>`;
+  assert.deepEqual(parseSourceProfile(html, source).cast, []);
+  assert.throws(() => parseSourceProfile(html.replace('Documentary', 'Drama'), source));
+});
+
+test('four whole cast names from an explicitly identified primary page tolerate director spelling differences and one year of drift', () => {
+  const cast = ['First Actor', 'Second Actor', 'Third Actor', 'Fourth Actor'];
+  const source = { ...profile, cast };
+  const primary = {
+    ...evidence,
+    cast,
+    directors: ['A differently written director'],
+    primaryIdentityVerified: true,
+    movie: { ...evidence.movie, year: '2025' },
+  };
+  assert.equal(automaticEvidence(source, [primary]).movie.id, primary.movie.id);
+  for (const bad of [
+    { ...primary, primaryIdentityVerified: false },
+    { ...primary, cast: cast.slice(0, 3) },
+    { ...primary, movie: { ...primary.movie, year: '2020' } },
+    { ...primary, movie: { ...primary.movie, title: 'A Different Film' } },
+  ])
+    assert.throws(() => automaticEvidence(source, [bad]), /insufficient/);
+});
+
+test('all corroborating facts invalidate identity proof while legacy proof is upgraded from its stored evidence', () => {
+  const original = {
+    ...profile,
+    facts: { runtime: 100, theatrical: '2026-01-01', nonfiction: true },
+  };
+  const fingerprint = profileFingerprint(original, 1);
+  const row = {
+    source_id: '7001',
+    profile: original,
+    fingerprint,
+    reviewed_fingerprint: fingerprint,
+    status: 'approved',
+    approved_imdb_id: evidence.movie.id,
+    reviewed_at: evidence.movie.checkedAt,
+    checked_at: evidence.movie.checkedAt,
+    match_method: 'reviewed',
+  } as MatchRow;
+  assert.equal(cachedIdentity(row)?.profileFingerprint, profileFingerprint(original));
+  for (const facts of [
+    { ...original.facts, runtime: 101 },
+    { ...original.facts, theatrical: '2026-02-01' },
+    { ...original.facts, nonfiction: false },
+    { ...original.facts, series: true },
+  ])
+    assert.notEqual(
+      profileFingerprint({ ...original, facts }),
+      cachedIdentity(row)?.profileFingerprint,
+    );
+});
+
+test('urgent, aging and saved inventory survive a flood of unchecked RSS announcements', () => {
+  const now = Date.parse('2026-11-02T00:00:00Z');
+  const rss = Array.from({ length: 20 }, (_, i) => ({
+    report: {
+      ...report,
+      release: { ...report.release, source: `https://whentostream.com/rss-${i}/` },
+    },
+    revision: '1',
+    seenAt: new Date(now).toISOString(),
+  }));
+  const inventory = [
+    { priority: 2, dueAt: new Date(now).toISOString() },
+    { dueAt: new Date(now - 2 * 86400_000).toISOString() },
+    { saved: true, dueAt: new Date(now).toISOString() },
+  ].map((value, i) => ({ ...rss[i], ...value, report: { ...rss[i].report, inventory: true } }));
+  const selected = dueReleaseEntries([...rss, ...inventory], now);
+  assert.deepEqual(selected.slice(0, 3), inventory);
+  assert.ok(selected.some((entry) => !entry.report.inventory));
 });

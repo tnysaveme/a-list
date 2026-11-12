@@ -43,9 +43,9 @@ export default function AppHeaderPreview() {
         catalogue={[]}
         savedIds={new Set()}
         onSelectMovie={(movie) => setPanel(movie.title)}
-        onCalendar={() => setPanel('Calendar settings')}
-        onAccount={() => setPanel('Account settings')}
-        onAbout={() => setPanel('How A-List works')}
+        onCalendar={() => setPanel('Calendar Settings')}
+        onAccount={() => setPanel('Account Settings')}
+        onAbout={() => setPanel('How A-List Works')}
       />
       <main className="app-header-preview">
         <h1>Navbar preview</h1>
@@ -84,10 +84,10 @@ export default function AppHeaderPreview() {
                 {state === 'loading'
                   ? 'Signing out…'
                   : state === 'error'
-                    ? 'Try again'
+                    ? 'Try Again'
                     : state === 'success'
                       ? 'Signed out'
-                      : 'Sign out'}
+                      : 'Sign Out'}
               </button>
             </div>
           ))}

@@ -137,3 +137,39 @@ test('legacy identity repair allows refreshMovie to fetch the corrected film syn
     globalThis.fetch = original;
   }
 });
+
+test('legacy HTML-escaped source paths are decoded before fetching and repaired without changing IDs', async () => {
+  const original = globalThis.fetch;
+  const source = 'https://www.dvdsreleasedates.com/movies/1730/Pan&#039;s-Labyrinth-(2006).html';
+  const native = {
+    ...movie,
+    id: '1730',
+    imdbId: undefined,
+    title: "Pan's Labyrinth",
+    year: '2006',
+    source,
+  };
+  const decoded = "https://www.dvdsreleasedates.com/movies/1730/Pan's-Labyrinth-(2006).html";
+  const { parseDetail, fetchSource, parseListing, parseSearchResults } =
+    await import('../lib/sources');
+  const html = `<link rel='canonical' href="${source}"><h1>Pan's Labyrinth (2006)</h1><a itemprop='sameAs' href='https://www.imdb.com/title/tt0457430/'>IMDb</a>${padding}`;
+  globalThis.fetch = async (url) => {
+    assert.equal(String(url), decoded);
+    return new Response(html);
+  };
+  try {
+    const repaired = parseDetail(await fetchSource(source), native);
+    assert.equal(repaired.id, native.id);
+    assert.equal(repaired.imdbId, 'tt0457430');
+    assert.equal(repaired.source, decoded);
+    assert.equal(parseDetail(html.replace(' (2006)', ''), native).imdbId, 'tt0457430');
+    assert.equal(parseSearchResults(html.replace(' (2006)', ''))[0].imdbId, 'tt0457430');
+    const listing = parseListing(
+      `<td class='dvdcell'><a href='/movies/1730/Pan&#039;s-Labyrinth-(2006).html'><img src='/posters/110/pans-labyrinth-2006.jpg' alt='Pan&#039;s Labyrinth (2006) DVD Release Date'></a></td>`,
+      false,
+    );
+    assert.equal(listing[0].source, decoded);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
