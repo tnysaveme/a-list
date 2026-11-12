@@ -18,6 +18,7 @@ import { checked } from './db-result';
 import { cached, remember, withLease } from './infrastructure';
 import { recordSourceCheck } from './source-checks';
 import { sameReleaseTitle } from './release-evidence';
+import { releaseDiagnostic, type ReleaseStage } from './release-diagnostics';
 
 export type LookupState = {
   nextCheckAt: string;
@@ -80,7 +81,8 @@ export async function lookupReleaseReports(
   } = {},
 ): Promise<LookupResult> {
   if (!needsReportLookup(movie)) return { movie, attempted: false, outcome: 'ineligible' };
-  const settleDeadline = Date.now() + budgetMs + 3000,
+  const started = Date.now(),
+    settleDeadline = started + budgetMs + 3000,
     own = AbortSignal.timeout(budgetMs),
     signal = parent ? AbortSignal.any([parent, own]) : own;
   if (!verifiedIdentityId(movie)) {
@@ -138,7 +140,7 @@ export async function lookupReleaseReports(
     revision?: string;
     profiles?: { source: string; title: string }[];
   } | null;
-  const key = `release-lookup:v11:${id}:${context?.revision || 'unindexed'}:${context?.saved ? 'saved' : 'public'}`;
+  const key = `release-lookup:v12:${id}:${context?.revision || 'unindexed'}:${context?.saved ? 'saved' : 'public'}`;
   const usable = (state: LookupState) =>
     Date.parse(state.nextCheckAt) > Date.now() &&
     (state.knownKinds || []).every((kind) =>
@@ -146,6 +148,7 @@ export async function lookupReleaseReports(
     );
   let attempted = false,
     value = movie;
+  let stage: ReleaseStage = 'database';
   const cachedResult = (state: LookupState): LookupResult => ({
     movie: lookupStatus(movie, state.outcome),
     attempted: false,
@@ -182,6 +185,7 @@ export async function lookupReleaseReports(
       if (again && usable(again)) return cachedResult(again);
       if (signal.aborted) return { movie, attempted: false, outcome: 'busy' as const };
       attempted = true;
+      stage = 'profile';
       const indexed = context?.profiles?.slice(0, 2) || [];
       let xml = indexed.length
         ? '<rss><channel></channel></rss>'
@@ -202,6 +206,20 @@ export async function lookupReleaseReports(
           return parseProfileReports(html, reference);
         }),
       );
+      const unavailable = profiles.find((result) => result.status === 'rejected');
+      if (unavailable?.status === 'rejected')
+        console.warn(
+          JSON.stringify({
+            event: 'release_lookup_profile_deferred',
+            movieId: movie.id,
+            ...releaseDiagnostic(
+              unavailable.reason,
+              'profile',
+              Date.now() - started,
+              signal.aborted,
+            ),
+          }),
+        );
       // Native profiles come first. Announcements fill only windows still missing after verification.
       const window = (kind: string) => (kind === 'PVOD' ? 'Digital' : kind);
       let remaining = 2,
@@ -248,6 +266,7 @@ export async function lookupReleaseReports(
         }
         processed = true;
         remaining -= feed.length;
+        stage = 'identity';
         const result = await expand(feed, {
           db,
           signal,
@@ -268,6 +287,7 @@ export async function lookupReleaseReports(
           // One shared settling deadline bounds reads after a completed publication.
           const settle = AbortSignal.timeout(Math.max(1, settleDeadline - Date.now()));
           const readSignal = parent ? AbortSignal.any([parent, settle]) : settle;
+          stage = 'database';
           const row = checked(
             await db
               .from('a_list_movies')
@@ -278,6 +298,7 @@ export async function lookupReleaseReports(
           );
           value = (row?.movie as Movie) || value;
         }
+        stage = 'profile';
         if (!remaining) break;
       }
       return complete(
@@ -287,8 +308,14 @@ export async function lookupReleaseReports(
       );
     });
     return found || { movie, attempted: false, outcome: 'busy' };
-  } catch {
-    console.warn(JSON.stringify({ event: 'release_lookup_deferred' }));
+  } catch (error) {
+    console.warn(
+      JSON.stringify({
+        event: 'release_lookup_deferred',
+        movieId: movie.id,
+        ...releaseDiagnostic(error, stage, Date.now() - started, signal.aborted),
+      }),
+    );
     if (!attempted) return { movie, attempted: false, outcome: 'busy' };
     return complete('source_unavailable', value, true);
   }

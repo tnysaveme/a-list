@@ -87,7 +87,7 @@ const months = [
 ];
 export function dateFromText(input: string): string | null {
   const m = text(input).match(
-    /(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(20\d{2})/i,
+    /(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*[,.]\s*|\s+)(20\d{2})\b/i,
   );
   if (!m) return null;
   const result = `${m[3]}-${String(months.findIndex((x) => x.toLowerCase() === m[1].toLowerCase()) + 1).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
@@ -458,7 +458,7 @@ export function profileReleaseEvidence(html: string, reference: ReportReference)
     );
     const withdrawal = [
       ...field.matchAll(
-        /\b(?:TBA|TBD|withdrawn|cancelled|canceled|postponed indefinitely|no longer scheduled)\b/gi,
+        /\b(?:T\s*B\s*[AD]|N\s*\/\s*A|not applicable|withdrawn|cancelled|canceled|postponed indefinitely|no longer scheduled)\b/gi,
       ),
     ].at(-1);
     const input =
@@ -471,7 +471,7 @@ export function profileReleaseEvidence(html: string, reference: ReportReference)
     }
     const dates = [
       ...input.matchAll(
-        /(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+20\d{2}/gi,
+        /(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*[,.]\s*|\s+)20\d{2}\b/gi,
       ),
     ];
     const date = dates.length === 1 ? dateFromText(dates[0][0]) : null;
@@ -532,7 +532,7 @@ const reportPlatform = (description: string) => {
 function reportDate(description: string, headline: string): string | null {
   const dates = [
     ...description.matchAll(
-      /(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+20\d{2}/gi,
+      /(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*[,.]\s*|\s+)20\d{2}\b/gi,
     ),
   ];
   const service = reportPlatform(description);

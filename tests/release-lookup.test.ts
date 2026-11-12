@@ -675,3 +675,31 @@ test('old unsaved negatives back off, but saved/recent films stay daily', async 
   assert.equal(lookupCadence(old, true, 4), 86400);
   assert.equal(lookupCadence(movie, false, 4, Date.parse('2026-11-02')), 86400);
 });
+
+test('lookup failure diagnostics identify the film and category without logging credentials or private URLs', async () => {
+  const originalFetch = globalThis.fetch,
+    originalWarn = console.warn;
+  const logs: string[] = [];
+  globalThis.fetch = async () => {
+    throw new Error('HTTP 503 https://private.invalid/feed?token=do-not-log');
+  };
+  console.warn = (message) => {
+    logs.push(String(message));
+  };
+  try {
+    const result = await lookupReleaseReports(movie, { db, lookupCache: cache().api });
+    assert.equal(result.outcome, 'source_unavailable');
+    assert.deepEqual(result.movie.releases, movie.releases);
+    const diagnostic = logs
+      .map((line) => JSON.parse(line))
+      .find((log) => log.event === 'release_lookup_deferred');
+    assert.equal(diagnostic.movieId, movie.id);
+    assert.equal(diagnostic.stage, 'profile');
+    assert.equal(diagnostic.category, 'http_error');
+    assert.equal(diagnostic.status, 503);
+    assert.doesNotMatch(logs.join('\n'), /private\.invalid|do-not-log/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    console.warn = originalWarn;
+  }
+});
