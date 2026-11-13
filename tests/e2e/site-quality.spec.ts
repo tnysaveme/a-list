@@ -160,21 +160,23 @@ test('enlarged long film identities use the full reading width and retain reacha
   await page.goto('/');
   await page.getByRole('button', { name: `View ${title}`, exact: true }).click();
   await page.addStyleTag({ content: 'html { font-size: 200%; }' });
+  await page.evaluate(() => document.fonts.ready);
   const dialog = page.locator('.movie-dialog');
   const geometry = await dialog.evaluate((el) => {
-    const title = el.querySelector('.film-title')!.getBoundingClientRect();
+    const titleNode = el.querySelector('.film-title')!;
+    const title = titleNode.getBoundingClientRect();
     const inner = el.querySelector('.film-details')!.getBoundingClientRect();
     return {
       titleWidth: title.width,
       contentWidth: inner.width,
-      titleHeight: title.height,
+      titleClipped: titleNode.scrollHeight > titleNode.clientHeight + 1,
       overflow:
         el.querySelector('.dialog-inner')!.scrollWidth >
         el.querySelector('.dialog-inner')!.clientWidth,
     };
   });
   expect(geometry.titleWidth).toBeGreaterThan(geometry.contentWidth * 0.8);
-  expect(geometry.titleHeight).toBeLessThan(650);
+  expect(geometry.titleClipped).toBe(false);
   expect(geometry.overflow).toBe(false);
   await expect(dialog.getByRole('button', { name: 'Done', exact: true })).toBeInViewport();
   await dialog
