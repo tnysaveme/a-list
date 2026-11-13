@@ -1,3 +1,4 @@
+import { withReleaseConflict } from './release-provenance';
 import type { Movie } from './model';
 import { filmIndex, verifiedIdentityId, conflictingIdentity } from './film-identity';
 import { assertListingSource, listingImdbId } from './source-identity';
@@ -174,6 +175,7 @@ export function attachVerifiedReports(movies: Movie[], reports: ReleaseReport[])
           releases[existing].sourceName === 'When To Stream'
         )
           releases[existing] = release;
+        else releases[existing] = withReleaseConflict(releases[existing], release);
         updated.add(release.kind);
       }
       return { ...movie, releases };

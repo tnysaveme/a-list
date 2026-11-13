@@ -1,8 +1,9 @@
 import { getUser } from '../../../lib/auth';
 import { adminDb } from '../../../lib/supabase/admin';
 import { cache, throttle } from '../../../lib/infrastructure';
+import { sourceReadiness } from '../../../lib/source-readiness';
 import { checked } from '../../../lib/db-result';
-import { sourceHealthSummary, SOURCE_HEALTH_COLUMNS } from '../../../lib/source-health';
+import { sourceHealthSummary } from '../../../lib/source-health';
 export const dynamic = 'force-dynamic';
 export async function GET() {
   const user = await getUser();
@@ -15,18 +16,10 @@ export async function GET() {
   const limited = await throttle('api', user.id);
   if (limited) return limited;
   const db = adminDb();
-  const status = checked(
-    await db
-      .from('a_list_source_status')
-      .select(`${SOURCE_HEALTH_COLUMNS},last_attempt_at,last_failure_at`)
-      .eq('id', true)
-      .single(),
-  )!;
+  const status = await sourceReadiness(db, AbortSignal.timeout(3000));
   const backlog = await db.rpc('a_list_refresh_candidates', { p_limit: 8 });
   checked(backlog);
-  const queues = checked(
-    await db.rpc('a_list_queue_health').abortSignal(AbortSignal.timeout(3000)),
-  );
+  const queues = status.queues;
   const metrics = await cache().hgetall(`alist:metrics:${new Date().toISOString().slice(0, 10)}`);
   const health = sourceHealthSummary(status);
   const failed =

@@ -1,4 +1,5 @@
 'use client';
+import { releaseCheckedDate } from '../lib/release-provenance';
 import { releaseDay } from '../lib/release-day';
 import { useStateEntrance } from '../hooks/use-state-entrance';
 import { MembershipIcon } from './membership-icon';
@@ -273,12 +274,30 @@ export function MovieDetails({
                           ? 'Premium rental or purchase'
                           : 'Digital rental or purchase'}
                     </p>
+                    {r.conflictingRelease && (
+                      <p className="film-release-conflict">
+                        {r.conflictingRelease.sourceName} lists{' '}
+                        {fullDate(r.conflictingRelease.date)}. Showing the {r.sourceName} date.
+                      </p>
+                    )}
                   </div>
                   <div className="film-release-date">
                     <time dateTime={r.date}>{fullDate(r.date)}</time>
                     <span className={`film-release-confidence ${r.confidence}`}>
                       {r.confidence === 'rumored' ? releaseLabels.unconfirmed : 'Date listed'}
                     </span>
+                    <small className="film-release-checked">
+                      {releaseCheckedDate(r) ? (
+                        <>
+                          Source checked{' '}
+                          <time dateTime={releaseCheckedDate(r)}>
+                            {fullDate(releaseCheckedDate(r)!)}
+                          </time>
+                        </>
+                      ) : (
+                        'Verification date unavailable'
+                      )}
+                    </small>
                   </div>
                 </div>
               ))}

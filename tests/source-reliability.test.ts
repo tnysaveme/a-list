@@ -243,6 +243,14 @@ test('source health detects individual failures and stale feed/catalogue data de
     last_success_at: recent,
     catalogue_success_at: recent,
     failures: 0,
+    wts_coverage: { checkedAt: recent, unexplained: 0 },
+    wts_profile_indexed_at: recent,
+    queues: {
+      profiles: { due: 0 },
+      announcements: { due: 0 },
+      saved: { due: 0 },
+      lookups: { due: 0 },
+    },
     source_health: { wts_feed: { ok: true, lastSuccess: recent } },
     wts_profile_changes: { checkedAt: recent, through: recent },
   };
@@ -278,6 +286,14 @@ test('WTS freshness detects missed discovery runs despite healthy refresh jobs',
   const now = Date.parse('2026-11-01T12:00:00Z');
   const stamp = (minutes: number) => new Date(now - minutes * 60_000).toISOString();
   const status = {
+    wts_coverage: { checkedAt: stamp(1), unexplained: 0 },
+    wts_profile_indexed_at: stamp(1),
+    queues: {
+      profiles: { due: 0 },
+      announcements: { due: 0 },
+      saved: { due: 0 },
+      lookups: { due: 0 },
+    },
     last_success_at: stamp(1),
     catalogue_success_at: stamp(1),
     source_health: { wts_feed: { ok: true, lastSuccess: stamp(1) } },

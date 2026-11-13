@@ -66,3 +66,39 @@ test('unresolved film matches explain verification instead of claiming that no d
   assert.match(html, /film identity could not be verified/);
   assert.doesNotMatch(html, /Date not announced|No US digital or subscription date is listed yet/);
 });
+
+test('each release shows its own verification date and explains independently verified provider disagreement', () => {
+  const release = {
+    kind: 'Digital' as const,
+    date: '2026-11-20',
+    confidence: 'listed' as const,
+    source: series.source,
+    sourceName: 'DVDs Release Dates',
+    checkedAt: '2026-11-12T12:00:00Z',
+  };
+  const html = renderToStaticMarkup(
+    createElement(MovieDetails, {
+      ...props,
+      movie: {
+        ...series,
+        mediaType: 'movie',
+        releases: [
+          {
+            ...release,
+            conflictingRelease: { ...release, sourceName: 'When To Stream', date: '2026-11-21' },
+          },
+          {
+            ...release,
+            kind: 'Subscription',
+            date: '2026-12-01',
+            checkedAt: '2026-11-10T12:00:00Z',
+          },
+        ],
+      },
+    }),
+  );
+  assert.match(html, /dateTime="2026-11-12"/);
+  assert.match(html, /dateTime="2026-11-10"/);
+  assert.match(html, /When To Stream lists/);
+  assert.match(html, /Showing the DVDs Release Dates date/);
+});

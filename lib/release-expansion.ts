@@ -62,6 +62,7 @@ import {
 import { knownProfileMovies, corroborateCandidates } from './release-matching';
 import { fetchVerifiedReport } from './source-verification';
 import { sourceIssue } from './source-errors';
+import { queueWtsAnnouncements, checkpointWtsAnnouncements } from './wts-announcements';
 
 type Db = ReturnType<typeof adminDb>;
 export type ReleaseFeedState = { wts_feed?: FeedEntry[]; wts_feed_after?: string | null };
@@ -88,7 +89,19 @@ export async function expansionFeed(
       result.status === 'fulfilled' ? parseReports(result.value) : [],
     ),
     available = results.some((result) => result.status === 'fulfilled');
-  const feed = available ? mergeReleaseFeed(previous, good, new Date().toISOString()) : previous;
+  const now = new Date().toISOString();
+  // Persist all previously buffered work and every fetched report before the bounded snapshot.
+  await queueWtsAnnouncements(previous, db, signal);
+  const uniqueReports = [
+    ...new Map(good.map((report) => [report.release.source, report])).values(),
+  ];
+  for (let offset = 0; offset < uniqueReports.length; offset += 50)
+    await queueWtsAnnouncements(
+      mergeReleaseFeed([], uniqueReports.slice(offset, offset + 50), now),
+      db,
+      signal,
+    );
+  const feed = available ? mergeReleaseFeed(previous, good, now) : previous;
   // A partial feed is retried sooner; it never erases the other page's work.
   const delay = results.every((result) => result.status === 'fulfilled')
     ? WTS_DISCOVERY_CACHE_MS
@@ -215,7 +228,14 @@ export async function expandReleases(
   const start = Date.now(),
     own = AbortSignal.timeout(Math.max(1, budgetMs)),
     signal = parent ? AbortSignal.any([parent, own]) : own;
-  const entries = feed.map((entry) => ({
+  const recentSources = new Set(
+    feed
+      .filter((entry) => !entry.durable && !entry.report.inventory)
+      .map((entry) => entry.report.release.source),
+  );
+  const unique = new Map<string, FeedEntry>();
+  for (const entry of feed) unique.set(entry.report.release.source, entry);
+  const entries = [...unique.values()].map((entry) => ({
       ...entry,
       ...((publishUnknown || dryRun) && entry.outcome === 'imports_paused'
         ? { nextCheckAt: undefined }
@@ -565,6 +585,7 @@ export async function expandReleases(
                 ? 'withheld'
                 : 'verified_no_date';
             entry.outcome = outcome;
+            entry.partial = partial;
             entry.checkedAt = now;
             entry.nextCheckAt = new Date(
               Date.now() + (partial ? TRANSIENT_RETRY_MS : SIX_HOURS),
@@ -671,6 +692,7 @@ export async function expandReleases(
             Date.now() + (partial ? TRANSIENT_RETRY_MS : SIX_HOURS),
           ).toISOString();
           entry.outcome = 'matched';
+          entry.partial = partial;
           decisions.push({
             source: entry.report.release.source,
             outcome: 'matched',
@@ -782,14 +804,40 @@ export async function expandReleases(
   }
   if (!dryRun) {
     // Writes get a small separate settling window after source work has been aborted.
-    if (checkpoint)
+    if (checkpoint) {
+      await checkpointWtsAnnouncements(
+        entries.filter((entry) =>
+          decisions.some(
+            (decision) =>
+              decision.source === entry.report.release.source &&
+              decision.outcome !== 'budget_exhausted',
+          ),
+        ),
+        db,
+        parent || AbortSignal.timeout(3000),
+      );
       checked(
         await db
           .from('a_list_source_status')
-          .update({ wts_feed: entries.filter((entry) => !entry.report.inventory) })
+          .update({
+            wts_feed: entries
+              .filter(
+                (entry) =>
+                  !entry.report.inventory &&
+                  (!entry.durable || recentSources.has(entry.report.release.source)),
+              )
+              .map((entry) => {
+                const { durable: _, attempts: __, queueVersion: ___, ...recent } = entry;
+                void _;
+                void __;
+                void ___;
+                return recent;
+              }),
+          })
           .eq('id', true)
           .abortSignal(parent || AbortSignal.timeout(3000)),
       );
+    }
     if (changed) await invalidateReleaseCaches();
   }
   const result = {

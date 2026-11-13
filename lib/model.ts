@@ -8,6 +8,7 @@ export type Release = {
   evidence?: 'listing' | 'detail';
   platform?: string;
   checkedAt?: string;
+  conflictingRelease?: Release;
   filmImdbId?: string;
   filmIdentityMethod?: 'structured' | 'reviewed' | 'corroborated';
   filmIdentitySource?: string;

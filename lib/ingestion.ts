@@ -15,12 +15,15 @@ import { SIX_HOURS, type FeedEntry } from './release-automation';
 import { refreshReportLookups } from './release-lookup';
 import { recordSourceCheck } from './source-checks';
 import { healthTransition, type MonitorState } from './health-transition';
-import { sourceHealthSummary, SOURCE_HEALTH_COLUMNS } from './source-health';
+import { sourceHealthSummary } from './source-health';
 import { cached } from './infrastructure';
 import { TRANSIENT_RETRY_MS } from './source-health';
 import { movieRows } from './movie-rows';
 import { ingestionPayload } from './ingestion-state';
 import { auditCoverageWhenDue } from './coverage-audit';
+import { sourceReadiness } from './source-readiness';
+import { dueWtsAnnouncements } from './wts-announcements';
+import { wtsWorkLimit, type WtsQueues } from './wts-work';
 import { failedRefreshMovie } from './source-errors';
 import {
   indexWtsProfiles,
@@ -99,13 +102,13 @@ export async function refreshSources() {
         );
         for (const [index, result] of discoveries.entries())
           if (result.status === 'rejected') {
-            checks.set('wts_reports', false);
+            checks.set('wts_discovery', false);
             console.warn(
               JSON.stringify({
                 event: index === 0 ? 'wts_profile_changes_deferred' : 'wts_profile_index_deferred',
               }),
             );
-          } else if (result.value) checks.set('wts_reports', checks.get('wts_reports') ?? true);
+          } else if (result.value) checks.set('wts_discovery', checks.get('wts_discovery') ?? true);
       })(),
       getFeed(),
     ]);
@@ -211,18 +214,29 @@ export async function refreshSources() {
     const expansionStarted = Date.now();
     try {
       if (Date.now() - started < 28500) {
-        const inventory = await dueWtsProfiles(db, until(22000));
+        const queues = checked(
+          await db.rpc('a_list_queue_health').abortSignal(until(22000)),
+        ) as WtsQueues;
+        const limit = wtsWorkLimit(queues);
+        const [inventory, announcements] = await Promise.all([
+          dueWtsProfiles(db, until(22000), limit === 16 ? 12 : 4),
+          dueWtsAnnouncements(db, until(22000), limit === 16 ? 8 : 4),
+        ]);
         await getFeed();
-        const budgetMs = Math.min(10000, 29000 - (Date.now() - started));
+        const budgetMs = Math.min(limit === 16 ? 14000 : 10000, 33000 - (Date.now() - started));
         if (budgetMs > 500)
           try {
-            const result = await expandReleases([...feed, ...inventoryEntries(inventory)], {
-              budgetMs,
-              signal: until(31000),
-              db,
-              knownMovies: (await payload()).catalogue,
-            });
-            await checkpointWtsProfiles(inventory, result.decisions, db, until(32000));
+            const result = await expandReleases(
+              [...feed, ...announcements, ...inventoryEntries(inventory)],
+              {
+                limit,
+                budgetMs,
+                signal: until(34000),
+                db,
+                knownMovies: (await payload()).catalogue,
+              },
+            );
+            await checkpointWtsProfiles(inventory, result.decisions, db, until(35000));
             if (result.processed) {
               const success = !result.decisions.some(
                 (d) => d.partial || ['source_unavailable', 'budget_exhausted'].includes(d.outcome),
@@ -353,14 +367,7 @@ export async function refreshSources() {
         console.warn(JSON.stringify({ event: 'catalogue_cache_invalidation_failed' }));
       }
     try {
-      const healthRow = checked(
-        await db
-          .from('a_list_source_status')
-          .select(SOURCE_HEALTH_COLUMNS)
-          .eq('id', true)
-          .abortSignal(signal)
-          .single(),
-      );
+      const healthRow = await sourceReadiness(db, signal);
       const current = sourceHealthSummary(healthRow || {});
       const previous = await cached<MonitorState>('health:last');
       const transition = healthTransition(previous || undefined, current);

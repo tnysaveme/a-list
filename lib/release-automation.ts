@@ -1,3 +1,4 @@
+import { withReleaseConflict } from './release-provenance';
 import { createHash } from 'node:crypto';
 import { imdbId, titleKey, verifiedIdentityId } from './film-identity';
 import { evidenceAgreement, profileFingerprint, type SourceProfile } from './release-profile';
@@ -6,7 +7,7 @@ import type { Movie, Release } from './model';
 import type { ReleaseReport } from './sources';
 import type { ReviewedReportIdentity } from './reviewed-report-identities';
 
-export const MATCH_RULE_VERSION = 8;
+export const MATCH_RULE_VERSION = 9;
 export const SIX_HOURS = 6 * 3600_000;
 // Leave one minute of room for jitter in the existing ten-minute scheduler.
 export const WTS_DISCOVERY_CACHE_MS = 9 * 60_000;
@@ -23,6 +24,10 @@ export type FeedEntry = {
   priority?: number;
   saved?: boolean;
   dueAt?: string;
+  durable?: boolean;
+  queueVersion?: number;
+  partial?: boolean;
+  attempts?: number;
 };
 export type MatchRow = {
   source_id: string;
@@ -93,7 +98,7 @@ export function cachedIdentity(row: MatchRow): ReviewedReportIdentity | undefine
   // Rule 1's exact-year matches remain valid under the stricter evidence required for year drift.
   if (
     row.match_method === 'corroborated' &&
-    ![1, 2, 3, 4, 5, 6, 7, MATCH_RULE_VERSION].includes(row.rule_version)
+    ![1, 2, 3, 4, 5, 6, 7, 8, MATCH_RULE_VERSION].includes(row.rule_version)
   )
     return;
   return {
@@ -184,6 +189,7 @@ export function expansionMovie(
       releases[index].confidence === 'rumored'
     )
       releases[index] = report;
+    else releases[index] = withReleaseConflict(releases[index], report);
   }
   return {
     ...movie,
@@ -253,7 +259,7 @@ export function dueReleaseEntries(entries: FeedEntry[], now: number, limit = 5) 
         (Date.parse(a.dueAt || a.checkedAt || a.seenAt) || 0) -
           (Date.parse(b.dueAt || b.checkedAt || b.seenAt) || 0),
     );
-  const cap = Math.min(5, Math.max(0, limit));
+  const cap = Math.min(16, Math.max(0, limit));
   const selected = due.slice(0, cap);
   // Reserve one slot for each source of work unless higher-priority repairs fill it.
   for (const inventory of [true, false]) {

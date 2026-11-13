@@ -494,3 +494,30 @@
     transition: none;
   }
 }
+
+.film-release-checked {
+  display: block;
+  max-width: 18ch;
+  margin-inline-start: auto;
+  margin-top: var(--space-2xs);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--color-muted);
+}
+.film-release-date .film-release-checked time {
+  display: inline;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+.film-release-description .film-release-conflict {
+  max-width: 28rem;
+  margin-top: var(--space-xs);
+  line-height: 1.5;
+}
+@media (max-width: 359px) {
+  .film-release-checked {
+    max-width: none;
+    margin-inline-start: 0;
+  }
+}
