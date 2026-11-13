@@ -585,6 +585,11 @@ test('sign-in handles an HTML outage and confirms success with keyboard motion d
     0,
   );
   await expect(page.locator('.login-success')).toBeFocused();
+  await expect(page.locator('.login-success')).toHaveCSS('outline-style', 'none');
+  await page.keyboard.press('Tab');
+  const useAnotherEmail = page.getByRole('button', { name: 'Use Another Email' });
+  await expect(useAnotherEmail).toBeFocused();
+  await expect(useAnotherEmail).toHaveCSS('outline-style', 'solid');
   await page.getByRole('button', { name: 'Use Another Email' }).click();
   await expect(page.getByLabel('Your Email Address')).toBeFocused();
 });
@@ -623,6 +628,8 @@ test('new state motion uses opacity-only alternatives and pointer confirmation e
     );
   expect(frames.every((frame) => !frame.transform || frame.transform === 'none')).toBe(true);
   await expect(page.locator('.login-success')).toHaveCSS('opacity', '1');
+  await expect(page.locator('.login-success')).toBeFocused();
+  await expect(page.locator('.login-success')).toHaveCSS('outline-style', 'none');
   await page.screenshot({ path: 'outputs/review/ux-login-success-375-light.png' });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

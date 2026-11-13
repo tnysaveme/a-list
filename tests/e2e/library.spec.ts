@@ -177,6 +177,7 @@ test('details focus starts on the title and dragging text onto the backdrop does
     .getByRole('heading', { name: 'Fixture Film 00', exact: true });
   await expect(title).toBeFocused();
   await page.keyboard.press('Enter');
+  await expect(title).toHaveCSS('outline-style', 'none');
   expect(
     (await (await page.request.get('/api/library/membership?ids=1')).json()).membership['1'],
   ).toBe(true);
