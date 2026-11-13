@@ -314,6 +314,7 @@ test('upcoming releases disclose tentative dates and subscription type without c
   await page.screenshot({ path: 'outputs/review/calendar-upcoming-desktop.png' });
   await page.setViewportSize({ width: 320, height: 812 });
   await page.emulateMedia({ colorScheme: 'dark' });
+  await page.getByRole('button', { name: 'Show This Week', exact: true }).click();
   await expect(upcoming.getByText('Unconfirmed', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: 'outputs/review/calendar-upcoming-320-dark.png' });
@@ -640,7 +641,7 @@ test('cached search badges follow confirmed membership changes', async ({ page }
   await search.fill('Fixture Film 29');
   await page.getByRole('option', { name: /Fixture Film 29/ }).click();
   await page.getByRole('button', { name: 'Save to Library', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeVisible();
   await page.getByRole('button', { name: 'Close film details' }).click();
   await expect(page.locator('dialog[open]')).toHaveCount(0);
   await search.fill('Fixture Film 29');
@@ -648,7 +649,7 @@ test('cached search badges follow confirmed membership changes', async ({ page }
     'Saved to your library',
   );
   await page.getByRole('option', { name: /Fixture Film 29/ }).click();
-  await page.getByRole('button', { name: /Saved to Library/ }).click();
+  await page.getByRole('button', { name: /Remove from Library/ }).click();
   await expect(page.locator('dialog[open]')).toHaveCount(0);
   await search.fill('Fixture Film 29');
   await expect(page.getByRole('option', { name: /Fixture Film 29/ })).not.toContainText(

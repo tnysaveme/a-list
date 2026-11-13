@@ -803,29 +803,32 @@ export default function AList({
             )}
             <section className="collection" aria-labelledby="collection-heading">
               <div className="section-heading">
-                <h2 id="collection-heading" tabIndex={-1}>
-                  {view === 'library'
-                    ? watchedShelf
-                      ? 'Watched Films'
-                      : 'Saved Films'
-                    : 'All Films'}
-                  <span
-                    className="heading-count"
-                    data-updating={
-                      (view === 'library' ? libraryLoadReason : catalogueLoadReason) === 'replace'
-                    }
-                  >
-                    {view === 'library' ? page.filteredTotal : cataloguePage.filteredTotal}
-                    {(view === 'library' ? libraryLoadReason : catalogueLoadReason) ===
-                      'replace' && (
-                      <LoaderCircle
-                        className="collection-pending-icon spin"
-                        size={14}
-                        aria-hidden="true"
-                      />
-                    )}
-                  </span>
-                </h2>
+                <div className="collection-identity">
+                  <h2 id="collection-heading" tabIndex={-1}>
+                    {view === 'library'
+                      ? watchedShelf
+                        ? 'Watched Films'
+                        : 'Saved Films'
+                      : 'All Films'}
+                    <span
+                      className="heading-count"
+                      data-updating={
+                        (view === 'library' ? libraryLoadReason : catalogueLoadReason) === 'replace'
+                      }
+                    >
+                      {view === 'library' ? page.filteredTotal : cataloguePage.filteredTotal}
+                      {(view === 'library' ? libraryLoadReason : catalogueLoadReason) ===
+                        'replace' && (
+                        <LoaderCircle
+                          className="collection-pending-icon spin"
+                          size={14}
+                          aria-hidden="true"
+                        />
+                      )}
+                    </span>
+                  </h2>
+                  {!watchedShelf && <span className="collection-market">US release dates</span>}
+                </div>
                 <span className="collection-status" role="status">
                   {(view === 'library' ? libraryLoadReason : catalogueLoadReason) === 'replace'
                     ? changingShelf
@@ -1194,6 +1197,10 @@ export default function AList({
           ready={ready}
           busy={busy}
           currentDay={currentDay}
+          onOpenMovie={(film) => {
+            setCalendar(false);
+            openMovie(film);
+          }}
         />
       </Dialog>
       <Dialog

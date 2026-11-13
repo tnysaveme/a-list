@@ -50,6 +50,9 @@
 .week-heading p {
   margin: 0;
 }
+.week-toggle {
+  display: none;
+}
 .week-quiet {
   display: flex;
   align-items: center;
@@ -432,10 +435,13 @@
 @media (max-width: 639px) {
   .collection-heading {
     display: block;
-    margin-bottom: var(--space-lg);
+    margin-bottom: var(--space-sm);
   }
   .collection-heading .main-nav {
-    margin-top: var(--space-md);
+    margin-top: var(--space-xs);
+  }
+  .collection-heading .intro-copy {
+    display: none;
   }
   .week-summary {
     padding: var(--space-md);
@@ -446,6 +452,26 @@
   }
   .week-heading p {
     margin-top: var(--space-2xs);
+  }
+  .week-heading {
+    margin: 0;
+  }
+  .week-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+  }
+  .week-toggle[aria-expanded='true'] svg {
+    transform: rotate(180deg);
+  }
+  .week-content {
+    display: none;
+  }
+  .week-content[data-expanded='true'] {
+    display: block;
+    margin-top: var(--space-sm);
   }
   .week-quiet {
     gap: var(--space-sm);

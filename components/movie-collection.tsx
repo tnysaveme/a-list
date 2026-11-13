@@ -33,15 +33,23 @@ type Props = {
   onToggle: (id: string) => void;
 };
 
-/** Selection changes do not repeat release formatting or recreate reading content. */
+/** Metadata opens details or selects a film without overlapping its membership controls. */
 const MovieInfo = memo(function MovieInfo({
   movie,
   filter,
   currentDay,
+  selecting,
+  selected,
+  onOpen,
+  onToggle,
 }: {
   movie: Movie;
   filter: string;
   currentDay: string;
+  selecting: boolean;
+  selected: boolean;
+  onOpen: Props['onOpen'];
+  onToggle: Props['onToggle'];
 }) {
   const release = releaseForView(movie, filter, currentDay);
   return (
@@ -70,14 +78,14 @@ const MovieInfo = memo(function MovieInfo({
                 <span className="release-confidence" aria-hidden="true" />
                 <span className="release-timing">
                   {release.confidence === 'rumored' ? (
-                    <span className="release-unconfirmed">{releaseLabels.unconfirmed} </span>
-                  ) : (
-                    <span className="sr-only">
-                      {release.date <= currentDay
-                        ? `${releaseLabels.available} · `
-                        : `${releaseLabels.soon} · `}
+                    <span className="release-status release-unconfirmed">
+                      {releaseLabels.unconfirmed}
                     </span>
-                  )}
+                  ) : (
+                    <span className="release-status">
+                      {release.date <= currentDay ? releaseLabels.available : releaseLabels.soon}
+                    </span>
+                  )}{' '}
                   <time className="release-date" dateTime={release.date}>
                     {shortDate(release.date)}
                     {release.date.slice(0, 4) !== currentDay.slice(0, 4) &&
@@ -92,6 +100,12 @@ const MovieInfo = memo(function MovieInfo({
           </span>
         )}
       </div>
+      <button
+        className="movie-title-button"
+        aria-label={`${selecting ? 'Select' : 'Open details for'} ${movie.title}`}
+        aria-pressed={selecting ? selected : undefined}
+        onClick={() => (selecting ? onToggle(movie.id) : onOpen(movie))}
+      />
     </div>
   );
 });
@@ -220,7 +234,15 @@ const MovieCard = memo(function MovieCard({
           />
         </button>
       </MovieCardPoster>
-      <MovieInfo movie={m} filter={filter} currentDay={currentDay} />
+      <MovieInfo
+        movie={m}
+        filter={filter}
+        currentDay={currentDay}
+        selecting={selecting}
+        selected={selected}
+        onOpen={onOpen}
+        onToggle={onToggle}
+      />
     </article>
   );
 });

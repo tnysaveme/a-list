@@ -40,7 +40,10 @@ async function login(request: Request) {
     );
   }
   after(() => metric('sign_in_emails'));
-  return Response.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
+  return Response.json(
+    { ok: true, retryAfterSeconds: 60 },
+    { headers: { 'Cache-Control': 'no-store' } },
+  );
 }
 
 export async function POST(request: Request) {

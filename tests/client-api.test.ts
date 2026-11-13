@@ -3,6 +3,33 @@ import assert from 'node:assert/strict';
 import { requestApi, ApiTimeoutError } from '../lib/client-api';
 import { applyLibraryBatch } from '../lib/library-batch';
 
+test('request errors retain server retry windows for numeric and HTTP-date rate limits', async () => {
+  const { requestData, RequestError } = await import('../lib/client-request');
+  const previous = globalThis.fetch;
+  try {
+    for (const [header, expected] of [
+      ['120', 120],
+      [new Date(Date.now() + 60000).toUTCString(), 60],
+      ['invalid', undefined],
+    ] as const) {
+      globalThis.fetch = async () =>
+        Response.json(
+          { error: 'Please wait before requesting another link.' },
+          { status: 429, headers: { 'Retry-After': header } },
+        );
+      await assert.rejects(
+        requestData('/auth/login', { body: { email: 'fixture@example.invalid' } }),
+        (error) =>
+          error instanceof RequestError &&
+          error.status === 429 &&
+          error.retryAfterSeconds === expected,
+      );
+    }
+  } finally {
+    globalThis.fetch = previous;
+  }
+});
+
 test('read deadlines and caller cancellation have distinct outcomes, without automatic retries', async () => {
   const previous = globalThis.fetch;
   const keepAlive = setInterval(() => {}, 100);

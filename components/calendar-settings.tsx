@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import type { useMovieCalendar } from '../hooks/use-movie-calendar';
 import type { LibraryPage } from '../lib/pagination';
-import { calendarRelease } from '../lib/model';
+import { calendarRelease, type Movie } from '../lib/model';
 const fullDate = (date: string) =>
   new Date(date + 'T12:00:00Z').toLocaleDateString('en-US', {
     month: 'long',
@@ -26,12 +26,14 @@ export function CalendarSettings({
   page,
   ready,
   busy,
+  onOpenMovie,
 }: {
   state: ReturnType<typeof useMovieCalendar>;
   currentDay?: string;
   page: LibraryPage;
   ready: boolean;
   busy: boolean;
+  onOpenMovie: (movie: Movie) => void;
 }) {
   const {
     setCalendar,
@@ -51,6 +53,7 @@ export function CalendarSettings({
   } = state;
   const trackedCount = page.trackedCount,
     canSubscribe = state.feedPublic;
+  const eventCount = page.listedEvents + (includeRumors ? page.rumoredEvents : 0);
   const local =
     typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
   const feedUrl =
@@ -90,6 +93,10 @@ export function CalendarSettings({
           </p>
         </div>
       )}
+      <p className="calendar-reminder-note">
+        US release dates · 30-minute reminders at 1pm GMT (UTC), with an alert if your calendar
+        allows it. This is a reminder time, not the film’s availability time.
+      </p>
       <a
         className={`button primary subscribe-button ${!ready || !trackedCount || !canSubscribe ? 'disabled' : ''}`}
         aria-disabled={!ready || !trackedCount || !canSubscribe}
@@ -146,11 +153,11 @@ export function CalendarSettings({
       <div className="calendar-summary">
         <div>
           <strong>{trackedCount}</strong>
-          <span>films in your feed</span>
+          <span>{trackedCount === 1 ? 'film' : 'films'} in your feed</span>
         </div>
         <div>
-          <strong>{page.listedEvents + (includeRumors ? page.rumoredEvents : 0)}</strong>
-          <span>calendar events</span>
+          <strong>{eventCount}</strong>
+          <span>calendar {eventCount === 1 ? 'event' : 'events'}</span>
         </div>
       </div>
       <details className="calendar-help">
@@ -203,20 +210,32 @@ export function CalendarSettings({
             Mark a film as watched or remove it from your library to remove its dates from this
             feed.
           </p>
-          {tracked.map((m) => (
-            <div key={m.id}>
-              <span>
-                {m.title}
-                <small>
-                  {calendarRelease(m, includeRumors, currentDay)
-                    ? fullDate(calendarRelease(m, includeRumors, currentDay)!.date)
-                    : m.releases.length
-                      ? 'Unconfirmed dates excluded'
-                      : 'TBA'}
-                </small>
-              </span>
-            </div>
-          ))}
+          {tracked.map((m) => {
+            const release = calendarRelease(m, includeRumors, currentDay);
+            return (
+              <div key={m.id}>
+                <button className="tracked-film" onClick={() => onOpenMovie(m)}>
+                  <span>
+                    <span>
+                      {m.title}
+                      {m.year ? ` (${m.year})` : ''}
+                    </span>
+                    <small>
+                      {release
+                        ? fullDate(release.date)
+                        : m.releases.length
+                          ? 'Unconfirmed dates excluded'
+                          : 'TBA'}
+                      {release?.confidence === 'rumored' && (
+                        <span className="release-unconfirmed"> · Unconfirmed</span>
+                      )}
+                    </small>
+                  </span>
+                  <ArrowUpRight size={16} aria-hidden="true" />
+                </button>
+              </div>
+            );
+          })}
           {trackedError && (
             <div className="calendar-load-error" role="alert">
               <p>{trackedError.message}</p>

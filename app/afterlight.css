@@ -2254,3 +2254,101 @@ html[data-motion-input='keyboard'] .dialog::backdrop {
     opacity: 1;
   }
 }
+
+/* Audit refinements share the established tokens and interaction model. */
+.collection-identity {
+  flex: 1;
+  min-width: 0;
+}
+.collection-market {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+.movie-info {
+  position: relative;
+  min-height: var(--space-control);
+}
+.movie-title-button {
+  position: absolute;
+  inset: 0;
+  display: block;
+  min-width: 0;
+  min-height: var(--space-control);
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font: inherit;
+  letter-spacing: inherit;
+}
+.movie-title-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+.movie-list .movie-info {
+  padding-inline-end: 0;
+  margin-inline-end: var(--space-panel);
+}
+.release-status {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--color-muted);
+  font-weight: 400;
+}
+.release-timing .release-date {
+  white-space: normal;
+}
+.release-status.release-unconfirmed {
+  color: var(--color-amber);
+}
+.movie-list .release-status {
+  display: inline;
+}
+.calendar-reminder-note {
+  margin-top: var(--space-md);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+.login-email {
+  overflow-wrap: anywhere;
+}
+.login-success[tabindex='-1']:focus {
+  outline: none;
+}
+.login-success > .button {
+  margin-top: var(--space-md);
+}
+.login-resend-timer {
+  min-height: 1.6em;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+.tracked-film {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  width: 100%;
+  padding: var(--space-xs);
+  border-radius: var(--radius-md);
+  text-align: start;
+  white-space: normal;
+}
+.tracked-film > span {
+  min-width: 0;
+}
+.tracked-film > svg {
+  flex-shrink: 0;
+  color: var(--color-muted);
+}
+@media (hover: hover) and (pointer: fine) {
+  .movie-info:has(.movie-title-button:hover) h3 {
+    text-decoration: underline;
+  }
+  .tracked-film:hover {
+    background: var(--color-hover);
+  }
+}

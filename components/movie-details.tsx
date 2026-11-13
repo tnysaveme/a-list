@@ -162,9 +162,8 @@ export function MovieDetails({
               onClick={onRemove}
             >
               <MembershipIcon saved pending={pending} optimistic={saving} size={16} />
-              <span>{saving ? 'Saving…' : pending ? 'Removing…' : 'Saved to Library'}</span>
-              {!pending && <Trash2 className="film-remove-icon" size={14} aria-hidden="true" />}
-              {!pending && <span className="sr-only"> — remove from library</span>}
+              {saving ? 'Saving…' : pending ? 'Removing…' : 'Remove from Library'}
+              {!pending && <Trash2 size={14} aria-hidden="true" />}
             </button>
           ) : (
             <button
@@ -204,8 +203,8 @@ export function MovieDetails({
               ? 'Your calendar feed will update when the save completes.'
               : saved
                 ? movie.watchedAt
-                  ? `Watched ${new Date(movie.watchedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}. Kept out of your calendar feed.`
-                  : 'To Watch · Included in your calendar feed.'
+                  ? `Saved to Library · Watched ${new Date(movie.watchedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}. Kept out of your calendar feed.`
+                  : 'Saved to Library · To Watch · Included in your calendar feed.'
                 : 'Save this film to follow its home-release dates in your calendar.'}
         </p>
         {error && (
@@ -246,9 +245,12 @@ export function MovieDetails({
       <section className="film-releases" aria-labelledby={`${id}-releases`} aria-busy={loading}>
         <div className="film-release-panel">
           <div className="film-section-heading">
-            <h3 className="film-section-title" id={`${id}-releases`}>
-              Home Releases
-            </h3>
+            <div>
+              <h3 className="film-section-title" id={`${id}-releases`}>
+                Home Releases
+              </h3>
+              <p className="film-release-market">US release dates</p>
+            </div>
             {loading && (
               <span>
                 <LoaderCircle size={13} className="spin" aria-hidden="true" />

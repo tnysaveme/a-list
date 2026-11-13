@@ -81,7 +81,7 @@ export function MovingTabs({
     };
   }, []);
   return (
-    <div ref={ref} className={className} aria-label={label}>
+    <div ref={ref} className={className} role={label ? 'group' : undefined} aria-label={label}>
       <span ref={marker} className="moving-tab-indicator" aria-hidden="true" />
       {children}
     </div>
