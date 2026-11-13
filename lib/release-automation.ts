@@ -24,6 +24,9 @@ export type FeedEntry = {
   priority?: number;
   saved?: boolean;
   dueAt?: string;
+  queuedAt?: string;
+  sourceModifiedAt?: string;
+  measureFreshness?: boolean;
   durable?: boolean;
   queueVersion?: number;
   partial?: boolean;
@@ -166,6 +169,8 @@ export function expansionMovie(
   existing?: Movie,
   withdrawals: { source: string; kind: Release['kind'] }[] = [],
 ): Movie {
+  if (metadata.mediaType === 'series' || existing?.mediaType === 'series')
+    throw new UnresolvedRelease('not_movie');
   const id = metadata.imdbId || metadata.id;
   if (!imdbId(id) || (existing && verifiedIdentityId(existing) !== id))
     throw new UnresolvedRelease('conflicting_catalogue_identity');

@@ -1,3 +1,4 @@
+import { releasePipelineTiming } from './release-timing';
 import 'server-only';
 import { adminDb } from './supabase/admin';
 import { checked } from './db-result';
@@ -235,6 +236,11 @@ export async function expandReleases(
   );
   const unique = new Map<string, FeedEntry>();
   for (const entry of feed) unique.set(entry.report.release.source, entry);
+  const freshness = new Set(
+    [...unique.values()]
+      .filter((entry) => entry.measureFreshness || (entry.durable && !entry.checkedAt))
+      .map((entry) => entry.report.release.source),
+  );
   const entries = [...unique.values()].map((entry) => ({
       ...entry,
       ...((publishUnknown || dryRun) && entry.outcome === 'imports_paused'
@@ -703,7 +709,16 @@ export async function expandReleases(
               profileEvidence?.withdrawnKinds,
               profileEvidence?.unknownKinds,
             ),
-            ...(partial ? { partial: true } : {}),
+            ...(partial
+              ? {
+                  partial: true,
+                  diagnostic: releaseDiagnostic(
+                    new Error('Release profile format changed'),
+                    'profile',
+                    Date.now() - entryStarted,
+                  ),
+                }
+              : {}),
             imdbId: id,
             method: verifiedReports[0].release.filmIdentityMethod,
             movieId: movie.id,
@@ -803,6 +818,12 @@ export async function expandReleases(
     );
   }
   if (!dryRun) {
+    for (const decision of decisions)
+      if (decision.outcome === 'matched' && freshness.has(decision.source)) {
+        const entry = entries.find((entry) => entry.report.release.source === decision.source);
+        const timing = entry && releasePipelineTiming(entry);
+        if (timing) console.info(JSON.stringify({ ...timing, partial: !!decision.partial }));
+      }
     // Writes get a small separate settling window after source work has been aborted.
     if (checkpoint) {
       await checkpointWtsAnnouncements(

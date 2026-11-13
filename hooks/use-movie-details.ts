@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { waitForForeground } from '../lib/foreground';
+import { rememberedDetail, rememberDetail, type DetailMemory } from '../lib/detail-memory';
+import { waitForForeground, DETAIL_POLL_LIMIT, detailPollDelay } from '../lib/foreground';
 import { getApi } from '../lib/client-api';
 import { sanitizeMovie, type Movie } from '../lib/model';
 
@@ -20,6 +21,8 @@ export function useMovieDetails(onUpdate: (movie: Movie) => void) {
     [detailError, setDetailError] = useState('');
   const movieId = movie?.id;
   const membershipVersion = useRef(0);
+  const detailMemory = useRef<DetailMemory>(new Map());
+  const opened = useRef<Movie | null>(null);
   const membership = useRef(
     new Map<string, { saved: boolean; watchedAt?: string | null; version: number }>(),
   );
@@ -91,11 +94,34 @@ export function useMovieDetails(onUpdate: (movie: Movie) => void) {
       }
     };
     const fetchDetails = async () => {
-      let data = await read(`movie/${id}`);
+      const reusable =
+        opened.current?.id === id ? rememberedDetail(detailMemory.current, opened.current) : null;
+      let data;
+      if (reusable) {
+        const before = membershipVersion.current;
+        const state = await getApi(
+          `library/membership?ids=${encodeURIComponent(id)}`,
+          controller.signal,
+        );
+        controller.signal.throwIfAborted();
+        if (typeof state.membership[id] !== 'boolean' || !Object.hasOwn(state.watched, id))
+          throw new Error('Incomplete saved state');
+        const latest = membership.current.get(id);
+        const confirmed =
+          latest && latest.version > before
+            ? latest
+            : {
+                saved: state.membership[id],
+                watchedAt: state.membership[id] ? state.watched[id] : null,
+                version: ++membershipVersion.current,
+              };
+        membership.current.set(id, confirmed);
+        data = { movie: withMembership(reusable, confirmed), version: membershipVersion.current };
+      } else data = await read(`movie/${id}`);
       let published: Movie | null = null;
       for (
         let attempt = 0;
-        data.movie.refreshPending && attempt < 20 && !controller.signal.aborted;
+        data.movie.refreshPending && attempt < DETAIL_POLL_LIMIT && !controller.signal.aborted;
         attempt++
       ) {
         const reconciled = await reconcile(data.movie, data.version);
@@ -111,7 +137,7 @@ export function useMovieDetails(onUpdate: (movie: Movie) => void) {
           onUpdate(value);
           published = value;
         }
-        await waitForForeground(controller.signal, 1500, () =>
+        await waitForForeground(controller.signal, detailPollDelay(attempt), () =>
           setDetailError('You’re offline. Showing saved information until the connection returns.'),
         );
         setDetailError('');
@@ -130,6 +156,7 @@ export function useMovieDetails(onUpdate: (movie: Movie) => void) {
         if (controller.signal.aborted) return;
         const value = protect(reconciled.movie, reconciled.version);
         setMovie((current) => (current?.id === id ? value : current));
+        rememberDetail(detailMemory.current, value);
         onUpdate(value);
       })
       .catch(() => {
@@ -147,8 +174,13 @@ export function useMovieDetails(onUpdate: (movie: Movie) => void) {
   const open = useCallback((value: Movie) => {
     setDetailBusy(true);
     setDetailError('');
+    opened.current = value;
     const latest = membership.current.get(value.id);
-    setMovie(sanitizeMovie(latest ? withMembership(value, latest) : value));
+    const cached = rememberedDetail(detailMemory.current, value);
+    const details = cached
+      ? { ...cached, saved: value.saved, tracked: value.tracked, watchedAt: value.watchedAt }
+      : value;
+    setMovie(sanitizeMovie(latest ? withMembership(details, latest) : details));
   }, []);
   return {
     movie,

@@ -100,6 +100,16 @@ async function handle(request: Request, deadline?: { signal: AbortSignal; endsAt
               ),
       });
     }
+    const history = path.match(/^movie\/([0-9]{1,8}|tt[0-9]{7,10})\/history$/);
+    if (request.method === 'GET' && history)
+      return json({
+        entries:
+          checked(
+            await ctx.db
+              .rpc('a_list_release_history_page', { p_id: history[1] })
+              .abortSignal(AbortSignal.timeout(1500)),
+          ) || [],
+      });
     if (request.method === 'GET' && path.startsWith('movie/') && validMovieId(path.slice(6))) {
       const movie = await getMovie(ctx, path.slice(6), url.searchParams.get('cached') === 'true');
       return movie
@@ -176,7 +186,10 @@ async function observed(request: Request) {
   console.log(
     JSON.stringify({
       event: 'api_request',
-      family: new URL(request.url).pathname.split('/')[2],
+      family: new URL(request.url).pathname.endsWith('/history')
+        ? 'release_history'
+        : new URL(request.url).pathname.split('/')[2],
+      mode: new URL(request.url).searchParams.get('cached') === 'true' ? 'poll' : 'stored',
       status: response.status,
       durationMs: Math.round(performance.now() - started),
     }),

@@ -36,3 +36,7 @@ export function waitForForeground(signal: AbortSignal, delayMs = 0, onOffline?: 
     check();
   });
 }
+
+export const DETAIL_POLL_LIMIT = 12;
+export const detailPollDelay = (attempt: number) =>
+  Math.min(5000, 1500 + Math.max(0, attempt) * 500);

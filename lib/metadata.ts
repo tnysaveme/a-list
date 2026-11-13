@@ -111,7 +111,9 @@ export class MetadataIdentityConflict extends Error {
 export function parseListingEvidence(html: string, movie: Movie): MetadataEvidence {
   if (
     movie.mediaType === 'series' ||
-    /\(\s*TV (?:Mini )?Series\b/i.test(text(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || ''))
+    /\(\s*TV (?:Mini[ -]?)?Series\b/i.test(
+      text(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || ''),
+    )
   )
     throw new Error('TV series evidence is not supported');
   movie = { ...movie, source: text(movie.source) };

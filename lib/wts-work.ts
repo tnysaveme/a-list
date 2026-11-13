@@ -1,7 +1,15 @@
 export type WorkQueue = { due?: number; oldestDueAt?: string | null };
-export type WtsQueues = Partial<
-  Record<'profiles' | 'announcements' | 'saved' | 'lookups', WorkQueue>
->;
+export type WorkQueueName = 'profiles' | 'announcements' | 'saved' | 'lookups';
+export type WtsQueues = Partial<Record<WorkQueueName, WorkQueue>> & {
+  failureSummary?: {
+    lookupUnavailable?: number;
+    savedLookupUnavailable?: number;
+    profileUnavailable?: number;
+    refreshUnavailable?: number;
+    partialProfiles?: number;
+    unresolvedLookups?: number;
+  };
+};
 /** Catch up within the existing deadline and two-request concurrency, after saved-film work. */
 export function wtsWorkLimit(queues: WtsQueues, now = Date.now()) {
   const pending = [queues.profiles, queues.announcements];

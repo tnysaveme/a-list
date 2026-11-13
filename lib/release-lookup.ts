@@ -17,8 +17,13 @@ import { adminDb } from './supabase/admin';
 import { checked } from './db-result';
 import { cached, remember, withLease } from './infrastructure';
 import { recordSourceCheck } from './source-checks';
+import { lookupRetrySeconds, lookupSourceFailure } from './lookup-retry';
 import { sameReleaseTitle } from './release-evidence';
-import { releaseDiagnostic, type ReleaseStage } from './release-diagnostics';
+import {
+  releaseDiagnostic,
+  type ReleaseDiagnostic,
+  type ReleaseStage,
+} from './release-diagnostics';
 
 export type LookupState = {
   nextCheckAt: string;
@@ -27,11 +32,25 @@ export type LookupState = {
 };
 export type LookupOutcome =
   'ineligible' | 'cached' | 'busy' | 'matched' | 'no_report' | 'unresolved' | 'source_unavailable';
+export type LookupContext = {
+  saved?: boolean;
+  misses?: number;
+  revision?: string;
+  profiles?: { source: string; title: string }[];
+  failures?: number;
+  outcome?: LookupOutcome;
+  nextCheckAt?: string;
+  lookupVersion?: number;
+  knownKinds?: Release['kind'][];
+  diagnostic?: ReleaseDiagnostic;
+};
 export type LookupResult = {
   movie: Movie;
   attempted: boolean;
   outcome: LookupOutcome;
   nextCheckAt?: string;
+  diagnostic?: ReleaseDiagnostic;
+  persisted?: boolean;
 };
 export type LookupCache = {
   read: (key: string) => Promise<LookupState | null>;
@@ -64,7 +83,7 @@ export function lookupCadence(movie: Movie, saved: boolean, misses: number, now 
 }
 
 /** A bounded daily search fills missing windows even when a rental date is already known. */
-export async function lookupReleaseReports(
+async function performReleaseLookup(
   movie: Movie,
   {
     db = adminDb(),
@@ -72,12 +91,16 @@ export async function lookupReleaseReports(
     lookupCache = sharedCache,
     expand = expandReleases,
     budgetMs = 10000,
+    context: suppliedContext,
   }: {
     db?: ReturnType<typeof adminDb>;
     signal?: AbortSignal;
     lookupCache?: LookupCache;
     expand?: typeof expandReleases;
     budgetMs?: number;
+    context?: LookupContext;
+    force?: boolean;
+    persist?: boolean;
   } = {},
 ): Promise<LookupResult> {
   if (!needsReportLookup(movie)) return { movie, attempted: false, outcome: 'ineligible' };
@@ -105,7 +128,8 @@ export async function lookupReleaseReports(
           await fetchSource(current.source, { signal, cache: 'no-store' }),
           current,
         );
-        if (!verifiedIdentityId(fresh)) throw new Error('Native film identity unavailable');
+        if (!verifiedIdentityId(fresh) && fresh.mediaType !== 'series')
+          throw new Error('Native film identity unavailable');
         const saved = checked(
           await db
             .from('a_list_movies')
@@ -121,26 +145,39 @@ export async function lookupReleaseReports(
       });
       if (!verified) return { movie, attempted: false, outcome: 'busy' };
       movie = verified;
-    } catch {
+      if (movie.mediaType === 'series') return { movie, attempted: true, outcome: 'ineligible' };
+    } catch (error) {
+      const diagnostic = {
+        ...releaseDiagnostic(error, 'identity', Date.now() - started, signal.aborted),
+        provider: 'primary' as const,
+      };
+      console.warn(
+        JSON.stringify({
+          event: 'release_lookup_bootstrap_deferred',
+          movieId: movie.id,
+          ...diagnostic,
+        }),
+      );
       return {
-        movie: lookupStatus(movie, 'source_unavailable'),
+        movie: lookupStatus(
+          movie,
+          diagnostic.category === 'identity_conflict' ? 'unresolved' : 'source_unavailable',
+        ),
         attempted: true,
-        outcome: 'source_unavailable',
+        outcome: diagnostic.category === 'identity_conflict' ? 'unresolved' : 'source_unavailable',
+        diagnostic,
         nextCheckAt: new Date(Date.now() + 600_000).toISOString(),
       };
     }
   }
   const id = verifiedIdentityId(movie);
   if (!id || !needsReportLookup(movie)) return { movie, attempted: false, outcome: 'ineligible' };
-  const context = checked(
-    await db.rpc('a_list_report_lookup_context', { p_id: id }).abortSignal(signal),
-  ) as {
-    saved?: boolean;
-    misses?: number;
-    revision?: string;
-    profiles?: { source: string; title: string }[];
-  } | null;
-  const key = `release-lookup:v13:${id}:${context?.revision || 'unindexed'}:${context?.saved ? 'saved' : 'public'}`;
+  const context =
+    suppliedContext ||
+    (checked(
+      await db.rpc('a_list_report_lookup_context', { p_id: id }).abortSignal(signal),
+    ) as LookupContext | null);
+  const key = `release-lookup:v14:${id}:${context?.revision || 'unindexed'}:${context?.saved ? 'saved' : 'public'}`;
   const usable = (state: LookupState) =>
     Date.parse(state.nextCheckAt) > Date.now() &&
     (state.knownKinds || []).every((kind) =>
@@ -149,6 +186,7 @@ export async function lookupReleaseReports(
   let attempted = false,
     value = movie;
   let stage: ReleaseStage = 'database';
+  let failureDiagnostic: ReleaseDiagnostic | undefined;
   const cachedResult = (state: LookupState): LookupResult => ({
     movie: lookupStatus(movie, state.outcome),
     attempted: false,
@@ -166,16 +204,28 @@ export async function lookupReleaseReports(
           ? lookupCadence(movie, !!context?.saved, context?.misses || 0)
           : 86400,
       nextCheckAt = new Date(Date.now() + ttl * 1000).toISOString();
-    await lookupCache.write(
-      key,
-      {
-        outcome,
-        nextCheckAt,
-        knownKinds: [...new Set(verifiedReleases(value).map((r) => r.kind))],
-      },
-      ttl,
-    );
-    return { movie: lookupStatus(value, outcome), attempted, outcome, nextCheckAt };
+    try {
+      await lookupCache.write(
+        key,
+        {
+          outcome,
+          nextCheckAt,
+          knownKinds: [...new Set(verifiedReleases(value).map((r) => r.kind))],
+        },
+        ttl,
+      );
+    } catch {
+      console.warn(
+        JSON.stringify({ event: 'release_lookup_cache_write_failed', movieId: movie.id }),
+      );
+    }
+    return {
+      movie: lookupStatus(value, outcome),
+      attempted,
+      outcome,
+      nextCheckAt,
+      ...(failureDiagnostic ? { diagnostic: failureDiagnostic } : {}),
+    };
   };
   try {
     const hit = await lookupCache.read(key);
@@ -207,7 +257,13 @@ export async function lookupReleaseReports(
         }),
       );
       const unavailable = profiles.find((result) => result.status === 'rejected');
-      if (unavailable?.status === 'rejected')
+      if (unavailable?.status === 'rejected') {
+        failureDiagnostic = releaseDiagnostic(
+          unavailable.reason,
+          'profile',
+          Date.now() - started,
+          signal.aborted,
+        );
         console.warn(
           JSON.stringify({
             event: 'release_lookup_profile_deferred',
@@ -220,6 +276,7 @@ export async function lookupReleaseReports(
             ),
           }),
         );
+      }
       // Native profiles come first. Announcements fill only windows still missing after verification.
       const window = (kind: string) => (kind === 'PVOD' ? 'Digital' : kind);
       let remaining = 2,
@@ -277,6 +334,13 @@ export async function lookupReleaseReports(
           expectedMovie: movie,
           sourcePages,
         });
+        failureDiagnostic ||= result.decisions.find((d) => d.diagnostic)?.diagnostic;
+        if (!failureDiagnostic && result.decisions.some((d) => d.partial))
+          failureDiagnostic = releaseDiagnostic(
+            new Error('Release profile format changed'),
+            'profile',
+            Date.now() - started,
+          );
         retry ||= result.decisions.some(
           (d) =>
             d.partial ||
@@ -309,6 +373,7 @@ export async function lookupReleaseReports(
     });
     return found || { movie, attempted: false, outcome: 'busy' };
   } catch (error) {
+    failureDiagnostic = releaseDiagnostic(error, stage, Date.now() - started, signal.aborted);
     console.warn(
       JSON.stringify({
         event: 'release_lookup_deferred',
@@ -319,6 +384,93 @@ export async function lookupReleaseReports(
     if (!attempted) return { movie, attempted: false, outcome: 'busy' };
     return complete('source_unavailable', value, true);
   }
+}
+/** Source checks run after responses or in the worker, never in the stored-detail read. */
+export async function lookupReleaseReports(
+  movie: Movie,
+  options: Parameters<typeof performReleaseLookup>[1] = {},
+): Promise<LookupResult> {
+  if (!needsReportLookup(movie)) return { movie, attempted: false, outcome: 'ineligible' };
+  const started = Date.now(),
+    db = options.db || adminDb();
+  const signal = options.signal || AbortSignal.timeout((options.budgetMs || 10000) + 3000);
+  const context = checked(
+    await db
+      .rpc('a_list_report_lookup_context', { p_id: verifiedIdentityId(movie) || movie.id })
+      .abortSignal(signal),
+  ) as LookupContext | null;
+  if (
+    !options.force &&
+    context &&
+    Date.parse(context.nextCheckAt || '') > Date.now() &&
+    (context.knownKinds || []).every((kind) =>
+      verifiedReleases(movie).some((release) => release.kind === kind),
+    )
+  ) {
+    console.info(
+      JSON.stringify({
+        event: 'release_lookup_timing',
+        movieId: movie.id,
+        outcome: 'scheduled',
+        attempted: false,
+        durationMs: Date.now() - started,
+      }),
+    );
+    return {
+      movie: context.outcome ? lookupStatus(movie, context.outcome) : movie,
+      attempted: false,
+      outcome: 'cached',
+      persisted: true,
+      nextCheckAt: context.nextCheckAt,
+    };
+  }
+  const lookupCache = options.lookupCache || sharedCache;
+  const result = await performReleaseLookup(movie, {
+    ...options,
+    db,
+    signal,
+    context: verifiedIdentityId(movie) ? context || undefined : undefined,
+    lookupCache: options.force ? { ...lookupCache, read: async () => null } : lookupCache,
+    budgetMs: Math.max(1, (options.budgetMs || 10000) - (Date.now() - started)),
+  });
+  if (result.outcome === 'source_unavailable')
+    result.nextCheckAt = new Date(
+      Date.now() +
+        1000 * lookupRetrySeconds(result.diagnostic, context?.failures || 0, !!context?.saved),
+    ).toISOString();
+  if (result.outcome === 'busy') result.nextCheckAt = new Date(Date.now() + 60000).toISOString();
+  if (result.outcome === 'ineligible')
+    result.nextCheckAt = new Date(Date.now() + 7 * 86400000).toISOString();
+  if (options.persist !== false && result.nextCheckAt) {
+    const saved = checked(
+      await db
+        .rpc('a_list_record_lookup_result', {
+          p_id: movie.id,
+          p_after: result.nextCheckAt,
+          p_outcome: result.outcome,
+          p_diagnostic: result.diagnostic || {},
+          p_attempted: result.attempted,
+          p_expected_version: context?.lookupVersion || 0,
+          p_source_failure:
+            result.outcome === 'source_unavailable' && lookupSourceFailure(result.diagnostic),
+          p_known_kinds: [
+            ...new Set(verifiedReleases(result.movie).map((release) => release.kind)),
+          ],
+        })
+        .abortSignal(signal),
+    );
+    result.persisted = saved !== false;
+  }
+  console.info(
+    JSON.stringify({
+      event: 'release_lookup_timing',
+      movieId: movie.id,
+      outcome: result.outcome,
+      attempted: result.attempted,
+      durationMs: Date.now() - started,
+    }),
+  );
+  return result;
 }
 /** The existing scheduled job sweeps the catalogue, with two concurrent source lookups at most. */
 export async function refreshReportLookups({
@@ -345,12 +497,17 @@ export async function refreshReportLookups({
       rows.slice(offset, offset + 2).map(async (row) => {
         const result = await lookup(row.movie, { db, signal });
         scanned++;
-        if (result.nextCheckAt || result.outcome === 'ineligible')
+        // Custom lookup implementations may delegate their checkpoint to this worker.
+        // Explicit false means a guarded write lost a race and must never be overwritten.
+        if (
+          result.persisted === undefined &&
+          (result.nextCheckAt || result.outcome === 'ineligible')
+        )
           checked(
             await db
               .rpc('a_list_checkpoint_report_lookup', {
                 p_id: row.id,
-                p_after: result.nextCheckAt || new Date(Date.now() + 86400_000).toISOString(),
+                p_after: result.nextCheckAt || new Date(Date.now() + 86400000).toISOString(),
                 p_missed:
                   result.outcome === 'cached'
                     ? null
@@ -360,7 +517,9 @@ export async function refreshReportLookups({
           );
         if (!result.attempted) return;
         attempts++;
-        failures += Number(result.outcome === 'source_unavailable');
+        failures += Number(
+          result.outcome === 'source_unavailable' && lookupSourceFailure(result.diagnostic),
+        );
       }),
     );
     const failure = results.find((result) => result.status === 'rejected');

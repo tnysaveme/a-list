@@ -28,7 +28,17 @@ export async function checkpointWtsAnnouncements(
   db: Db,
   signal: AbortSignal,
 ) {
-  const completed = entries.filter((entry) => entry.durable && entry.checkedAt);
+  const completed = entries
+    .filter((entry) => entry.durable && entry.checkedAt)
+    .map((entry) => ({
+      ...entry,
+      measureFreshness:
+        entry.outcome === 'matched' ||
+        (!entry.partial &&
+          ['withheld', 'verified_no_date', 'not_movie'].includes(entry.outcome || ''))
+          ? false
+          : entry.measureFreshness,
+    }));
   if (completed.length)
     checked(
       await db

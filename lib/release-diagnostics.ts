@@ -3,6 +3,7 @@ import { sourceIssue } from './source-errors';
 export type ReleaseStage = 'profile' | 'identity' | 'database' | 'publication';
 export type ReleaseDiagnostic = {
   stage: ReleaseStage;
+  provider?: 'primary' | 'metadata' | 'wts';
   category: string;
   durationMs: number;
   status?: number;

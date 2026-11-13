@@ -116,7 +116,7 @@ export function parseListing(
     const image = part.match(/<img[^>]*src=['"]([^'"]*\/posters\/[^'"]+)['"]/i)?.[1];
     const alt = part.match(/<img[^>]*alt=['"]([^'"]+)['"]/i)?.[1];
     if (!path || !image || !alt) continue;
-    if (/\bTV (?:Mini )?Series\b/i.test(text(alt))) continue;
+    if (/\bTV (?:Mini[ -]?)?Series\b/i.test(text(alt))) continue;
     const id = path.match(/\/movies\/(\d+)/)![1];
     const source = BASE + text(path);
     const title = text(alt)
@@ -180,7 +180,7 @@ export function parseSearchResults(html: string, checkedAt = new Date().toISOStr
       )
         throw new Error('Search source identity mismatch');
       const headings = [...results.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)];
-      if (headings.length === 1 && /\(\s*TV (?:Mini )?Series\b/i.test(text(headings[0][1])))
+      if (headings.length === 1 && /\(\s*TV (?:Mini[ -]?)?Series\b/i.test(text(headings[0][1])))
         return [];
       const titleWithYear =
         headings.length === 1
@@ -237,7 +237,7 @@ export function parseDetail(
     expectedId = verifiedIdentityId(movie);
   if (expectedId && sourceId !== expectedId) throw new Error('Film source identity mismatch');
   const nativeSubject = listingSubjectMatches(html, movie, text);
-  const series = /\(\s*TV (?:Mini )?Series\b/i.test(
+  const series = /\(\s*TV (?:Mini[ -]?)?Series\b/i.test(
     text(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || ''),
   );
   if (series && !nativeSubject) throw new Error('Film source identity mismatch');
@@ -254,6 +254,16 @@ export function parseDetail(
     overview: overview || (!repaired ? movie.overview : undefined),
     overviewSource: overview ? movie.source : !repaired ? movie.overviewSource : undefined,
   };
+  // A positively verified TV subject is excluded before considering release markup.
+  if (series)
+    return {
+      ...movie,
+      ...identityAndSynopsis,
+      releases: [],
+      checkedAt,
+      releaseCheckedAt: checkedAt,
+      primaryListingUnavailable: false,
+    };
   if (
     !/\b(?:Digital HD|(?:DVD|Blu-ray)(?: and Blu-ray)? release(?: date)?|(?:digital|home) release date)\b/i.test(
       heading,
