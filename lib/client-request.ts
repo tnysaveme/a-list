@@ -3,6 +3,7 @@ export class RequestError extends Error {
     message: string,
     public readonly uncertain = false,
     public readonly status?: number,
+    public readonly retryAfterSeconds?: number,
   ) {
     super(message);
     this.name = 'RequestError';
@@ -43,6 +44,13 @@ export async function requestData<T>(
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       signal,
     });
+    const retryHeader = response.headers.get('Retry-After');
+    const retryAfter = retryHeader === null ? NaN : Number(retryHeader);
+    const retryAfterSeconds = Number.isFinite(retryAfter)
+      ? Math.max(0, Math.ceil(retryAfter))
+      : retryHeader && Number.isFinite(Date.parse(retryHeader))
+        ? Math.max(0, Math.ceil((Date.parse(retryHeader) - Date.now()) / 1000))
+        : undefined;
     if (response.status === 401 && options.redirectUnauthorized && typeof window !== 'undefined')
       window.location.replace(new URL('/login', window.location.origin));
     if (response.ok && options.blob) {
@@ -61,6 +69,7 @@ export async function requestData<T>(
           : 'The service is temporarily unavailable. Please try again.',
         write && (response.ok || response.status >= 500),
         response.status,
+        retryAfterSeconds,
       );
     }
     signal.throwIfAborted();
@@ -69,6 +78,7 @@ export async function requestData<T>(
         data?.error || 'Could not complete this request.',
         write && response.status >= 500,
         response.status,
+        retryAfterSeconds,
       );
     return data;
   } catch (error) {

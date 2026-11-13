@@ -350,7 +350,7 @@ test('removing a watched film and Undo preserve its original watched date', asyn
   await page.goto('/?section=library&filter=watched&sort=added');
   await expect(page.locator('.movie-card')).toHaveCount(1);
   await page.getByRole('button', { name: 'View Fixture Film 00', exact: true }).click();
-  await page.getByRole('button', { name: /Saved to Library/ }).click();
+  await page.getByRole('button', { name: /Remove from Library/ }).click();
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.locator('.movie-grid > .movie-card')).toHaveCount(1);
@@ -796,8 +796,8 @@ test('authenticated library pagination, search, save, remove and Undo cross the 
   await page.getByRole('combobox', { name: 'Search films' }).fill('Fixture Film 29');
   await page.getByRole('option', { name: /Fixture Film 29/ }).click();
   await page.getByRole('button', { name: 'Save to Library', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeVisible();
-  await page.getByRole('button', { name: /Saved to Library/ }).click();
+  await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeVisible();
+  await page.getByRole('button', { name: /Remove from Library/ }).click();
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'restored' })).toBeVisible();
@@ -840,7 +840,7 @@ test('save feedback precedes confirmation and does not wait for listing reconcil
   await page.goto('/');
   await expect(page.locator('.movie-card')).toHaveCount(25);
   await page.getByRole('button', { name: 'View Fixture Film 00', exact: true }).click();
-  await page.getByRole('button', { name: /Saved to Library/ }).click();
+  await page.getByRole('button', { name: /Remove from Library/ }).click();
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeVisible();
   await expect(page.locator('dialog[open]')).toHaveCount(0);
   await page.getByRole('button', { name: 'Discover', exact: true }).click();
@@ -1474,7 +1474,7 @@ test('catalogue fallback preserves confirmed membership changes in a library lar
   await expect(page.locator('.movie-card')).toHaveCount(25);
   await page.getByRole('button', { name: 'Discover', exact: true }).click();
   await page.getByRole('button', { name: 'Fixture Film 00 is saved', exact: true }).click();
-  await page.getByRole('button', { name: /Saved to Library/ }).click();
+  await page.getByRole('button', { name: /Remove from Library/ }).click();
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeVisible();
   // Exercise browser recovery even when the server's last-good catalogue cache could mask
   // a provider outage. Other cases cover the real API/provider failure boundary.
@@ -2137,7 +2137,7 @@ test('saving draws the check immediately and rejected saves restore the add stat
   ).toBeVisible();
   fail = false;
   await page.getByRole('button', { name: 'Save to Library', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
   const check = page.locator('.film-control .membership-check path');
   await expect
     .poll(() =>
@@ -2168,7 +2168,7 @@ test('confirmed removal moves neighbors and Undo reverses an unfinished exit wit
   await expect(page.locator('.movie-grid > .movie-card')).toHaveCount(25);
   await page.addStyleTag({ content: ':root { --dur-view: 1200ms; --dur-medium: 900ms; }' });
   await page.getByRole('button', { name: 'View Fixture Film 00', exact: true }).click();
-  await page.getByRole('button', { name: /Saved to Library/ }).click();
+  await page.getByRole('button', { name: /Remove from Library/ }).click();
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeVisible();
   const root = page.locator('.collection-motion-root');
   const ghost = page.locator('[data-ghost-movie-id="1"]');
@@ -2228,7 +2228,7 @@ test('keyboard removal is immediate and reduced motion uses opacity-only members
 }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'View Fixture Film 00', exact: true }).click();
-  await page.getByRole('button', { name: /Saved to Library/ }).press('Enter');
+  await page.getByRole('button', { name: /Remove from Library/ }).press('Enter');
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeVisible();
   await expect(page.locator('.membership-ghost')).toHaveCount(0);
   await expect(page.locator('dialog[open]')).toHaveCount(0);
@@ -2257,7 +2257,7 @@ test('removing the last film reaches a usable empty state and Undo animates it b
   await page.goto('/');
   await expect(page.locator('.movie-grid > .movie-card')).toHaveCount(1);
   await page.getByRole('button', { name: 'View Fixture Film 00', exact: true }).click();
-  await page.getByRole('button', { name: /Saved to Library/ }).click();
+  await page.getByRole('button', { name: /Remove from Library/ }).click();
   await expect(page.locator('.empty-state')).toBeVisible();
   await expect(page.locator('dialog[open]')).toHaveCount(0);
   await expect(page.locator('#collection-heading')).toBeFocused();
@@ -2350,10 +2350,10 @@ test('a delayed detail read cannot undo a confirmed optimistic save', async ({ p
   await expect.poll(() => captured).toBe(true);
   try {
     await page.getByRole('button', { name: 'Save to Library', exact: true }).click();
-    await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeEnabled();
+    await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
     release();
     await expect(page.getByText('Delayed detail response arrived.', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeEnabled();
+    await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
   } finally {
     release();
   }
@@ -2370,7 +2370,7 @@ test('a committed save with a lost response stays saved after reconciliation', a
     await route.fulfill({ status: 502, json: { error: 'Fixture response lost after commit' } });
   });
   await page.getByRole('button', { name: 'Save to Library', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
   await expect(page.getByRole('alert').filter({ hasText: 'response lost' })).toHaveCount(0);
   expect(writes).toBe(1);
   await page.reload();
@@ -2444,7 +2444,7 @@ test('saving commits confirmed membership before the optimistic label is release
     }).observe(host, { subtree: true, childList: true });
   });
   await page.getByRole('button', { name: 'Save to Library', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
   expect(
     await page.evaluate(() => (window as unknown as { saveRegressions: string[] }).saveRegressions),
   ).toEqual([]);
@@ -2477,11 +2477,11 @@ test('post-save metadata polling cannot replace confirmed membership with a stal
   await page.getByRole('combobox', { name: 'Search films' }).fill('Fixture Film 29');
   await page.getByRole('option', { name: /Fixture Film 29/ }).click();
   await page.getByRole('button', { name: 'Save to Library', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
   await expect(
     page.getByText('Updated synopsis with older membership.', { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
 });
 
 test('a fresh externally removed membership overrides a retained saved-library row', async ({
@@ -2545,8 +2545,8 @@ test('removed films stay removed when reopened against older metadata', async ({
   await search.fill('Fixture Film 29');
   await page.getByRole('option', { name: /Fixture Film 29/ }).click();
   await page.getByRole('button', { name: 'Save to Library', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeEnabled();
-  await page.getByRole('button', { name: /Saved to Library/ }).click();
+  await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
+  await page.getByRole('button', { name: /Remove from Library/ }).click();
   await expect(page.locator('dialog[open]')).toHaveCount(0);
   await page.route('**/api/movie/30*', async (route) => {
     const response = await route.fetch();
@@ -2634,14 +2634,14 @@ test('unavailable conflict verification preserves the last confirmed save with r
   await page.getByRole('combobox', { name: 'Search films' }).fill('Fixture Film 29');
   await page.getByRole('option', { name: /Fixture Film 29/ }).click();
   await page.getByRole('button', { name: 'Save to Library', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
   await page.route('**/api/library/membership?*', (route) =>
     route.fulfill({ status: 503, json: { error: 'Fixture verification unavailable' } }),
   );
   await expect(
     page.getByText('New synopsis during membership outage.', { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
   await expect(
     page.getByText('Could not refresh saved status. Showing your last confirmed state.', {
       exact: true,
@@ -2657,7 +2657,7 @@ test('fresh external changes after a local save update the dialog and retained s
   await search.fill('Fixture Film 29');
   await page.getByRole('option', { name: /Fixture Film 29/ }).click();
   await page.getByRole('button', { name: 'Save to Library', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
   await page.keyboard.press('Escape');
   await page.request.post('/api/library', {
     data: { action: 'remove', ids: ['30'] },
@@ -2729,7 +2729,7 @@ for (const [layout, width] of [
     await page.getByRole('button', { name: 'More Films', exact: true }).click();
     const card = page.locator('.movie-card[data-movie-id="26"]');
     await card.getByRole('button', { name: 'Fixture Film 25 is saved', exact: true }).click();
-    await page.getByRole('button', { name: /Saved to Library/ }).click();
+    await page.getByRole('button', { name: /Remove from Library/ }).click();
     await expect(page.locator('dialog[open]')).toHaveCount(0);
     const toast = page
       .getByRole('status')
@@ -2760,7 +2760,7 @@ for (const section of ['discover', 'library'] as const) {
         exact: true,
       })
       .click();
-    await expect(page.getByRole('button', { name: /Saved to Library/ })).toBeEnabled();
+    await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
     let removed = false;
     await page.route('**/api/library/membership?*', async (route) => {
       if (!removed) {
@@ -2772,7 +2772,7 @@ for (const section of ['discover', 'library'] as const) {
       }
       await route.continue();
     });
-    await page.getByRole('button', { name: /Saved to Library/ }).click();
+    await page.getByRole('button', { name: /Remove from Library/ }).click();
     await expect(page.locator('dialog[open]')).toHaveCount(0);
     await expect(
       page.getByRole('status').filter({ hasText: 'Fixture Film 00 is no longer in your library.' }),
@@ -2802,19 +2802,19 @@ test('a rejected Discover removal shows the error inside the still-open dialog',
       json: { error: 'Could not remove this film. Please try again.' },
     }),
   );
-  await page.getByRole('button', { name: /Saved to Library/ }).click();
+  await page.getByRole('button', { name: /Remove from Library/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Fixture Film 00 details', exact: true });
   await expect(dialog.locator('.film-warning')).toContainText(
     'Could not remove this film. Please try again.',
   );
   await expect(dialog.locator('.film-warning')).toBeInViewport();
-  await expect(dialog.getByRole('button', { name: /Saved to Library/ })).toBeEnabled();
+  await expect(dialog.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toHaveCount(0);
   expect(
     (await (await page.request.get('/api/library/membership?ids=1')).json()).membership['1'],
   ).toBe(true);
   await page.unroute('**/api/library');
-  await dialog.getByRole('button', { name: /Saved to Library/ }).click();
+  await dialog.getByRole('button', { name: /Remove from Library/ }).click();
   await expect(page.locator('dialog[open]')).toHaveCount(0);
   await expect(
     page.getByRole('status').filter({ hasText: 'Fixture Film 00 removed from your library.' }),

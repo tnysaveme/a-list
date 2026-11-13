@@ -16,6 +16,12 @@ export default function SignIn({
 }) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
+  const [sentEmail, setSentEmail] = useState('');
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
+  const [retryAt, setRetryAt] = useState(0);
+  const [retryEmail, setRetryEmail] = useState('');
+  const [secondsLeft, setSecondsLeft] = useState(0);
   const [error, setError] = useState(
     expired
       ? 'That sign-in link has expired or was already used. Request a new one below.'
@@ -38,30 +44,59 @@ export default function SignIn({
     }
   }, [state, success]);
   useEffect(() => () => pending.current?.abort(), []);
+  useEffect(() => {
+    if (!retryAt) return;
+    const timer = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((retryAt - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+      if (!remaining) clearInterval(timer);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [retryAt]);
   const [invalidEmail, setInvalidEmail] = useState(false);
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (pending.current) return;
+  const coolingDown = secondsLeft > 0 && retryEmail === email.trim().toLowerCase();
+  function waitToRetry(address: string, seconds: number) {
+    setRetryEmail(address);
+    setSecondsLeft(seconds);
+    setRetryAt(Date.now() + seconds * 1000);
+  }
+  async function sendLink(address: string, resend = false) {
+    if (pending.current || (secondsLeft > 0 && retryEmail === address)) return;
     const controller = new AbortController();
     pending.current = controller;
-    setState('loading');
+    if (resend) setResending(true);
+    else setState('loading');
     setError('');
     setInvalidEmail(false);
     try {
-      await requestData('/auth/login', { body: { email }, signal: controller.signal });
+      const data = await requestData<{ retryAfterSeconds?: number }>('/auth/login', {
+        body: { email: address },
+        signal: controller.signal,
+      });
+      setSentEmail(address);
+      setResent(resend);
       setState('sent');
+      waitToRetry(address, Math.max(60, data.retryAfterSeconds || 60));
     } catch (err) {
       if (controller.signal.aborted) return;
-      setInvalidEmail(err instanceof RequestError && err.status === 400);
+      setInvalidEmail(!resend && err instanceof RequestError && err.status === 400);
+      if (err instanceof RequestError && err.retryAfterSeconds !== undefined)
+        waitToRetry(address, err.retryAfterSeconds);
+      else if (err instanceof ApiTimeoutError) waitToRetry(address, 60);
       setError(
         err instanceof ApiTimeoutError
           ? 'Sending took too long to confirm. Your link may still arrive; check your inbox before requesting another.'
           : (err as Error).message,
       );
-      setState('error');
+      if (!resend) setState('error');
     } finally {
       pending.current = null;
+      setResending(false);
     }
+  }
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void sendLink(email.trim().toLowerCase());
   }
   return (
     <AuthShell>
@@ -78,17 +113,36 @@ export default function SignIn({
         </p>
         <div className="login-state">
           {state === 'sent' ? (
-            <div ref={success} className="login-success" role="status" tabIndex={-1}>
+            <div ref={success} className="login-success" tabIndex={-1}>
               <Check aria-hidden="true" size={24} />
               <h2>Check Your Inbox.</h2>
-              <p>
-                We sent you a sign-in link. Open it on the device where you want to use A-List.
-                Check Spam if it hasn’t arrived.
+              <p role="status">
+                We sent {resent ? 'a new' : 'a'} sign-in link to{' '}
+                <strong className="login-email">{sentEmail}</strong>. Open it on the device where
+                you want to use A-List. Check Spam if it hasn’t arrived.
+              </p>
+              <button
+                className="button subtle"
+                aria-busy={resending}
+                aria-describedby="sign-in-retry"
+                disabled={resending || secondsLeft > 0}
+                onClick={() => void sendLink(sentEmail, true)}
+              >
+                {resending && <LoaderCircle size={16} className="spin" aria-hidden="true" />}
+                {resending ? 'Sending Your Link…' : 'Resend Link'}
+              </button>
+              <p id="sign-in-retry" className="login-resend-timer">
+                {secondsLeft > 0 ? `You can request another link in ${secondsLeft}s.` : ''}
+              </p>
+              <p className="login-error" role="alert">
+                {error}
               </p>
               <button
                 className="text-link"
+                disabled={resending}
                 onClick={() => {
                   editingEmail.current = true;
+                  setError('');
                   setState('idle');
                 }}
               >
@@ -135,11 +189,12 @@ export default function SignIn({
               <p id="email-error" className="login-error" role="alert">
                 {error}
               </p>
+              {coolingDown && <p className="login-resend-timer">Try again in {secondsLeft}s.</p>}
               <button
                 className="button primary"
                 aria-busy={state === 'loading'}
                 type="submit"
-                disabled={state === 'loading' || !email.trim()}
+                disabled={state === 'loading' || !email.trim() || coolingDown}
               >
                 {state === 'loading' ? (
                   <>

@@ -52,7 +52,7 @@ test('series details disable saving and explain the movie-only scope', () => {
 });
 test('a previously saved series remains removable', () => {
   const html = renderToStaticMarkup(createElement(MovieDetails, { ...props, saved: true }));
-  assert.match(html, /remove from library/);
+  assert.match(html, /Remove from Library/);
   assert.doesNotMatch(html, /<button[^>]*class="film-control film-saved"[^>]*disabled/);
 });
 test('unresolved film matches explain verification instead of claiming that no date has been announced', () => {

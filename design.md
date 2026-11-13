@@ -57,6 +57,14 @@ This Week uses a compact release agenda: prominent tabular day numerals, small p
 
 Calendar settings place Subscribe and copy/download controls before summary counts and optional Setup help. Feed inclusion never claims that an external calendar is connected; tentative upcoming dates retain an explicit Unconfirmed label. A dismissible, nonmodal setup reminder appears after a confirmed first save during the visit, without shifting an existing library on initial load. Available uses newest-first release dates; Coming Soon remains nearest-first.
 
+Collections and Home Releases state that dates follow US listings. Film titles and their metadata open details through one accessible action, separate from save and selection controls. Cards show Available, Coming Soon or Unconfirmed as visible text. Saved status is informational; details use an explicit Remove from Library action with the existing Undo recovery.
+
+On phones the introduction is compact and This Week starts collapsed, with a release count and an explicit expand control. Desktop keeps the agenda visible. Expanding it preserves the same release rows and certainty labels. Long mobile film titles use the full reading width beneath their artwork; enlarged text also switches short identities to that layout when the remaining column becomes too narrow. Detail titles remain complete, actions wrap when needed, and Done remains reachable.
+
+Calendar previews include production years, label tentative dates Unconfirmed, and open the corresponding film with a clean modal handoff. The subscription action has an always-visible explanation of the 1pm GMT, 30-minute reminder and its optional alert. Counts use singular labels when appropriate. Inline Privacy links are underlined at rest, and labelled button groups expose their group role.
+
+Sign-in success identifies the destination email and offers Resend Link separately from Use Another Email. Resend waits at least 60 seconds after a successful send and respects server Retry-After responses. The countdown is not a live region; successful sends and failures are announced without repeating the timer each second. Existing server rate limits and authentication checks remain authoritative.
+
 ## Verification
 
 Inspect 320 / 375 / 414 / 768 px and desktop in light and dark. Check horizontal overflow, nonwrapping control labels, touch targets, focus, long titles and dialog scrolling. Run existing checks, build and isolated browser flows. Keep routes, component ownership and application logic intact.

@@ -28,6 +28,10 @@
   color: var(--color-ink);
   text-underline-offset: 3px;
 }
+.privacy-page p a {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+}
 .privacy-home {
   display: inline-flex;
   align-items: center;
