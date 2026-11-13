@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { CalendarDays, X } from 'lucide-react';
+import { useExitPresence } from '../hooks/use-exit-presence';
 
 // A browser-local reminder preference, never evidence of an external subscription.
 const dismissalKey = 'a-list-calendar-setup-dismissed:v1';
 
 export function CalendarSetupPrompt({ active, onOpen }: { active: boolean; onOpen: () => void }) {
   const [visible, setVisible] = useState(false);
+  const open = active && visible;
+  const { ref, mounted } = useExitPresence<HTMLElement>(open);
   useEffect(() => {
     let cancelled = false;
     queueMicrotask(() => {
@@ -23,9 +26,15 @@ export function CalendarSetupPrompt({ active, onOpen }: { active: boolean; onOpe
     };
   }, []);
 
-  if (!active || !visible) return null;
+  if (!mounted) return null;
   return (
-    <aside className="calendar-setup" aria-label="Calendar setup reminder">
+    <aside
+      ref={ref}
+      className="calendar-setup feedback-surface"
+      aria-label="Calendar setup reminder"
+      data-state={open ? 'open' : 'closed'}
+      inert={!open}
+    >
       <div>
         <strong>Get Release Dates in Your Calendar</strong>
         <p>Subscribe once to follow the films you save.</p>

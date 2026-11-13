@@ -308,11 +308,9 @@ export default function AccountSettings({
             {busy ? 'Checking…' : 'Check Outcome'}
           </button>
         )}
-        {message && (
-          <p className="account-message" role="status">
-            {message}
-          </p>
-        )}
+        <FeedbackSurface open={!!message} className="account-message" role="status">
+          {message}
+        </FeedbackSurface>
         {reset && (
           <button
             ref={calendarButton}

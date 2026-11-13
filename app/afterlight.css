@@ -1824,6 +1824,15 @@ input[type='checkbox'] {
   pointer-events: none;
   transition-duration: var(--dur-short);
 }
+.calendar-setup.feedback-surface {
+  transform: none;
+  transition:
+    opacity var(--dur-medium) var(--ease-out),
+    transform var(--dur-medium) var(--ease-out);
+}
+.calendar-setup.feedback-surface[data-state='closed'] {
+  transition-duration: var(--dur-short);
+}
 .film-read-more svg {
   transition: transform var(--dur-short) var(--ease-out);
 }
@@ -1832,6 +1841,9 @@ input[type='checkbox'] {
   .dialog[data-state='open']::backdrop,
   .feedback-surface[data-state='open'] {
     opacity: 0;
+  }
+  .calendar-setup.feedback-surface[data-state='open'] {
+    transform: translateY(4px);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1853,6 +1865,24 @@ input[type='checkbox'] {
   }
   .film-read-more svg {
     transition: none;
+  }
+  .calendar-setup.feedback-surface {
+    transition-property: opacity;
+    transition-duration: var(--dur-short);
+  }
+  @starting-style {
+    .calendar-setup.feedback-surface[data-state='open'] {
+      transform: none;
+    }
+  }
+}
+html[data-motion-input='keyboard'] :is(.calendar-setup, .account-message).feedback-surface {
+  transition: none;
+}
+@starting-style {
+  html[data-motion-input='keyboard'] :is(.calendar-setup, .account-message)[data-state='open'] {
+    opacity: 1;
+    transform: none;
   }
 }
 
