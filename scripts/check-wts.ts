@@ -99,6 +99,8 @@ await Promise.all(
           return;
         }
         const result = await lookupReleaseReports(row.movie, {
+          force: true,
+          persist: repair,
           db,
           lookupCache,
           expand: async (entries, options) => {

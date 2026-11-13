@@ -36,6 +36,10 @@ const films: Movie[] = Array.from({ length: 32 }, (_, i) => ({
 }));
 const initialFilms = JSON.parse(JSON.stringify(films)) as Movie[];
 const refreshAfter = new Map<string, string>();
+const lookupState = new Map<
+  string,
+  { lookupVersion: number; nextCheckAt: string; outcome?: string; failures?: number }
+>();
 const watched = new Map<string, string>();
 let saved = new Set<string>(),
   includeRumors = true,
@@ -58,6 +62,7 @@ function reset() {
   sessionRefreshes = 0;
   redis.clear();
   refreshAfter.clear();
+  lookupState.clear();
   watched.clear();
   for (const m of films) {
     m.releaseCheckedAt = new Date().toISOString();
@@ -351,8 +356,32 @@ export const server = createServer(async (req, res) => {
           }),
           checkedAt: new Date().toISOString(),
         });
+  if (name === 'a_list_release_history_page')
+    return flags.historyUnavailable
+      ? json({ message: 'History fixture outage' }, 503)
+      : json(
+          (flags.historyEntries as Record<string, unknown[]> | undefined)?.[String(args.p_id)] ||
+            [],
+        );
   if (name === 'a_list_report_lookup_context')
-    return json({ saved: true, misses: 0, profiles: [] });
+    return json({
+      saved: true,
+      misses: 0,
+      profiles: [],
+      nextCheckAt: new Date(Date.now() + 86400000).toISOString(),
+      ...lookupState.get(String(args.p_id)),
+    });
+  if (name === 'a_list_record_lookup_result') {
+    const previous = lookupState.get(String(args.p_id));
+    if ((previous?.lookupVersion || 0) !== args.p_expected_version) return json(false);
+    lookupState.set(String(args.p_id), {
+      lookupVersion: Number(args.p_expected_version) + 1,
+      nextCheckAt: String(args.p_after),
+      outcome: args.p_attempted ? String(args.p_outcome) : previous?.outcome,
+      failures: args.p_source_failure ? (previous?.failures || 0) + 1 : 0,
+    });
+    return json(true);
+  }
   if (name === 'a_list_queue_health')
     return json({
       profiles: { due: 0 },
@@ -416,6 +445,9 @@ export const server = createServer(async (req, res) => {
         id: movie.id,
         movie,
         refresh_after: refreshAfter.get(movie.id),
+        report_lookup_after:
+          lookupState.get(movie.id)?.nextCheckAt || new Date(Date.now() + 86400000).toISOString(),
+        report_lookup_outcome: lookupState.get(movie.id)?.outcome,
         updated_at: '2026-10-26T00:00:00Z',
       }));
     return json(req.headers.accept?.includes('vnd.pgrst.object') ? selected[0] || null : selected);

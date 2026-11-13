@@ -68,7 +68,7 @@ export function parseSourceProfile(html: string, reference: ReportReference): So
     ...(runtime ? { runtime } : {}),
     ...(theatrical ? { theatrical } : {}),
     ...(nonfiction ? { nonfiction: true } : {}),
-    ...(/\b(?:TV (?:Mini )?Series|Television|Episodes?)\b/i.test(field('Genre'))
+    ...(/\b(?:TV (?:Mini[ -]?)?Series|Television|Episodes?)\b/i.test(field('Genre'))
       ? { series: true }
       : {}),
   };

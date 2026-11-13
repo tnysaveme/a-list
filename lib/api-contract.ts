@@ -1,3 +1,4 @@
+import type { ReleaseHistoryEntry } from './release-history';
 import type { Movie } from './model';
 import type { CataloguePage } from './catalogue-view';
 import type { LibraryPage } from './pagination';
@@ -9,6 +10,7 @@ export type LibraryInit = LibraryPage & {
 export type MovieResponse = { movie: Movie };
 export type GetPath =
   | 'revision'
+  | `movie/${string}/history`
   | `movie/${string}`
   | `library${'' | `?${string}`}`
   | `catalogue${'' | `?${string}`}`
@@ -16,15 +18,17 @@ export type GetPath =
   | `library/membership?${string}`;
 export type GetResponse<P extends GetPath> = P extends 'revision'
   ? { revision: string }
-  : P extends `movie/${string}`
-    ? MovieResponse
-    : P extends `catalogue${string}`
-      ? CataloguePage
-      : P extends `library/membership?${string}`
-        ? { membership: Record<string, boolean>; watched: Record<string, string | null> }
-        : P extends `search?${string}`
-          ? { movies: Movie[] }
-          : LibraryPage;
+  : P extends `movie/${string}/history`
+    ? { entries: ReleaseHistoryEntry[] }
+    : P extends `movie/${string}`
+      ? MovieResponse
+      : P extends `catalogue${string}`
+        ? CataloguePage
+        : P extends `library/membership?${string}`
+          ? { membership: Record<string, boolean>; watched: Record<string, string | null> }
+          : P extends `search?${string}`
+            ? { movies: Movie[] }
+            : LibraryPage;
 export type PostRequests = {
   init: Record<string, never>;
   library: {

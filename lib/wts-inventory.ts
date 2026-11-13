@@ -27,6 +27,9 @@ export type InventoryRow = {
   saved?: boolean;
   check_after?: string;
   checked_at?: string | null;
+  queued_at?: string;
+  last_success_at?: string | null;
+  published_at?: string | null;
 };
 
 export function parseProfileIndex(value: unknown): InventoryRow[] {
@@ -188,6 +191,9 @@ export function inventoryEntries(rows: InventoryRow[]): FeedEntry[] {
     priority: row.priority,
     saved: row.saved,
     dueAt: row.check_after,
+    queuedAt: row.queued_at,
+    sourceModifiedAt: row.modified_at,
+    measureFreshness: !!row.queued_at && (!row.published_at || row.published_at < row.queued_at),
     checkedAt: row.checked_at || undefined,
     revision: row.modified_at,
     seenAt: new Date().toISOString(),
@@ -256,8 +262,11 @@ export async function checkpointWtsProfiles(
             !complete && !result.outcome.startsWith('conflicting_') && row.priority === 2 ? 2 : 0,
           movie_id: result.movieId || row.movie_id || null,
           audit: result.audit || {},
-          diagnostic: result.diagnostic || {},
+          diagnostic:
+            result.diagnostic ||
+            (result.partial ? { stage: 'profile', category: 'format_changed' } : {}),
           ...(complete ? { last_success_at: new Date().toISOString() } : {}),
+          ...(result.outcome === 'matched' ? { published_at: new Date().toISOString() } : {}),
         })
         .eq('source_id', row.source_id)
         .eq('modified_at', row.modified_at)

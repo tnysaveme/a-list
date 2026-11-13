@@ -5,19 +5,22 @@
       "file": "bad-day-2026.html",
       "url": "https://whentostream.com/bad-day-2026/",
       "title": "Bad Day",
-      "sourceId": "33636"
+      "sourceId": "33636",
+      "expectedKinds": ["PVOD", "Subscription"]
     },
     {
       "file": "the-bay-2026.html",
       "url": "https://whentostream.com/the-bay-2026/",
       "title": "The Bay",
-      "sourceId": "29397"
+      "sourceId": "29397",
+      "expectedKinds": ["Digital", "Subscription"]
     },
     {
       "file": "iron-boy-2026.html",
       "url": "https://whentostream.com/iron-boy-2026/",
       "title": "Iron Boy",
-      "sourceId": "35267"
+      "sourceId": "35267",
+      "expectedKinds": ["PVOD", "Subscription"]
     }
   ],
   "feed": {

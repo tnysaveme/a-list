@@ -111,7 +111,7 @@ export function listingSubjectMatches(
     const subject =
       headings.length === 1
         ? decode(headings[0][1]).match(
-            /^(.*?)\s+\(\s*(?:(?:18|19|20)\d{2}|TV (?:Mini )?Series(?:[^)]*)?)\s*\)$/i,
+            /^(.*?)\s+\(\s*(?:(?:18|19|20)\d{2}|TV (?:Mini[ -]?)?Series(?:[^)]*)?)\s*\)$/i,
           )
         : null;
     const subjectTitle =

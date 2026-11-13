@@ -2540,6 +2540,7 @@ test('a library read started before a fresh membership correction cannot restore
 });
 
 test('removed films stay removed when reopened against older metadata', async ({ page }) => {
+  await page.clock.install();
   await page.goto('/');
   const search = page.getByRole('combobox', { name: 'Search films' });
   await search.fill('Fixture Film 29');
@@ -2548,6 +2549,7 @@ test('removed films stay removed when reopened against older metadata', async ({
   await expect(page.getByRole('button', { name: /Remove from Library/ })).toBeEnabled();
   await page.getByRole('button', { name: /Remove from Library/ }).click();
   await expect(page.locator('dialog[open]')).toHaveCount(0);
+  await page.clock.fastForward(61000); // Exercise a real metadata read after the short detail cache expires.
   await page.route('**/api/movie/30*', async (route) => {
     const response = await route.fetch();
     const data = await response.json();
@@ -3160,4 +3162,102 @@ test('release evidence shows separate check dates and provider disagreement with
     expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
     await page.screenshot({ path: `outputs/review/wts-evidence-${width}.png` });
   }
+});
+
+test('fresh detail reopens reuse metadata while independently checking saved membership', async ({
+  page,
+}) => {
+  let movieReads = 0,
+    membershipReads = 0;
+  page.on('request', (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path === '/api/movie/2') movieReads++;
+    if (path === '/api/library/membership') membershipReads++;
+  });
+  await page.route('**/api/movie/2', async (route) => {
+    const response = await route.fetch();
+    const data = await response.json();
+    await route.fulfill({
+      response,
+      json: { ...data, movie: { ...data.movie, overview: 'Cached detailed synopsis' } },
+    });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'View Fixture Film 01', exact: true }).click();
+  await expect(page.locator('.film-synopsis')).toContainText('Cached detailed synopsis');
+  await expect(page.getByText('Checking sources…', { exact: true })).toHaveCount(0);
+  await expect.poll(() => movieReads).toBe(1);
+  await page.keyboard.press('Escape');
+  await page.request.post('/api/library', {
+    data: { action: 'remove', ids: ['2'] },
+    headers: { origin: 'http://127.0.0.1:4317' },
+  });
+  await page.getByRole('button', { name: 'View Fixture Film 01', exact: true }).click();
+  await expect(
+    page.locator('.movie-dialog').getByRole('button', { name: 'Save to Library', exact: true }),
+  ).toBeVisible();
+  expect(movieReads).toBe(1);
+  expect(membershipReads).toBeGreaterThan(0);
+});
+
+test('date history loads only on request and can fail without blocking film details', async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 375, height: 950 });
+  await request.post('http://127.0.0.1:4318/_control', {
+    data: {
+      historyEntries: {
+        '2': [
+          {
+            id: '1',
+            kind: 'Digital',
+            previous: {
+              date: '2099-10-30',
+              confidence: 'listed',
+              sourceName: 'DVDs Release Dates',
+              source: 'https://example.invalid/old',
+            },
+            current: {
+              date: '2099-11-01',
+              confidence: 'listed',
+              sourceName: 'DVDs Release Dates',
+              source: 'https://example.invalid/new',
+            },
+            changedAt: '2026-11-13T12:00:00Z',
+            reason: 'date_changed',
+            sourceRevision: null,
+          },
+        ],
+      },
+    },
+  });
+  let reads = 0;
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/movie/2/history') reads++;
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'View Fixture Film 01', exact: true }).click();
+  const toggle = page.getByRole('button', { name: 'Date changes', exact: false });
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  expect(reads).toBe(0);
+  await toggle.click();
+  await expect(page.locator('.film-history-body')).toContainText('Oct 30, 2099');
+  await expect(page.locator('.film-history-body')).toContainText('Nov 1, 2099');
+  expect(reads).toBe(1);
+  await toggle.click();
+  await toggle.click();
+  expect(reads).toBe(1);
+  expect(
+    await page.locator('.movie-dialog').evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+  await page.screenshot({ path: 'outputs/review/wts-history-375.png' });
+  await page.keyboard.press('Escape');
+  await request.post('http://127.0.0.1:4318/_control', { data: { historyUnavailable: true } });
+  await page.getByRole('button', { name: 'View Fixture Film 01', exact: true }).click();
+  await toggle.click();
+  await expect(page.locator('.film-history-body')).toContainText(
+    'Date changes could not be loaded',
+  );
+  await expect(page.locator('.film-release-list')).toBeVisible();
 });

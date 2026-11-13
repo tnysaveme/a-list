@@ -1,7 +1,7 @@
 import { releaseDay } from './release-day';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { beforeDeadline } from './request-deadline';
-import { interactiveResult } from './interactive-refresh';
+import { detailRefreshDue, synopsisRefreshDue } from './detail-refresh';
 import { versionedCache } from './versioned-cache';
 import { movieCard } from './catalogue-view';
 import { sharedSearch } from './shared-search';
@@ -22,7 +22,7 @@ import { refreshMovie } from './movie-refresh';
 import { writeLibrary } from './library-mutations';
 import { checked } from './db-result';
 import { releaseIdentities } from './release-store';
-import { lookupReleaseReports } from './release-lookup';
+import { lookupReleaseReports, needsReportLookup } from './release-lookup';
 import { TRANSIENT_RETRY_MS } from './source-health';
 import { recordSourceCheck } from './source-checks';
 import { cataloguePage, type CatalogueOptions, type CataloguePage } from './catalogue-view';
@@ -246,56 +246,65 @@ export async function getMovie(
   cachedOnly = false,
 ): Promise<Movie | null> {
   const row = checked(
-    await ctx.db.from('a_list_movies').select('movie').eq('id', id).maybeSingle(),
+    await ctx.db
+      .from('a_list_movies')
+      .select('movie,refresh_after,report_lookup_after,report_lookup_outcome')
+      .eq('id', id)
+      .abortSignal(AbortSignal.timeout(3000))
+      .maybeSingle(),
   );
   if (!row) return null;
-  const baseline = row.movie as Movie;
+  const baseline = {
+    ...row.movie,
+    releaseLookupStatus:
+      needsReportLookup(row.movie as Movie) && row.report_lookup_outcome === 'source_unavailable'
+        ? 'unavailable'
+        : needsReportLookup(row.movie as Movie) && row.report_lookup_outcome === 'unresolved'
+          ? 'unresolved'
+          : undefined,
+  } as Movie;
   if (cachedOnly) {
     const pending = await cached<string>(`lock:detail:${id}`);
     return (await membership(ctx, [{ ...baseline, refreshPending: !!pending }]))[0];
   }
-  const work = withLease(`detail:${id}`, 45, () => refreshStoredMovie(ctx, id));
-  // Keep the background promise registered with Next even after the interactive wait ends.
-  after(async () => {
-    try {
-      await work;
-    } catch {
-      console.warn(JSON.stringify({ event: 'detail_refresh_deferred', movieId: id }));
-    }
-  });
-  let result;
-  try {
-    result = await interactiveResult(work, 1500);
-  } catch {
-    return (
-      await membership(ctx, [
-        { ...baseline, releaseLookupStatus: 'unavailable', refreshPending: false },
-      ])
-    )[0];
-  }
-  if (result.ready && result.value) return { ...result.value, refreshPending: false };
-  return (await membership(ctx, [{ ...baseline, refreshPending: true }]))[0];
+  const due = detailRefreshDue({ ...row, movie: baseline });
+  if (due)
+    after(async () => {
+      try {
+        await withLease(`detail:${id}`, 45, () =>
+          refreshStoredMovie(ctx, id, AbortSignal.timeout(38000)),
+        );
+      } catch {
+        console.warn(JSON.stringify({ event: 'detail_refresh_deferred', movieId: id }));
+      }
+    });
+  return (await membership(ctx, [{ ...baseline, refreshPending: due }]))[0];
 }
-async function refreshStoredMovie(ctx: DataContext, id: string): Promise<Movie | null> {
+async function refreshStoredMovie(
+  ctx: DataContext,
+  id: string,
+  signal: AbortSignal,
+): Promise<Movie | null> {
   const row = checked(
     await ctx.db
       .from('a_list_movies')
       .select('movie,refresh_after,requested_at,updated_at')
       .eq('id', id)
+      .abortSignal(signal)
       .maybeSingle(),
   );
   if (!row) return null;
   let movie = row.movie as Movie;
   const releasesDue = releaseCheckDue(movie) && Date.parse(row.refresh_after) <= Date.now();
-  if (
-    releasesDue ||
-    ((!movie.overview || (movie.imdbId && !movie.synopsisCheckedAt)) &&
-      (!movie.synopsisCheckedAt || Date.now() - Date.parse(movie.synopsisCheckedAt) > 3600_000))
-  ) {
+  if (releasesDue || synopsisRefreshDue(movie)) {
     try {
       const refreshed = await withLease(`movie:${id}`, 40, async () => {
-        const identities = movie.releases.some((release) => release.sourceName === 'When To Stream')
-          ? await releaseIdentities()
+        const identities = movie.releases.some(
+          (release) =>
+            release.sourceName === 'When To Stream' ||
+            release.conflictingRelease?.sourceName === 'When To Stream',
+        )
+          ? await releaseIdentities(signal)
           : undefined;
         let partial = false;
         const checks: { source: 'primary' | 'wts'; success: boolean }[] = [];
@@ -304,19 +313,26 @@ async function refreshStoredMovie(ctx: DataContext, id: string): Promise<Movie |
           value = await refreshMovie(movie, {
             discoverReleases: releasesDue,
             identities,
+            signal,
             onSourceResult: (result) => {
+              if (signal.aborted) return;
               partial ||= !result.success;
               checks.push(result);
             },
           });
         } finally {
-          for (const result of checks)
-            await recordSourceCheck(
-              adminDb(),
-              result.source === 'wts' ? 'wts_reports' : 'primary',
-              result.success,
+          if (!signal.aborted)
+            await Promise.all(
+              checks.map((result) =>
+                recordSourceCheck(
+                  adminDb(),
+                  result.source === 'wts' ? 'wts_reports' : 'primary',
+                  result.success,
+                ),
+              ),
             );
         }
+        signal.throwIfAborted();
         const saved = checked(
           await adminDb()
             .from('a_list_movies')
@@ -336,6 +352,7 @@ async function refreshStoredMovie(ctx: DataContext, id: string): Promise<Movie |
             .eq('id', id)
             .eq('updated_at', row.updated_at)
             .select('movie')
+            .abortSignal(signal)
             .maybeSingle(),
         );
         if (saved && releasesDue)
@@ -348,6 +365,7 @@ async function refreshStoredMovie(ctx: DataContext, id: string): Promise<Movie |
       });
       if (refreshed) movie = refreshed;
     } catch (error) {
+      if (signal.aborted) throw error;
       if (releasesDue) {
         movie = failedRefreshMovie(movie, error);
         checked(
@@ -360,7 +378,8 @@ async function refreshStoredMovie(ctx: DataContext, id: string): Promise<Movie |
               refresh_after: new Date(Date.now() + TRANSIENT_RETRY_MS).toISOString(),
             })
             .eq('id', id)
-            .eq('updated_at', row.updated_at),
+            .eq('updated_at', row.updated_at)
+            .abortSignal(signal),
         );
       }
       console.warn(
@@ -383,22 +402,15 @@ async function refreshStoredMovie(ctx: DataContext, id: string): Promise<Movie |
         .from('a_list_movies')
         .update({ requested_at: new Date().toISOString(), refresh_after: new Date().toISOString() })
         .eq('id', id)
-        .is('requested_at', null),
+        .is('requested_at', null)
+        .abortSignal(signal),
     );
   }
-  const lookup = await lookupReleaseReports(movie);
+  const lookup = await lookupReleaseReports(movie, { signal });
   movie = lookup.movie;
-  if (lookup.attempted) {
-    if (lookup.nextCheckAt)
-      checked(
-        await adminDb()
-          .from('a_list_movies')
-          .update({ report_lookup_after: lookup.nextCheckAt })
-          .eq('id', id),
-      );
+  if (lookup.attempted)
     await recordSourceCheck(adminDb(), 'wts_lookup', lookup.outcome !== 'source_unavailable');
-  }
-  return (await membership(ctx, [movie]))[0];
+  return movie;
 }
 export async function account(ctx: DataContext, signal?: AbortSignal): Promise<AccountRow> {
   const read = () =>

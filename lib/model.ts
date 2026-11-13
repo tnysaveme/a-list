@@ -64,7 +64,7 @@ export type ReleaseCheck = {
   issues: SourceIssue[];
 };
 export const verifiedReleases = (movie: Movie) =>
-  movie.releases.filter(
+  (movie.mediaType === 'series' ? [] : movie.releases).filter(
     (release) =>
       validReleaseDate(release.date) &&
       (release.confidence === 'listed' || release.confidence === 'rumored') &&

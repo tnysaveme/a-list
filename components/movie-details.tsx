@@ -1,4 +1,5 @@
 'use client';
+import { ReleaseHistory } from './release-history';
 import { releaseCheckedDate } from '../lib/release-provenance';
 import { releaseDay } from '../lib/release-day';
 import { useStateEntrance } from '../hooks/use-state-entrance';
@@ -88,11 +89,13 @@ export function MovieDetails({
         movie.releases.find((entry) => entry.source === movie.source)?.sourceName ||
         sourceProvider(movie.source),
     },
-    ...movie.releases.map((entry) => ({
-      href: entry.source,
-      label: entry.kind === 'PVOD' ? 'Premium release' : `${entry.kind} release`,
-      provider: entry.sourceName || sourceProvider(entry.source),
-    })),
+    ...movie.releases
+      .flatMap((entry) => [entry, ...(entry.conflictingRelease ? [entry.conflictingRelease] : [])])
+      .map((entry) => ({
+        href: entry.source,
+        label: entry.kind === 'PVOD' ? 'Premium release' : `${entry.kind} release`,
+        provider: entry.sourceName || sourceProvider(entry.source),
+      })),
     ...(movie.overview && movie.overviewSource
       ? [
           {
@@ -345,6 +348,16 @@ export function MovieDetails({
             ))}
           </div>
         </section>
+      )}
+      {!series && (
+        <ReleaseHistory
+          key={movie.id}
+          movieId={movie.id}
+          version={
+            movie.calendarUpdatedAt ||
+            movie.releases.map((r) => `${r.kind}:${r.date}:${r.confidence}:${r.source}`).join('|')
+          }
+        />
       )}
       {checkedDate && (
         <footer className="film-source-check">

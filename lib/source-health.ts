@@ -1,4 +1,4 @@
-import type { WtsQueues } from './wts-work';
+import type { WtsQueues, WorkQueueName } from './wts-work';
 export type SourceCheck = {
   lastAttempt?: string;
   lastSuccess?: string | null;
@@ -46,7 +46,7 @@ export function sourceHealthSummary(
     saved: 3600_000,
     lookups: 86400_000,
   })) {
-    const queue = status.queues?.[name as keyof WtsQueues];
+    const queue = status.queues?.[name as WorkQueueName];
     if (
       !queue ||
       !Number.isFinite(queue.due) ||
@@ -54,8 +54,15 @@ export function sourceHealthSummary(
     )
       issues.push(`${name}_queue_stalled`);
   }
-  for (const [source, check] of Object.entries(health))
+  const failures = status.queues?.failureSummary;
+  if ((failures?.lookupUnavailable || 0) > 0) issues.push('wts_lookup_incomplete');
+  if ((failures?.profileUnavailable || 0) + (failures?.refreshUnavailable || 0) > 0)
+    issues.push('wts_reports_incomplete');
+  for (const [source, check] of Object.entries(health)) {
+    // Retain per-film lookup failures until that film recovers; unrelated success cannot hide them.
+    if (['wts_lookup', 'wts_reports'].includes(source) && failures) continue;
     if (check.ok === false) issues.push(`${source}_failed`);
+  }
   return {
     status: issues.length ? ('degraded' as const) : ('healthy' as const),
     issues,

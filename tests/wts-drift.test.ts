@@ -9,10 +9,16 @@ test('captured WTS profiles preserve native subjects and real N/A, punctuation a
   const results = [];
   for (const profile of manifest.profiles) {
     const html = await fixture(profile.file);
-    const result = inspectWtsProfile(html, profile);
+    const expected = {
+      ...profile,
+      expectedKinds: profile.expectedKinds as Parameters<
+        typeof inspectWtsProfile
+      >[1]['expectedKinds'],
+    };
+    const result = inspectWtsProfile(html, expected);
     results.push(result.evidence);
     assert.throws(
-      () => inspectWtsProfile(html.replace(`post-${profile.sourceId}`, 'post-999999'), profile),
+      () => inspectWtsProfile(html.replace(`post-${profile.sourceId}`, 'post-999999'), expected),
       /subject/,
     );
   }
@@ -26,4 +32,16 @@ test('captured RSS parses CDATA and drift detection fails closed on challenge pa
   assert.ok(inspectWtsFeed(await fixture(manifest.feed.file)).length);
   for (const bad of ['<html>Checking your browser</html>', '<rss><channel></channel></rss>'])
     assert.throws(() => inspectWtsFeed(bad));
+});
+
+test('a single disappearing release field is detected while other fields still parse', async () => {
+  const expected = {
+    ...manifest.profiles[1],
+    expectedKinds: ['Digital', 'Subscription'] as ('Digital' | 'Subscription')[],
+  };
+  const html = await fixture(expected.file);
+  assert.throws(
+    () => inspectWtsProfile(html.replace(/SVOD Release Date/gi, 'Retired field'), expected),
+    /release fields changed/,
+  );
 });

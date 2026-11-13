@@ -21,6 +21,7 @@ import { TRANSIENT_RETRY_MS } from './source-health';
 import { movieRows } from './movie-rows';
 import { ingestionPayload } from './ingestion-state';
 import { auditCoverageWhenDue } from './coverage-audit';
+import { sourceWorkSummary } from './source-work';
 import { sourceReadiness } from './source-readiness';
 import { dueWtsAnnouncements } from './wts-announcements';
 import { wtsWorkLimit, type WtsQueues } from './wts-work';
@@ -67,6 +68,7 @@ export async function refreshSources() {
     let catalogueUpdated = false,
       refreshed = 0,
       failed = 0,
+      sourceFailures = 0,
       feed: FeedEntry[] = [],
       feedLoaded = false;
     const checks = new Map<string, boolean>();
@@ -158,12 +160,12 @@ export async function refreshSources() {
             );
             if (saved?.length) {
               refreshed++;
-              if (partial) failed++;
+              if (partial) sourceFailures++;
             }
           } catch (error) {
             if (savedSignal.aborted) return; // Local deadline is not a source failure.
             const movie = failedRefreshMovie(row.movie, error);
-            failed++;
+            sourceFailures++;
             checked(
               await db
                 .from('a_list_movies')
@@ -195,6 +197,7 @@ export async function refreshSources() {
         { started, budgetMs: 19000 },
       );
     } catch {
+      if (!savedSignal.aborted) failed++;
       console.warn(JSON.stringify({ event: 'saved_refresh_deferred' }));
     }
     stages.saved = Date.now() - savedStarted;
@@ -224,31 +227,33 @@ export async function refreshSources() {
         ]);
         await getFeed();
         const budgetMs = Math.min(limit === 16 ? 14000 : 10000, 33000 - (Date.now() - started));
-        if (budgetMs > 500)
+        if (budgetMs > 500) {
+          const expansionSignal = until(34000);
           try {
             const result = await expandReleases(
               [...feed, ...announcements, ...inventoryEntries(inventory)],
               {
                 limit,
                 budgetMs,
-                signal: until(34000),
+                signal: expansionSignal,
                 db,
                 knownMovies: (await payload()).catalogue,
               },
             );
             await checkpointWtsProfiles(inventory, result.decisions, db, until(35000));
-            if (result.processed) {
-              const success = !result.decisions.some(
-                (d) => d.partial || ['source_unavailable', 'budget_exhausted'].includes(d.outcome),
+            const summary = sourceWorkSummary(result.decisions);
+            if (summary.checked)
+              checks.set(
+                'wts_reports',
+                (checks.get('wts_reports') ?? true) && summary.sourceFailures === 0,
               );
-              checks.set('wts_reports', (checks.get('wts_reports') ?? true) && success);
-              if (!success) failed++;
-            }
+            failed += summary.operationalFailures;
+            sourceFailures += summary.sourceFailures;
           } catch {
-            failed++;
-            checks.set('wts_reports', false);
+            if (!expansionSignal.aborted) failed++;
             console.warn(JSON.stringify({ event: 'release_expansion_deferred' }));
           }
+        }
       }
     } catch {
       console.warn(JSON.stringify({ event: 'release_work_deferred' }));
@@ -332,14 +337,15 @@ export async function refreshSources() {
     stages.catalogue = Date.now() - catalogueStarted;
     const lookupStarted = Date.now();
     if (Date.now() - started < 41500) {
+      const lookupSignal = until(42500);
       try {
         const lookups = await refreshReportLookups({
           db,
-          signal: until(42500),
+          signal: lookupSignal,
         });
-        failed += lookups.failures;
+        sourceFailures += lookups.failures;
       } catch {
-        failed++;
+        if (!lookupSignal.aborted) failed++;
         console.warn(JSON.stringify({ event: 'saved_report_lookup_deferred' }));
       }
     }
@@ -377,11 +383,13 @@ export async function refreshSources() {
       console.warn(JSON.stringify({ event: 'health_transition_unavailable' }));
     }
     await metric('refresh_failures', failed);
+    await metric('source_failures', sourceFailures);
     await metric('refreshed_movies', refreshed);
     const result = {
       catalogueUpdated,
       refreshed,
       failed,
+      sourceFailures,
       durationMs: Date.now() - started,
       stages,
     };

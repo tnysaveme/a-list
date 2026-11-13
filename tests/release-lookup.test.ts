@@ -703,3 +703,92 @@ test('lookup failure diagnostics identify the film and category without logging 
     console.warn = originalWarn;
   }
 });
+
+test('a native mini-series is positively excluded before release parsing, never searched in WTS and not retried as a movie', async () => {
+  const original = globalThis.fetch;
+  const native = {
+    ...movie,
+    id: '8078',
+    imdbId: undefined,
+    title: 'The Night Manager',
+    year: '2016',
+    source: 'https://www.dvdsreleasedates.com/movies/8078/the-night-manager',
+  };
+  const checkpoints: Record<string, unknown>[] = [];
+  let stored: Movie = native;
+  const db = createClient('https://database.example.invalid', 'fixture-key', {
+    auth: { persistSession: false },
+    global: {
+      fetch: async (input, init) => {
+        const url = String(input);
+        if (url.includes('a_list_report_lookup_context'))
+          return Response.json({ lookupVersion: 0 });
+        if (url.includes('a_list_record_lookup_result')) {
+          checkpoints.push(JSON.parse(String(init?.body)));
+          return Response.json(true);
+        }
+        if (init?.method === 'PATCH') {
+          stored = JSON.parse(String(init.body)).movie;
+          return Response.json({ movie: stored });
+        }
+        return Response.json({ movie: stored, updated_at: '2026-11-13T12:00:00Z' });
+      },
+    },
+  });
+  try {
+    globalThis.fetch = async (input) => {
+      assert.equal(String(input), native.source);
+      return new Response(
+        `<link rel='canonical' href='${native.source}'><h1>The Night Manager (TV Mini-Series 2016)</h1><a itemprop='sameAs' href='https://www.imdb.com/title/tt1399664/'>IMDb</a><!--${'.'.repeat(600)}-->`,
+      );
+    };
+    const result = await lookupReleaseReports(native, { db, lookupCache: cache().api });
+    assert.equal(result.outcome, 'ineligible');
+    assert.equal(stored.mediaType, 'series');
+    assert.deepEqual(stored.releases, []);
+    assert.equal(checkpoints[0].p_source_failure, false);
+    assert.equal(checkpoints[0].p_outcome, 'ineligible');
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('durable lookup backoff survives an empty cache and cache-write failures retain successful checks', async () => {
+  const original = globalThis.fetch;
+  let requests = 0;
+  const state = {
+    lookupVersion: 2,
+    outcome: 'source_unavailable',
+    failures: 3,
+    nextCheckAt: new Date(Date.now() + 3600000).toISOString(),
+  };
+  const db = {
+    rpc: () => ({ abortSignal: async () => ({ data: state, error: null }) }),
+  } as unknown as NonNullable<Parameters<typeof lookupReleaseReports>[1]>['db'];
+  try {
+    globalThis.fetch = async () => {
+      requests++;
+      return new Response(empty);
+    };
+    assert.equal(
+      (await lookupReleaseReports(movie, { db, lookupCache: cache().api })).attempted,
+      false,
+    );
+    assert.equal(requests, 0);
+    const result = await lookupReleaseReports(movie, {
+      db,
+      force: true,
+      persist: false,
+      lookupCache: {
+        ...cache().api,
+        write: async () => {
+          throw Error('Unavailable cache');
+        },
+      },
+    });
+    assert.equal(result.outcome, 'no_report');
+    assert.equal(requests, 1);
+  } finally {
+    globalThis.fetch = original;
+  }
+});

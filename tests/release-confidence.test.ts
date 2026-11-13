@@ -179,10 +179,25 @@ test('an explicit replacement survives cancellation of the old date, but a later
 });
 
 test('verified TV and mini-series subjects are classified regardless of the release heading', () => {
-  for (const type of ['TV Series', 'TV Mini Series']) {
+  for (const type of ['TV Series', 'TV Mini Series', 'TV Mini-Series', 'TV Miniseries']) {
     for (const heading of ['', '<h2>Digital HD on November 3, 2026.</h2>']) {
       const page = native.replace('A Film (2026)', `A Film (${type} 2026)`) + heading;
       assert.equal(parseDetail(page, movie).mediaType, 'series');
+      assert.deepEqual(
+        parseDetail(page, {
+          ...movie,
+          releases: [
+            {
+              kind: 'Digital',
+              date: '2099-11-01',
+              confidence: 'listed',
+              source: movie.source,
+              sourceName: 'DVDs Release Dates',
+            },
+          ],
+        }).releases,
+        [],
+      );
       assert.deepEqual(parseSearchResults(page), []);
     }
   }

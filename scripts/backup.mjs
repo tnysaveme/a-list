@@ -16,6 +16,7 @@ const tables = {
   a_list_source_status: ['id'],
   a_list_release_candidates: ['source_id'],
   a_list_release_reviews: ['id'],
+  a_list_release_history: ['id'],
 };
 async function verify(backup) {
   const db = new PGlite();
@@ -37,33 +38,41 @@ async function verify(backup) {
     );
     for (const id of owners)
       await db.query('insert into auth.users values($1) on conflict do nothing', [id]);
-    await db.exec('delete from public.a_list_source_status;set role service_role');
+    await db.exec(
+      'alter table public.a_list_movies disable trigger record_release_history;delete from public.a_list_source_status;set role service_role',
+    );
     const counts = {};
     for (const table of Object.keys(tables)) {
-      const columns = new Set(
+      const columns = new Map(
         (
           await db.query(
-            'select column_name from information_schema.columns where table_schema=$1 and table_name=$2',
+            'select column_name,data_type from information_schema.columns where table_schema=$1 and table_name=$2',
             ['public', table],
           )
-        ).rows.map((row) => row.column_name),
+        ).rows.map((row) => [row.column_name, row.data_type]),
       );
-      for (const row of backup.tables[table]) {
+      const savedRows = backup.tables[table] || [];
+      for (const row of savedRows) {
         const keys = Object.keys(row);
         if (keys.some((key) => !columns.has(key) || !/^\w+$/.test(key)))
           throw Error('Unexpected backup column');
         await db.query(
           `insert into public.${table}(${keys.map((key) => '"' + key + '"').join(',')}) overriding system value values(${keys.map((_, i) => '$' + (i + 1)).join(',')})`,
           keys.map((key) =>
-            typeof row[key] === 'object' && row[key] !== null ? JSON.stringify(row[key]) : row[key],
+            typeof row[key] === 'object' && row[key] !== null && columns.get(key) !== 'ARRAY'
+              ? JSON.stringify(row[key])
+              : row[key],
           ),
         );
       }
       counts[table] = Number(
         (await db.query(`select count(*) as total from public.${table}`)).rows[0].total,
       );
-      if (counts[table] !== backup.tables[table].length) throw Error('Restore count mismatch');
+      if (counts[table] !== savedRows.length) throw Error('Restore count mismatch');
     }
+    await db.exec(
+      "reset role;alter table public.a_list_movies enable trigger record_release_history;select setval('public.a_list_release_history_id_seq',(select coalesce(max(id),1) from public.a_list_release_history),exists(select 1 from public.a_list_release_history))",
+    );
     return counts;
   } finally {
     await db.close();
@@ -89,7 +98,14 @@ try {
           .abortSignal(AbortSignal.timeout(10000));
         for (const column of tables[table]) query = query.order(column);
         const result = await query;
-        if (result.error) throw Error('Backup query failed for ' + table);
+        if (result.error) {
+          if (
+            table === 'a_list_release_history' &&
+            ['PGRST205', '42P01'].includes(result.error.code)
+          )
+            return [];
+          throw Error('Backup query failed for ' + table);
+        }
         values.push(...result.data);
         if (result.data.length < 500) return values;
       }
@@ -149,9 +165,19 @@ try {
       };
     const data = Object.fromEntries(Object.keys(tables).map((table) => [table, []]));
     data.a_list_accounts = [{ id: owner }];
-    data.a_list_movies = [{ id: '1', movie }];
+    data.a_list_movies = [{ id: '1', movie, report_lookup_known_kinds: ['Digital'] }];
     data.a_list_library = [{ user_id: owner, movie_id: '1', movie, tracked: true }];
     data.a_list_source_status = [{ id: true }];
+    data.a_list_release_history = [
+      {
+        id: 7,
+        movie_id: '1',
+        kind: 'Digital',
+        previous: null,
+        current: { date: '2026-11-13', confidence: 'confirmed' },
+        reason: 'listed',
+      },
+    ];
     console.log(
       JSON.stringify({
         event: 'application_restore_fixture_verified',
