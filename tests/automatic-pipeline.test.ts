@@ -690,8 +690,10 @@ test('feed health detects malformed successful HTTP responses and retains the pr
     global: {
       fetch: async (input, init) => {
         const body = JSON.parse(String(init?.body));
-        if (String(input).includes('/rpc/')) checks.push(body);
-        else writes.push(body);
+        if (String(input).includes('/rpc/a_list_record_source_check')) checks.push(body);
+        else if (String(input).includes('/rpc/')) {
+          /* durable queue writes are tested separately */
+        } else writes.push(body);
         return Response.json(null);
       },
     },
@@ -1244,6 +1246,40 @@ test('unusable metadata identities stay unresolved without withdrawing last-good
         ),
       );
     }
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('catch-up processes more than five entries once, checkpoints durable work and retains the bounded recent snapshot', async () => {
+  const fixtures = Array.from({ length: 12 }, (_, i) => film(100 + i));
+  const fake = store(fixtures);
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async (url) => {
+      const found = fixtures.find(
+        (f) =>
+          f.entry.report.release.source === String(url) || f.profile.sourceFilmUrl === String(url),
+      );
+      if (!found) throw new Error('Unexpected source');
+      return new Response(String(url) === found.profile.sourceFilmUrl ? found.page : found.article);
+    };
+    const feed = fixtures.map((f) => f.entry);
+    const result = await expandReleases(
+      [
+        ...feed,
+        ...feed.map((entry) => ({ ...entry, durable: true, queueVersion: 0, attempts: 0 })),
+      ],
+      { db: fake.db, publishUnknown: true, limit: 16 },
+    );
+    assert.equal(result.processed, 12);
+    assert.equal(result.matched, 12);
+    assert.equal(fake.state.feed.length, 12);
+    assert.ok(fake.state.feed.every((entry) => !entry.durable && entry.queueVersion === undefined));
+    const checkpoint = fake.writes.find(
+      (write) => write.name === 'a_list_checkpoint_wts_announcements',
+    );
+    assert.equal((checkpoint?.args.p_entries as unknown[]).length, 12);
   } finally {
     globalThis.fetch = original;
   }

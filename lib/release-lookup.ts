@@ -140,7 +140,7 @@ export async function lookupReleaseReports(
     revision?: string;
     profiles?: { source: string; title: string }[];
   } | null;
-  const key = `release-lookup:v12:${id}:${context?.revision || 'unindexed'}:${context?.saved ? 'saved' : 'public'}`;
+  const key = `release-lookup:v13:${id}:${context?.revision || 'unindexed'}:${context?.saved ? 'saved' : 'public'}`;
   const usable = (state: LookupState) =>
     Date.parse(state.nextCheckAt) > Date.now() &&
     (state.knownKinds || []).every((kind) =>

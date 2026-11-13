@@ -242,7 +242,7 @@ test('incremental feed state ignores check timestamps, retains deferred work and
       release: { ...report.release, source: `https://whentostream.com/film-${index}/` },
     },
   }));
-  assert.equal(dueReleaseEntries(backlog, Date.parse(now), 100).length, 5);
+  assert.equal(dueReleaseEntries(backlog, Date.parse(now), 100).length, 12);
 });
 test('automatic imports preserve native IDs and primary dates, keep tentative confidence, and retain future calendar UIDs', () => {
   const verified = parseVerifiedReport(article, report, [identity])!;

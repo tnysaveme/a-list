@@ -156,6 +156,30 @@ test('consistency audit queues verified aliases without restoring snapshots, pre
       JSON.stringify(alias),
     ]);
     assert.equal((await audit()).unexplained, 1, 'Verified aliases receive consistency coverage');
+    const publicationVersion = (
+      await db.query<{ v: string }>(
+        "select updated_at::text v from public.a_list_movies where id='123'",
+      )
+    ).rows[0].v;
+    await db.query(
+      'select public.a_list_store_release_match($1::jsonb,$2::jsonb,$3::timestamptz,$4::jsonb)',
+      [
+        JSON.stringify(mapping),
+        JSON.stringify(movie),
+        publicationVersion,
+        JSON.stringify([release, { ...release, kind: 'Digital', date: '2099-03-01' }]),
+      ],
+    );
+    const aliasWindows = (
+      await db.query<{
+        releases: { kind: string; date: string; conflictingRelease?: { date: string } }[];
+      }>("select movie->'releases' as releases from public.a_list_movies where id=$1", [imdb])
+    ).rows[0].releases;
+    assert.equal(aliasWindows.find((r) => r.kind === 'Digital')?.date, primary.date);
+    assert.equal(
+      aliasWindows.find((r) => r.kind === 'Digital')?.conflictingRelease?.date,
+      '2099-03-01',
+    );
     const version = (
       await db.query<{ v: string }>(
         "select updated_at::text as v from public.a_list_movies where id='123'",
@@ -186,6 +210,15 @@ test('consistency audit queues verified aliases without restoring snapshots, pre
         )
       ).rows[0].n,
       0,
+    );
+    assert.equal(
+      (
+        await db.query<{ n: number }>(
+          "select count(*)::int n from public.a_list_movies m cross join lateral jsonb_array_elements(m.movie->'releases') r where r ? 'conflictingRelease'",
+        )
+      ).rows[0].n,
+      0,
+      'Retired proof clears provider disagreement',
     );
     await db.exec(
       "reset role;insert into auth.users values('11111111-1111-4111-8111-111111111111');insert into public.a_list_accounts(id) values('11111111-1111-4111-8111-111111111111');insert into public.a_list_library(user_id,movie_id,tracked,movie) select '11111111-1111-4111-8111-111111111111',id,true,movie from public.a_list_movies where id='123';set role service_role",

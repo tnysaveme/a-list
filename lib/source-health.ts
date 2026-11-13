@@ -1,3 +1,4 @@
+import type { WtsQueues } from './wts-work';
 export type SourceCheck = {
   lastAttempt?: string;
   lastSuccess?: string | null;
@@ -8,12 +9,15 @@ export type SourceCheck = {
 export type SourceHealth = Record<string, SourceCheck>;
 export const TRANSIENT_RETRY_MS = 15 * 60_000;
 export const SOURCE_HEALTH_COLUMNS =
-  'last_success_at,catalogue_success_at,failures,source_health,wts_profile_changes';
+  'last_success_at,catalogue_success_at,failures,source_health,wts_profile_changes,wts_coverage,wts_profile_indexed_at';
 export function sourceHealthSummary(
   status: {
     last_success_at?: string | null;
     catalogue_success_at?: string | null;
     failures?: number;
+    wts_coverage?: { checkedAt?: string; unexplained?: number } | null;
+    wts_profile_indexed_at?: string | null;
+    queues?: WtsQueues;
     source_health?: SourceHealth;
     wts_profile_changes?: { checkedAt?: string; through?: string } | null;
   },
@@ -33,6 +37,23 @@ export function sourceHealthSummary(
   if (stale(status.wts_profile_changes?.checkedAt, 30 * 60_000)) issues.push('wts_discovery_stale');
   // A paginated catch-up can keep checking successfully without catching up.
   if (stale(status.wts_profile_changes?.through, 60 * 60_000)) issues.push('wts_discovery_lagging');
+  if (stale(status.wts_coverage?.checkedAt, 90 * 60_000)) issues.push('wts_audit_stale');
+  if ((status.wts_coverage?.unexplained || 0) > 0) issues.push('wts_coverage_gaps');
+  if (stale(status.wts_profile_indexed_at, 12 * 3600_000)) issues.push('wts_recovery_scan_stale');
+  for (const [name, age] of Object.entries({
+    profiles: 3600_000,
+    announcements: 3600_000,
+    saved: 3600_000,
+    lookups: 86400_000,
+  })) {
+    const queue = status.queues?.[name as keyof WtsQueues];
+    if (
+      !queue ||
+      !Number.isFinite(queue.due) ||
+      ((queue.due || 0) > 0 && stale(queue.oldestDueAt, age))
+    )
+      issues.push(`${name}_queue_stalled`);
+  }
   for (const [source, check] of Object.entries(health))
     if (check.ok === false) issues.push(`${source}_failed`);
   return {

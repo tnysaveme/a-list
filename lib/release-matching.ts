@@ -47,14 +47,15 @@ export async function corroborateCandidates(
       (movie) => !movie.year || Math.abs(Number(movie.year) - Number(profile.year)) <= 2,
     );
   if (movies.length > 3) throw new UnresolvedRelease('ambiguous_identity');
-  const candidates = await Promise.all(
+  const checked = await Promise.all(
     movies.map(async (movie) => {
       const id = verifiedIdentityId(movie);
       if (!id) throw new UnresolvedRelease('conflicting_identity');
       try {
         return await getMetadataEvidence(id, signal);
       } catch (error) {
-        if (error instanceof UnsupportedMediaType) throw new UnresolvedRelease('not_movie');
+        // Positive evidence excludes this candidate, not the WTS film's other namesakes.
+        if (error instanceof UnsupportedMediaType) return null;
         if (signal.aborted) throw error;
         const primary = await findListingEvidence(movie, signal);
         if (!primary) throw error;
@@ -62,6 +63,8 @@ export async function corroborateCandidates(
       }
     }),
   );
+  const candidates = checked.filter((candidate) => candidate !== null);
+  if (!candidates.length && checked.length) throw new UnresolvedRelease('insufficient_evidence');
   try {
     return automaticEvidence(profile, candidates);
   } catch (error) {
@@ -72,9 +75,12 @@ export async function corroborateCandidates(
     )
       throw error;
     const primary = await Promise.all(
-      candidates.map(async (candidate, index) => {
+      candidates.map(async (candidate) => {
         if (candidate.primaryIdentityVerified) return candidate;
-        const primary = await findListingEvidence(movies[index], signal);
+        const primary = await findListingEvidence(
+          movies.find((movie) => verifiedIdentityId(movie) === candidate.movie.id)!,
+          signal,
+        );
         if (!primary) return candidate;
         if (primary.movie.id !== candidate.movie.id)
           throw new UnresolvedRelease('conflicting_identity');

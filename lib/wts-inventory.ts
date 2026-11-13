@@ -173,9 +173,13 @@ export async function indexWtsProfileChanges(state: InventoryState, db: Db, sign
   return true;
 }
 
-export async function dueWtsProfiles(db: Db, signal: AbortSignal): Promise<InventoryRow[]> {
+export async function dueWtsProfiles(
+  db: Db,
+  signal: AbortSignal,
+  limit = 4,
+): Promise<InventoryRow[]> {
   return checked(
-    await db.rpc('a_list_due_wts_profiles', { p_limit: 4 }).abortSignal(signal),
+    await db.rpc('a_list_due_wts_profiles', { p_limit: limit }).abortSignal(signal),
   ) as InventoryRow[];
 }
 export function inventoryEntries(rows: InventoryRow[]): FeedEntry[] {

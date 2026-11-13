@@ -104,7 +104,7 @@ test('failed candidates cannot manufacture uniqueness and TV source pages cannot
         : Response.json({ meta: { type: 'series', id: 'tt7777777', name: 'A Film' } });
     await assert.rejects(
       corroborateCandidates(profile, [movie], AbortSignal.timeout(1000)),
-      /not_movie/,
+      /insufficient_evidence/,
     );
   } finally {
     globalThis.fetch = original;
@@ -227,6 +227,41 @@ test('verified primary and metadata evidence retain complementary credits but re
       corroborateCandidates(profile, [movie], AbortSignal.timeout(1000)),
       /insufficient/,
     );
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('a positively excluded series namesake cannot reject a corroborated film, but unavailable candidates still block uniqueness', async () => {
+  const original = globalThis.fetch;
+  const other = {
+    ...movie,
+    id: 'tt8888888',
+    imdbId: 'tt8888888',
+    source: 'https://www.imdb.com/title/tt8888888/',
+  };
+  try {
+    let unavailable = false;
+    globalThis.fetch = async (url) => {
+      const id = String(url).match(/tt\d+/)?.[0];
+      if (id === other.id && unavailable) return new Response('Unavailable', { status: 503 });
+      return Response.json({
+        meta: {
+          id,
+          type: id === other.id ? 'series' : 'movie',
+          name: 'A Film',
+          releaseInfo: '2026',
+          director: ['A Director'],
+          cast: ['First Actor', 'Second Actor'],
+        },
+      });
+    };
+    assert.equal(
+      (await corroborateCandidates(profile, [movie, other], AbortSignal.timeout(1000))).movie.id,
+      movie.imdbId,
+    );
+    unavailable = true;
+    await assert.rejects(corroborateCandidates(profile, [movie, other], AbortSignal.timeout(1000)));
   } finally {
     globalThis.fetch = original;
   }

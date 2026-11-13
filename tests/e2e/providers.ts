@@ -353,6 +353,13 @@ export const server = createServer(async (req, res) => {
         });
   if (name === 'a_list_report_lookup_context')
     return json({ saved: true, misses: 0, profiles: [] });
+  if (name === 'a_list_queue_health')
+    return json({
+      profiles: { due: 0 },
+      announcements: { due: 0 },
+      saved: { due: 0 },
+      lookups: { due: 0 },
+    });
   if (name === 'a_list_source_status' && flags.catalogueUnavailable)
     return json({ message: 'Catalogue fixture outage' }, 503);
   if (name === 'a_list_source_status') {
@@ -361,6 +368,8 @@ export const server = createServer(async (req, res) => {
       catalogue_version: String(flags.revision || 0),
       catalogue_success_at: new Date().toISOString(),
       last_success_at: new Date().toISOString(),
+      wts_coverage: { checkedAt: new Date().toISOString(), unexplained: 0 },
+      wts_profile_indexed_at: new Date().toISOString(),
       wts_profile_changes: {
         checkedAt: new Date().toISOString(),
         through: new Date().toISOString(),

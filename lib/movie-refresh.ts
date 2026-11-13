@@ -1,3 +1,4 @@
+import { withReleaseConflict } from './release-provenance';
 import { validMovieId, type Movie, type SourceIssue } from './model';
 import { getMetadata, imdbId } from './metadata';
 import { fetchSource, parseDetail, parseSearchResults, parseSynopsis } from './sources';
@@ -48,6 +49,10 @@ export async function refreshMovie(
     ? [
         ...new Map(
           movie.releases
+            .flatMap((release) => [
+              release,
+              ...(release.conflictingRelease ? [release.conflictingRelease] : []),
+            ])
             .filter((r) => r.sourceName === 'When To Stream')
             .map((r) => [`${r.source}:${r.kind}`, r]),
         ).values(),
@@ -163,6 +168,15 @@ export async function refreshMovie(
         logSourceIssue(movie.id, issue);
       }
       const report = outcome.status === 'fulfilled' ? outcome.value : reports[index];
+      const preferredIndex = result.releases.findIndex(
+        (release) => release.kind === reports[index].kind,
+      );
+      const preferred = result.releases[preferredIndex];
+      if (preferred && preferred.sourceName !== 'When To Stream') {
+        if (report) result.releases[preferredIndex] = withReleaseConflict(preferred, report);
+        else if (preferred.conflictingRelease?.source === reports[index].source)
+          result.releases[preferredIndex] = { ...preferred, conflictingRelease: undefined };
+      }
       if (
         report &&
         report.filmImdbId === verifiedIdentityId(result) &&

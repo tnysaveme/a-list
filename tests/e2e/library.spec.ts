@@ -3108,3 +3108,56 @@ test('Discover remains usable when optional synopsis reads fail', async ({ page 
   );
   await expect(preview.locator('.film-preview-release')).toContainText('Nov 1, 2099');
 });
+
+test('release evidence shows separate check dates and provider disagreement without overflowing phone layouts', async ({
+  page,
+  request,
+}) => {
+  const primary = {
+    kind: 'Digital',
+    date: '2099-11-01',
+    confidence: 'listed',
+    source: 'https://www.dvdsreleasedates.com/movies/2/fixture',
+    sourceName: 'DVDs Release Dates',
+    checkedAt: '2026-11-12T12:00:00Z',
+  };
+  await request.post('http://127.0.0.1:4318/_control', {
+    data: {
+      movieReleases: {
+        '2': [
+          {
+            ...primary,
+            conflictingRelease: {
+              ...primary,
+              date: '2099-11-03',
+              source: 'https://whentostream.com/fixture-2026/',
+              sourceName: 'When To Stream',
+              filmImdbId: 'tt7777777',
+            },
+          },
+          {
+            ...primary,
+            kind: 'Subscription',
+            date: '2099-12-01',
+            checkedAt: '2026-11-10T12:00:00Z',
+          },
+        ],
+      },
+    },
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'View Fixture Film 01', exact: true }).click();
+  const dialog = page.locator('.movie-dialog');
+  await expect(dialog.locator('.film-release-checked')).toHaveCount(2);
+  await expect(dialog.locator('.film-release-checked').first()).toContainText('November 12, 2026');
+  await expect(dialog.locator('.film-release-checked').last()).toContainText('November 10, 2026');
+  await expect(dialog.locator('.film-release-conflict')).toContainText(
+    'When To Stream lists November 3, 2099',
+  );
+  for (const width of [320, 375, 1280]) {
+    await page.setViewportSize({ width, height: 950 });
+    await expect(dialog).toBeVisible();
+    expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    await page.screenshot({ path: `outputs/review/wts-evidence-${width}.png` });
+  }
+});

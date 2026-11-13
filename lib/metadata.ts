@@ -194,6 +194,7 @@ export async function getMetadataEvidence(
   if (!imdbId(id)) throw new Error('Invalid movie metadata ID');
   const data = await fetchMetadata(`/meta/movie/${id}.json`, signal),
     raw = object(data) ? data.meta : null;
+  if (object(raw) && raw.id !== id) throw new MetadataIdentityConflict();
   if (object(raw) && typeof raw.type === 'string' && raw.type !== 'movie')
     throw new UnsupportedMediaType('TV series and other media are not supported');
   const movie = parseMetadata(raw);

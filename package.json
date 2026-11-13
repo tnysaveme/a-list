@@ -27,7 +27,8 @@
     "backup:verify": "node scripts/backup.mjs verify",
     "test:backup": "node scripts/backup.mjs self-test",
     "wts:check": "node --import tsx scripts/check-wts.ts",
-    "wts:reconcile": "node --import tsx scripts/reconcile-wts.ts"
+    "wts:reconcile": "node --import tsx scripts/reconcile-wts.ts",
+    "wts:drift": "node --import tsx scripts/check-wts-drift.ts"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",

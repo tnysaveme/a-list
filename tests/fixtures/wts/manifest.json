@@ -1,0 +1,27 @@
+{
+  "capturedAt": "2026-11-13T10:05:08.724763+00:00",
+  "profiles": [
+    {
+      "file": "bad-day-2026.html",
+      "url": "https://whentostream.com/bad-day-2026/",
+      "title": "Bad Day",
+      "sourceId": "33636"
+    },
+    {
+      "file": "the-bay-2026.html",
+      "url": "https://whentostream.com/the-bay-2026/",
+      "title": "The Bay",
+      "sourceId": "29397"
+    },
+    {
+      "file": "iron-boy-2026.html",
+      "url": "https://whentostream.com/iron-boy-2026/",
+      "title": "Iron Boy",
+      "sourceId": "35267"
+    }
+  ],
+  "feed": {
+    "file": "announcements.xml",
+    "url": "https://whentostream.com/feed/"
+  }
+}
