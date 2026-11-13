@@ -205,6 +205,28 @@ test('inline privacy links stay distinguished in both themes and singular calend
   await expect(page.locator('.calendar-summary')).not.toContainText('calendar events');
 });
 
+test('release status and year remain unclipped on narrow screens with enlarged text', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.evaluate(() => document.fonts.ready);
+  await page.addStyleTag({ content: 'html { font-size: 200%; }' });
+  for (const width of [320, 375]) {
+    await page.setViewportSize({ width, height: 950 });
+    for (const layout of ['Grid View', 'List View']) {
+      await page.getByRole('button', { name: layout, exact: true }).click();
+      const clipped = await page
+        .locator('.release-timing')
+        .evaluateAll((nodes) =>
+          nodes
+            .filter((node) => node.scrollWidth > node.clientWidth + 1)
+            .map((node) => node.textContent),
+        );
+      expect(clipped, `${width}px ${layout}`).toEqual([]);
+    }
+  }
+});
+
 test('email receipts show the destination and resend obeys cooldown and server Retry-After', async ({
   page,
   context,

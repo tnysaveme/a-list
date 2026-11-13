@@ -2293,8 +2293,12 @@ html[data-motion-input='keyboard'] .dialog::backdrop {
 }
 .release-status {
   display: block;
+  overflow-wrap: anywhere;
   color: var(--color-muted);
   font-weight: 400;
+}
+.release-timing .release-date {
+  white-space: normal;
 }
 .release-status.release-unconfirmed {
   color: var(--color-amber);
