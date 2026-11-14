@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { requestApi, ApiTimeoutError } from '../lib/client-api';
 import { applyLibraryBatch } from '../lib/library-batch';
 
-test('request errors retain server retry windows for numeric and HTTP-date rate limits', async () => {
+test('request errors retain server retry windows for numeric and HTTP-date rate limits', async (t) => {
+  t.mock.method(Date, 'now', () => Date.UTC(2026, 10, 14, 12));
   const { requestData, RequestError } = await import('../lib/client-request');
   const previous = globalThis.fetch;
   try {
