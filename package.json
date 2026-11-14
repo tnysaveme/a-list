@@ -29,7 +29,9 @@
     "wts:check": "node --import tsx scripts/check-wts.ts",
     "wts:reconcile": "node --import tsx scripts/reconcile-wts.ts",
     "wts:drift": "node --import tsx scripts/check-wts-drift.ts",
-    "wts:timings": "node --import tsx scripts/report-wts-timings.ts"
+    "wts:timings": "node --import tsx scripts/report-wts-timings.ts",
+    "wts:health": "node --import tsx scripts/report-wts-health.ts",
+    "wts:identity-audit": "node --import tsx scripts/audit-wts-identities.ts"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",

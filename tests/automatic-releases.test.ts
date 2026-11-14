@@ -204,6 +204,10 @@ test('persisted reviewed identities retain their method and inference never masq
     cachedIdentity({ ...row, match_method: 'corroborated', rule_version: 5 })?.method,
     'corroborated',
   );
+  assert.equal(
+    cachedIdentity({ ...row, match_method: 'corroborated', rule_version: 9 })?.method,
+    'corroborated',
+  );
   assert.equal(cachedIdentity({ ...row, status: 'pending' }), undefined);
   assert.equal(activeReleaseIdentities([], [identity]).length, 1);
   assert.equal(activeReleaseIdentities([{ ...row, status: 'pending' }], [identity]).length, 0);

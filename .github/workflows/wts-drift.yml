@@ -21,5 +21,15 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Record public source drift
-        run: npm run wts:drift || echo 'WTS drift or upstream outage detected; inspect source-check logs.'
+      - name: Check anchored and rotating public sources
+        run: npm run wts:drift
+        env:
+          WTS_DRIFT_OUTPUT: outputs/wts-drift/checks.jsonl
+      - name: Preserve source-check evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: wts-source-checks-${{ github.run_id }}
+          path: outputs/wts-drift/checks.jsonl
+          if-no-files-found: warn
+          retention-days: 30

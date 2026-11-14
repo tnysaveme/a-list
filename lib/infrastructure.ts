@@ -5,6 +5,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
 import { Redis } from '@upstash/redis';
 import { Ratelimit } from '@upstash/ratelimit';
+import { observationFields, observationKey, type Timing } from './observations';
 let redis: Redis | undefined;
 export function cache() {
   requireConfiguration('api');
@@ -26,13 +27,28 @@ export function clientAddress(request: Request) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim();
   return ip && isIP(ip) ? ip : 'unknown';
 }
-export async function metric(name: string, amount = 1) {
+// Atomic low-cardinality daily counters and fixed histograms; no request data is retained.
+export const OBSERVE_SCRIPT = `
+redis.call('hsetnx',KEYS[1],'_generation',ARGV[1])
+redis.call('hincrby',KEYS[1],'_version',1)
+for i=2,#ARGV,2 do redis.call('hincrby',KEYS[1],ARGV[i],ARGV[i+1]) end
+redis.call('expire',KEYS[1],345600)
+return 1`;
+export async function recordObservation(counters: Record<string, number>, timings: Timing[] = []) {
+  const fields = observationFields(counters, timings);
+  if (!Object.keys(fields).length) return;
   try {
-    const key = `alist:metrics:${new Date().toISOString().slice(0, 10)}`;
-    await cache().pipeline().hincrby(key, name, amount).expire(key, 172800).exec();
+    await cache().eval(
+      OBSERVE_SCRIPT,
+      [observationKey(new Date().toISOString().slice(0, 10))],
+      [randomUUID(), ...Object.entries(fields).flatMap(([key, value]) => [key, value])],
+    );
   } catch {
-    console.warn(JSON.stringify({ event: 'metrics_unavailable' }));
+    console.warn(JSON.stringify({ event: 'observations_buffer_unavailable' }));
   }
+}
+export async function metric(name: string, amount = 1) {
+  await recordObservation({ [name]: amount });
 }
 export async function cached<T>(key: string): Promise<T | null> {
   try {

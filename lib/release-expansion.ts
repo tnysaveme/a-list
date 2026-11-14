@@ -1,3 +1,5 @@
+import { recordObservation } from './infrastructure';
+import type { Timing } from './observations';
 import { releasePipelineTiming } from './release-timing';
 import 'server-only';
 import { adminDb } from './supabase/admin';
@@ -60,7 +62,11 @@ import {
   type ReleaseDiagnostic,
   type ReleaseStage,
 } from './release-diagnostics';
-import { knownProfileMovies, corroborateCandidates } from './release-matching';
+import {
+  knownProfileMovies,
+  profileSearchCandidates,
+  corroborateCandidates,
+} from './release-matching';
 import { fetchVerifiedReport } from './source-verification';
 import { sourceIssue } from './source-errors';
 import { queueWtsAnnouncements, checkpointWtsAnnouncements } from './wts-announcements';
@@ -389,7 +395,7 @@ export async function expandReleases(
                   }
                 }
                 if (!evidence) {
-                  const candidates = knownProfileMovies(
+                  const candidates = profileSearchCandidates(
                     profile,
                     await searchMetadata(
                       releaseSearchTitle(
@@ -818,12 +824,19 @@ export async function expandReleases(
     );
   }
   if (!dryRun) {
+    const timings: Timing[] = [];
     for (const decision of decisions)
       if (decision.outcome === 'matched' && freshness.has(decision.source)) {
         const entry = entries.find((entry) => entry.report.release.source === decision.source);
         const timing = entry && releasePipelineTiming(entry);
-        if (timing) console.info(JSON.stringify({ ...timing, partial: !!decision.partial }));
+        if (timing) {
+          console.info(JSON.stringify({ ...timing, partial: !!decision.partial }));
+          timings.push({ name: 'discovered_to_published', durationMs: timing.queueLagMs });
+          if (timing.sourceLagMs !== undefined)
+            timings.push({ name: 'source_modified_to_published', durationMs: timing.sourceLagMs });
+        }
       }
+    if (timings.length) await recordObservation({}, timings);
     // Writes get a small separate settling window after source work has been aborted.
     if (checkpoint) {
       await checkpointWtsAnnouncements(

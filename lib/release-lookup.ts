@@ -15,7 +15,7 @@ import { expandReleases } from './release-expansion';
 import { mergeReleaseFeed } from './release-automation';
 import { adminDb } from './supabase/admin';
 import { checked } from './db-result';
-import { cached, remember, withLease } from './infrastructure';
+import { cached, remember, withLease, recordObservation } from './infrastructure';
 import { recordSourceCheck } from './source-checks';
 import { lookupRetrySeconds, lookupSourceFailure } from './lookup-retry';
 import { sameReleaseTitle } from './release-evidence';
@@ -416,6 +416,8 @@ export async function lookupReleaseReports(
         durationMs: Date.now() - started,
       }),
     );
+    if (options.persist !== false)
+      await recordObservation({}, [{ name: 'lookup_cached', durationMs: Date.now() - started }]);
     return {
       movie: context.outcome ? lookupStatus(movie, context.outcome) : movie,
       attempted: false,
@@ -438,10 +440,15 @@ export async function lookupReleaseReports(
       Date.now() +
         1000 * lookupRetrySeconds(result.diagnostic, context?.failures || 0, !!context?.saved),
     ).toISOString();
-  if (result.outcome === 'busy') result.nextCheckAt = new Date(Date.now() + 60000).toISOString();
+  if (result.outcome === 'busy') {
+    result.nextCheckAt = new Date(Date.now() + 60000).toISOString();
+    // A lease loser cannot advance or postpone the active check's checkpoint.
+    // Explicit false also prevents the sweep's compatibility checkpoint from writing it.
+    result.persisted = false;
+  }
   if (result.outcome === 'ineligible')
     result.nextCheckAt = new Date(Date.now() + 7 * 86400000).toISOString();
-  if (options.persist !== false && result.nextCheckAt) {
+  if (options.persist !== false && result.nextCheckAt && result.outcome !== 'busy') {
     const saved = checked(
       await db
         .rpc('a_list_record_lookup_result', {
@@ -461,6 +468,13 @@ export async function lookupReleaseReports(
     );
     result.persisted = saved !== false;
   }
+  if (options.persist !== false)
+    await recordObservation({}, [
+      {
+        name: result.attempted ? 'lookup_source' : 'lookup_cached',
+        durationMs: Date.now() - started,
+      },
+    ]);
   console.info(
     JSON.stringify({
       event: 'release_lookup_timing',

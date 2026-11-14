@@ -84,8 +84,19 @@ test('lookup outcomes are guarded across aliases, failures survive other success
     );
     assert.equal(await checkpoint('123', 1, 'cached', false), true);
     assert.equal((await context()).failures, 1, 'Cached results preserve failure evidence');
-    assert.equal(await checkpoint('123', 2, 'no_report'), true);
+    assert.equal(
+      (await context()).lookupVersion,
+      1,
+      'Cached deferral does not take ownership of an active check',
+    );
+    assert.equal((await context()).outcome, 'source_unavailable');
+    assert.equal(await checkpoint('123', 1, 'no_report'), true);
     assert.equal((await context()).failures, 0);
+    assert.equal(
+      await checkpoint('123', 1, 'cached', false),
+      false,
+      'A stale cached observation cannot postpone a newer actual result',
+    );
     const history = async () =>
       (
         await db.query<{

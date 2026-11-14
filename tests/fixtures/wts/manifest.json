@@ -21,10 +21,55 @@
       "title": "Iron Boy",
       "sourceId": "35267",
       "expectedKinds": ["PVOD", "Subscription"]
+    },
+    {
+      "file": "project-hail-mary-2026.html",
+      "url": "https://whentostream.com/project-hail-mary-2026/",
+      "title": "Project Hail Mary",
+      "sourceId": "14465",
+      "expectedKinds": ["PVOD", "Subscription"]
+    },
+    {
+      "file": "ne-zha-ii-2025.html",
+      "url": "https://whentostream.com/ne-zha-ii-2025/",
+      "title": "Ne Zha II",
+      "sourceId": "9292",
+      "expectedKinds": ["PVOD", "Subscription"]
+    },
+    {
+      "file": "architecton-2024.html",
+      "url": "https://whentostream.com/architecton-2024/",
+      "title": "Architecton",
+      "sourceId": "9288",
+      "expectedKinds": ["Digital", "Subscription"]
+    },
+    {
+      "file": "predators-2025.html",
+      "url": "https://whentostream.com/predators-2025/",
+      "title": "Predators",
+      "sourceId": "8959",
+      "expectedKinds": ["Digital", "Subscription"]
+    },
+    {
+      "file": "scarlet-2025.html",
+      "url": "https://whentostream.com/scarlet-2025/",
+      "title": "Scarlet",
+      "sourceId": "6920",
+      "expectedKinds": ["PVOD", "Subscription"]
     }
   ],
   "feed": {
     "file": "announcements.xml",
     "url": "https://whentostream.com/feed/"
-  }
+  },
+  "expandedAt": "2026-11-14T14:10:52.380928+00:00",
+  "regressions": [
+    {
+      "file": "epic-elvis-presley-in-concert-2025.html",
+      "url": "https://whentostream.com/epic-elvis-presley-in-concert-2025/",
+      "title": "EPIC: ELVIS PRESLEY IN CONCERT",
+      "sourceId": "11952",
+      "malformedKinds": ["PVOD"]
+    }
+  ]
 }

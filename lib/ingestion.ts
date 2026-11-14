@@ -2,7 +2,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { adminDb } from './supabase/admin';
 import { checked } from './db-result';
-import { withLease, remember, metric, cache } from './infrastructure';
+import { withLease, remember, recordObservation, cache } from './infrastructure';
 import { mergeMovies, type Movie } from './model';
 import { loadCatalogue, type CataloguePartitions } from './release-catalogue';
 import { refreshMovie } from './movie-refresh';
@@ -26,6 +26,7 @@ import { sourceReadiness } from './source-readiness';
 import { dueWtsAnnouncements } from './wts-announcements';
 import { wtsWorkLimit, type WtsQueues } from './wts-work';
 import { failedRefreshMovie } from './source-errors';
+import { retainObservations } from './observation-store';
 import {
   indexWtsProfiles,
   indexWtsProfileChanges,
@@ -382,9 +383,20 @@ export async function refreshSources() {
     } catch {
       console.warn(JSON.stringify({ event: 'health_transition_unavailable' }));
     }
-    await metric('refresh_failures', failed);
-    await metric('source_failures', sourceFailures);
-    await metric('refreshed_movies', refreshed);
+    await recordObservation(
+      {
+        refresh_jobs: 1,
+        refresh_failures: failed,
+        source_failures: sourceFailures,
+        refreshed_movies: refreshed,
+      },
+      [{ name: 'refresh_job', durationMs: Date.now() - started }],
+    );
+    try {
+      await retainObservations(db, until(48000));
+    } catch {
+      console.warn(JSON.stringify({ event: 'observations_checkpoint_deferred' }));
+    }
     const result = {
       catalogueUpdated,
       refreshed,
