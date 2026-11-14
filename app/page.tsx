@@ -36,6 +36,7 @@ export default async function Home({
   return (
     <WelcomeArrival arrivalId={arrivalId}>
       <AList
+        offlineOwner={user.id}
         initialReleaseDay={day}
         initialNavigation={
           ['section', 'filter', 'sort'].some((key) => typeof params[key] === 'string')

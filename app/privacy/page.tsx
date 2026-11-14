@@ -23,6 +23,14 @@ export default function Privacy() {
         you saved them, your unconfirmed-date preference and a secret calendar link. Movie metadata
         and release evidence are shared across the app; your personal library is separate.
       </p>
+      <h2>Offline Access on This Device</h2>
+      <p>
+        While you are signed in, this browser stores a read-only copy of your saved film titles,
+        watch status and release dates for offline use. It does not include your email, sign-in
+        tokens or secret calendar link. The offline view shows when it last synced; dates may have
+        changed. Sign-out, account deletion and signing in to another account clear the copy. You
+        can also remove it in Account settings. Browser storage may be cleared or evicted.
+      </p>
       <h2>Your Private Calendar</h2>
       <p>
         Anyone with your calendar link can read its events without signing in. Keep the link
@@ -70,7 +78,7 @@ export default function Privacy() {
         Copies already downloaded to your devices are controlled by your calendar app. Providers may
         retain operational logs and backups according to their own retention settings.
       </p>
-      <p className="privacy-updated">Updated October 29, 2026.</p>
+      <p className="privacy-updated">Updated November 14, 2026.</p>
       <Link href="/" className="privacy-home">
         Back to A-List
       </Link>

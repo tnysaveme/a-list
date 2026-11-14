@@ -389,3 +389,20 @@
     }
   }
 }
+
+.app-search-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: min(
+    var(--radix-popover-content-available-height),
+    var(--search-visible-height, 100dvh)
+  );
+}
+.app-search-panel .search-results {
+  min-height: 0;
+  flex-shrink: 1;
+}
+.app-search-panel .search-result-heading,
+.app-search-panel .search-foot {
+  flex-shrink: 0;
+}

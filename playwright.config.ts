@@ -4,7 +4,14 @@ export default defineConfig({
   testMatch: '*.spec.ts',
   workers: 1,
   timeout: 30000,
-  use: { baseURL: 'http://127.0.0.1:4317', browserName: 'chromium', trace: 'off' },
+  // Mocked outage/race requests must reach Playwright's routing layer.
+  // Dedicated offline tests opt into the real worker separately.
+  use: {
+    baseURL: 'http://127.0.0.1:4317',
+    browserName: 'chromium',
+    trace: 'off',
+    serviceWorkers: 'block',
+  },
   webServer: {
     command: 'node scripts/run-e2e.mjs',
     url: 'http://127.0.0.1:4317/privacy',
