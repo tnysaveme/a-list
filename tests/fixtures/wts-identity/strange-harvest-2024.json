@@ -1,0 +1,98 @@
+{
+  "search": {
+    "metas": [
+      {
+        "id": "tt33400719",
+        "type": "movie",
+        "name": "Strange Harvest",
+        "releaseInfo": "2024"
+      },
+      {
+        "id": "tt6362274",
+        "type": "movie",
+        "name": "A Strange Harvest",
+        "releaseInfo": "1980"
+      },
+      {
+        "id": "tt37762019",
+        "type": "movie",
+        "name": "Strange Harvests 1993",
+        "releaseInfo": "1993"
+      }
+    ]
+  },
+  "details": [
+    {
+      "meta": {
+        "id": "tt33400719",
+        "type": "movie",
+        "name": "Strange Harvest",
+        "description": "Detectives are thrust into a chilling hunt for \"Mr. Shiny\"-a sadistic serial killer from the past whose return marks the beginning of a new wave of grotesque, otherworldly crimes tied to a dark cosmic force.",
+        "releaseInfo": "2025",
+        "runtime": "94 min",
+        "released": "2025-08-08T00:00:00.000Z",
+        "director": [
+          "Stuart Ortiz"
+        ],
+        "cast": [
+          "Peter Zizzo",
+          "Terri Apple",
+          "Andy Lauer"
+        ]
+      }
+    },
+    {
+      "meta": {
+        "id": "tt6362274",
+        "type": "movie",
+        "name": "A Strange Harvest",
+        "description": "Emmy Award-winning hour documentary about the worldwide animal mutilation mystery that has haunted ranchers and law enforcement since the 1950's. TV producer Linda Moulton Howe follows the eyewitness testimonies and the facts where they lead, linking the unusual animal deaths to a non-human intelligence and technology.",
+        "releaseInfo": "1980",
+        "runtime": "57 min",
+        "director": [
+          "Linda Moulton Howe"
+        ],
+        "cast": [
+          "Linda Moulton Howe"
+        ],
+        "credits_cast": [
+          {
+            "character": "Self",
+            "name": "Linda Moulton Howe",
+            "profile_path": "/fkFpfUVqVYLmlmesuqK4Ou8tlXS.jpg",
+            "id": 1546239
+          }
+        ],
+        "credits_crew": [
+          {
+            "department": "Production",
+            "job": "Producer",
+            "name": "Linda Moulton Howe",
+            "profile_path": "/fkFpfUVqVYLmlmesuqK4Ou8tlXS.jpg",
+            "id": 1546239
+          },
+          {
+            "department": "Directing",
+            "job": "Director",
+            "name": "Linda Moulton Howe",
+            "profile_path": "/fkFpfUVqVYLmlmesuqK4Ou8tlXS.jpg",
+            "id": 1546239
+          }
+        ]
+      }
+    },
+    {
+      "meta": {
+        "id": "tt37762019",
+        "type": "movie",
+        "name": "Strange Harvests 1993",
+        "releaseInfo": "1993",
+        "runtime": "51 min",
+        "director": [
+          "Linda Moulton Howe"
+        ],
+        "cast": []
+      }
+    }
+  ]
+}

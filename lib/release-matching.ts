@@ -34,11 +34,33 @@ export function knownProfileMovies(profile: SourceProfile, movies: Movie[]) {
   return [...unique.values()];
 }
 
+/** Search cards may use a translated title even when the exact-ID detail has the
+ * native title. This is discovery only: full title/credits are checked afterwards.
+ * Retain every year-compatible candidate; crowded sets fail closed downstream. */
+export function profileSearchCandidates(profile: SourceProfile, movies: Movie[]) {
+  const exact = knownProfileMovies(profile, movies);
+  if (exact.length) return exact;
+  return [
+    ...new Map(
+      movies
+        .slice(0, 30)
+        .filter(
+          (movie) =>
+            verifiedIdentityId(movie) &&
+            movie.mediaType !== 'series' &&
+            (!movie.year || Math.abs(Number(profile.year) - Number(movie.year)) <= 1),
+        )
+        .map((movie) => [verifiedIdentityId(movie), movie]),
+    ).values(),
+  ];
+}
+
 /** Every shortlisted candidate retains its place until independently checked. */
 export async function corroborateCandidates(
   profile: SourceProfile,
   movies: Movie[],
   signal: AbortSignal,
+  observe?: (evidence: MetadataEvidence[]) => void,
 ): Promise<MetadataEvidence> {
   // Year only shortlists crowded ordinary titles; independent credits still establish identity.
   // Keep unknown years and presentation editions, whose heading can use a rerelease year.
@@ -64,6 +86,7 @@ export async function corroborateCandidates(
     }),
   );
   const candidates = checked.filter((candidate) => candidate !== null);
+  observe?.(candidates);
   if (!candidates.length && checked.length) throw new UnresolvedRelease('insufficient_evidence');
   try {
     return automaticEvidence(profile, candidates);
@@ -114,6 +137,7 @@ export async function corroborateCandidates(
         };
       }),
     );
+    observe?.(primary);
     return automaticEvidence(profile, primary);
   }
 }

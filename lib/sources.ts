@@ -484,18 +484,44 @@ export function profileReleaseEvidence(html: string, reference: ReportReference)
         /(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*[,.]\s*|\s+)20\d{2}\b/gi,
       ),
     ];
-    const date = dates.length === 1 ? dateFromText(dates[0][0]) : null;
+    const platformPattern =
+      /\b(HBO Max|Netflix|Shudder|Hulu|Peacock|Disney\+|Prime Video|Paramount\+|MGM\+|Apple TV\+?)(?=\W|$)/i;
+    let date = dates.length === 1 ? dateFromText(dates[0][0]) : null;
+    let platform = kind === 'Subscription' ? field.match(platformPattern)?.[1] : undefined;
+    // A native SVOD field can list separate platform premieres. Accept only complete,
+    // unambiguous date (platform) segments and retain the first subscription availability.
+    if (kind === 'Subscription' && dates.length > 1) {
+      const segments = input.split(';').map((part) => part.trim());
+      const windows = segments.map((part) => {
+        const listed = dates.find((candidate) => part.startsWith(candidate[0]));
+        if (!listed) return null;
+        const remainder = part.slice(listed[0].length).trim();
+        const name = remainder.match(/^\(([^()]+)\)$/)?.[1];
+        const recognized = name?.match(platformPattern)?.[1];
+        const value = dateFromText(listed[0]);
+        return value && recognized && recognized.toLowerCase() === name?.toLowerCase()
+          ? { date: value, platform: recognized }
+          : null;
+      });
+      if (
+        segments.length === dates.length &&
+        windows.every((window) => window !== null) &&
+        new Set(
+          windows.map((window) =>
+            window.platform.toLowerCase().replace(/^apple tv\+$/, 'apple tv'),
+          ),
+        ).size === windows.length
+      ) {
+        const first = windows.toSorted((a, b) => a.date.localeCompare(b.date))[0];
+        date = first.date;
+        platform = first.platform;
+      }
+    }
     if (!date) {
       malformedKinds.push(kind);
       unknownKinds.push(kind);
       continue;
     }
-    const platform =
-      kind === 'Subscription'
-        ? field.match(
-            /\b(HBO Max|Netflix|Shudder|Hulu|Peacock|Disney\+|Prime Video|Paramount\+|MGM\+|Apple TV\+?)(?=\W|$)/i,
-          )?.[1]
-        : undefined;
     reports.push({
       title: native.title,
       year: native.year,

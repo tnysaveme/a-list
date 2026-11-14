@@ -7,7 +7,7 @@ import type { Movie, Release } from './model';
 import type { ReleaseReport } from './sources';
 import type { ReviewedReportIdentity } from './reviewed-report-identities';
 
-export const MATCH_RULE_VERSION = 9;
+export const MATCH_RULE_VERSION = 10;
 export const SIX_HOURS = 6 * 3600_000;
 // Leave one minute of room for jitter in the existing ten-minute scheduler.
 export const WTS_DISCOVERY_CACHE_MS = 9 * 60_000;
@@ -62,6 +62,7 @@ export function automaticEvidence(
     ...new Map(candidates.map((candidate) => [candidate.movie.id, candidate])).values(),
   ];
   const matches = unique.filter((candidate) => {
+    if (profile.facts?.series || candidate.movie.mediaType === 'series') return false;
     const agreement = evidenceAgreement(profile, candidate);
     if (!imdbId(candidate.movie.id) || !agreement.title) return false;
     if (explicitId) return candidate.movie.id === explicitId;
@@ -71,6 +72,15 @@ export function automaticEvidence(
     return (
       (agreement.director &&
         (cast >= (agreement.year ? 2 : 3) || (agreement.year && agreement.synopsis))) ||
+      // Festival and theatrical years may differ. A complete shared synopsis plus
+      // exact director, runtime, theatrical date and a cast name corroborates that
+      // tight year drift without guessing spelling variants in actors' names.
+      (agreement.director &&
+        agreement.synopsis &&
+        agreement.runtime &&
+        agreement.theatrical &&
+        cast >= 1 &&
+        Math.abs(Number(profile.year) - Number(candidate.movie.year)) <= 1) ||
       // Four independent cast names and the primary page's explicit IMDb subject
       // tolerate spelling/nickname differences in the director field. Keep year drift tight.
       (candidate.primaryIdentityVerified === true &&
@@ -101,7 +111,7 @@ export function cachedIdentity(row: MatchRow): ReviewedReportIdentity | undefine
   // Rule 1's exact-year matches remain valid under the stricter evidence required for year drift.
   if (
     row.match_method === 'corroborated' &&
-    ![1, 2, 3, 4, 5, 6, 7, 8, MATCH_RULE_VERSION].includes(row.rule_version)
+    ![1, 2, 3, 4, 5, 6, 7, 8, 9, MATCH_RULE_VERSION].includes(row.rule_version)
   )
     return;
   return {

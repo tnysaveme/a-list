@@ -14,7 +14,7 @@ import {
 } from '../../../lib/data';
 import { pageOptions } from '../../../lib/pagination';
 import { feedResponse } from '../../../lib/feed-cache';
-import { throttle, clientAddress, metric } from '../../../lib/infrastructure';
+import { throttle, clientAddress, recordObservation } from '../../../lib/infrastructure';
 import { sameOrigin } from '../../../lib/request-origin';
 import { beforeDeadline } from '../../../lib/request-deadline';
 import { after } from 'next/server';
@@ -24,6 +24,7 @@ import { exportLibrary, privacyAction } from '../../../lib/privacy-api';
 import { MovieOnlyError, readLibraryState } from '../../../lib/library-mutations';
 import { checked } from '../../../lib/db-result';
 import { offlineMovies } from '../../../lib/offline-library';
+import { requestObservation } from '../../../lib/observations';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -50,7 +51,6 @@ async function handle(request: Request, deadline?: { signal: AbortSignal; endsAt
     if (blocked) return blocked;
     deadline?.signal.throwIfAborted();
     const ctx = await context(user.id);
-    after(() => metric('api_requests'));
     if (request.method === 'GET' && path === 'library/offline') {
       const exported = checked(
         await ctx.db
@@ -196,17 +196,23 @@ async function observed(request: Request) {
         json({ error: 'Search took too long. Please try again.' }, 503),
       )
     : await work;
+  const url = new URL(request.url);
+  const family = url.pathname.endsWith('/history') ? 'release_history' : url.pathname.split('/')[2];
+  const poll = url.searchParams.get('cached') === 'true';
+  const durationMs = Math.round(performance.now() - started);
   console.log(
     JSON.stringify({
       event: 'api_request',
-      family: new URL(request.url).pathname.endsWith('/history')
-        ? 'release_history'
-        : new URL(request.url).pathname.split('/')[2],
-      mode: new URL(request.url).searchParams.get('cached') === 'true' ? 'poll' : 'stored',
+      family,
+      mode: poll ? 'poll' : 'stored',
       status: response.status,
-      durationMs: Math.round(performance.now() - started),
+      durationMs,
     }),
   );
+  after(() => {
+    const observation = requestObservation(family, poll, response.status, durationMs);
+    return recordObservation(observation.counters, observation.timings);
+  });
   return response;
 }
 export const GET = observed;

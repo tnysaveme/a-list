@@ -1,54 +1,27 @@
-import { readFile } from 'node:fs/promises';
-import type { Release } from '../lib/model';
-import { sourceIssue } from '../lib/source-errors';
-import { inspectWtsProfile, inspectWtsFeed, WtsFieldDrift } from '../lib/wts-drift';
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
+import { driftSummary, probeWtsSources, type WtsProfileExpectation } from '../lib/wts-drift';
 import { fetchSource } from '../lib/sources';
 const manifest = JSON.parse(
   await readFile(new URL('../tests/fixtures/wts/manifest.json', import.meta.url), 'utf8'),
 ) as {
-  profiles: { url: string; title: string; sourceId: string; expectedKinds?: Release['kind'][] }[];
+  profiles: WtsProfileExpectation[];
   feed: { url: string };
 };
-let failures = 0;
-// Public source reads only. Expectations cover structure and identity; dates may legitimately change.
-for (const profile of manifest.profiles) {
-  try {
-    const { evidence } = inspectWtsProfile(
-      await fetchSource(profile.url, { cache: 'no-store', signal: AbortSignal.timeout(10000) }),
-      profile,
-    );
-    console.log(
-      JSON.stringify({
-        event: 'wts_drift_check',
-        sourceId: profile.sourceId,
-        ok: true,
-        windows: evidence.reports.length,
-      }),
-    );
-  } catch (error) {
-    failures++;
-    console.log(
-      JSON.stringify({
-        event: 'wts_drift_check',
-        sourceId: profile.sourceId,
-        ok: false,
-        ...sourceIssue(error, 'wts'),
-        ...(error instanceof WtsFieldDrift
-          ? { missingKinds: error.missingKinds, malformedKinds: error.malformedKinds }
-          : {}),
-      }),
-    );
-  }
-}
-try {
-  const reports = inspectWtsFeed(
-    await fetchSource(manifest.feed.url, { cache: 'no-store', signal: AbortSignal.timeout(10000) }),
-  );
-  console.log(JSON.stringify({ event: 'wts_feed_drift_check', ok: true, reports: reports.length }));
-} catch (error) {
-  failures++;
-  console.log(
-    JSON.stringify({ event: 'wts_feed_drift_check', ok: false, ...sourceIssue(error, 'wts') }),
+// Public source reads only. No credentials, database writes or site requests.
+const records = await probeWtsSources({
+  profiles: manifest.profiles,
+  feedUrl: manifest.feed.url,
+  read: (url) => fetchSource(url, { cache: 'no-store', signal: AbortSignal.timeout(8000) }),
+});
+for (const record of records) console.log(JSON.stringify(record));
+if (process.env.WTS_DRIFT_OUTPUT) {
+  await mkdir(dirname(process.env.WTS_DRIFT_OUTPUT), { recursive: true });
+  await writeFile(
+    process.env.WTS_DRIFT_OUTPUT,
+    records.map((row) => JSON.stringify(row)).join('\n') + '\n',
   );
 }
-if (failures) process.exitCode = 1;
+if (process.env.GITHUB_STEP_SUMMARY)
+  await appendFile(process.env.GITHUB_STEP_SUMMARY, driftSummary(records));
+if (records.some((record) => !record.ok)) process.exitCode = 1;

@@ -1,0 +1,117 @@
+{
+  "search": {
+    "metas": [
+      {
+        "id": "tt20414360",
+        "type": "movie",
+        "name": "Cologne 75",
+        "releaseInfo": "2025"
+      }
+    ]
+  },
+  "details": [
+    {
+      "meta": {
+        "id": "tt20414360",
+        "type": "movie",
+        "name": "Köln 75",
+        "description": "The true story of Vera Brandes, teenage patron saint of the 1970s Cologne music scene, who risked everything to organize the greatest solo concert in music history: Keith Jarrett’s legendary Köln Concert.",
+        "releaseInfo": "2025",
+        "runtime": "116 min",
+        "director": [
+          "Ido Fluk"
+        ],
+        "cast": [
+          "Mala Emde",
+          "John Magaro",
+          "Michael Chernus"
+        ],
+        "credits_cast": [
+          {
+            "character": "Vera Brandes",
+            "name": "Mala Emde",
+            "profile_path": "/sSCtWqaQMe8fqYlKPuLfQ3Zepu1.jpg",
+            "id": 1327555
+          },
+          {
+            "character": "Keith Jarrett",
+            "name": "John Magaro",
+            "profile_path": "/ah4Jm4Lmrgab9xdHwRId80S4REd.jpg",
+            "id": 37154
+          },
+          {
+            "character": "Michael Watts",
+            "name": "Michael Chernus",
+            "profile_path": "/tqtVxv36oQf4LlHpR3nlfUCm6M4.jpg",
+            "id": 87070
+          },
+          {
+            "character": "Ilse Brandes",
+            "name": "Jördis Triebel",
+            "profile_path": "/jpetRzlJix0vpUM1PyhAEgt1R3b.jpg",
+            "id": 73926
+          },
+          {
+            "character": "Manfred Eicher",
+            "name": "Alexander Scheer",
+            "profile_path": "/z5t37qxBzEGyRprD8TWFbNbolOP.jpg",
+            "id": 16811
+          },
+          {
+            "character": "Dr. Brandes",
+            "name": "Ulrich Tukur",
+            "profile_path": "/nP9iuQml65bHD0jINp0f4I7Fkce.jpg",
+            "id": 8198
+          },
+          {
+            "character": "Vera Brandes (age 50)",
+            "name": "Susanne Wolff",
+            "profile_path": "/jNk4Os5UQoHZdeN7bRBTAXbbt3b.jpg",
+            "id": 34390
+          },
+          {
+            "character": "Dr. Suter",
+            "name": "Patrick Joswig",
+            "profile_path": "/xpx5xVt4zaZTWVBFkB9PybrrOul.jpg",
+            "id": 3874
+          },
+          {
+            "character": "Fritz Brandes",
+            "name": "Leo Meier",
+            "profile_path": "/bVktQOjmWnWt3CuqwNCLsa5sFPX.jpg",
+            "id": 2940208
+          },
+          {
+            "character": "Otto Finster",
+            "name": "Tobias Lange",
+            "profile_path": null,
+            "id": 4469107
+          }
+        ],
+        "credits_crew": [
+          {
+            "department": "Directing",
+            "job": "Director",
+            "name": "Ido Fluk",
+            "profile_path": "/jc7aZOLzdwwm9xb2rl8PsjGPW9z.jpg",
+            "id": 1450257
+          },
+          {
+            "department": "Production",
+            "job": "Producer",
+            "name": "Fred Burle",
+            "profile_path": "/K03REYWgy1p8Qku9F9T8HaNX5S.jpg",
+            "id": 3600995
+          },
+          {
+            "department": "Production",
+            "job": "Producer",
+            "name": "Sol Bondy",
+            "profile_path": "/moAwkXNFSfTXLjU4KJYVYT3CK8p.jpg",
+            "id": 28547
+          }
+        ]
+      }
+    }
+  ]
+}
