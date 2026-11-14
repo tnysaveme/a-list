@@ -592,3 +592,11 @@ Use **Available**, **Coming Soon**, and **TBA** for release timing throughout th
 The floating pill contains a real search field between the text wordmark and calendar/account controls. Results open in an anchored, non-modal panel; typing stays focused in the field, arrow keys navigate, Enter opens, Escape dismisses, and Cmd/Ctrl+K focuses search. Search state belongs to the header, so typing does not rerender the film collection. The panel uses restrained opacity/position feedback and respects reduced motion.
 
 Search focus never changes navbar geometry. Calendar/account controls remain visible on narrow screens, the desktop shortcut/clear slot has a fixed width, and phone clear/close controls live in the results panel. The input retains the same position and width when focused, typed into, cleared, or dismissed.
+
+On touch, pressing artwork never reveals the mouse-only View Film cue. Phone cards
+lead with the release date, then timing status and platform; Home Releases stacks
+the provider, date, certainty and source-check information in one reading column.
+Film sheets expose a 44px drag-handle target for swipe-down dismissal. Native
+modality, title focus, focus return, and explicit close controls remain available;
+scrolling the details content does not start a drag. Reduced motion keeps direct
+finger tracking and uses a brief settle without a momentum animation.

@@ -1162,6 +1162,7 @@ export default function AList({
         open={!!movie}
         label={movie ? `${movie.title} details` : 'Film details'}
         className="movie-dialog"
+        swipeToClose
         onAfterClose={restoreRemovalFocus}
         onClose={() => setMovie(null)}
       >

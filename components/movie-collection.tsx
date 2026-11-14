@@ -77,6 +77,11 @@ const MovieInfo = memo(function MovieInfo({
               <>
                 <span className="release-confidence" aria-hidden="true" />
                 <span className="release-timing">
+                  <time className="release-date" dateTime={release.date}>
+                    {shortDate(release.date)}
+                    {release.date.slice(0, 4) !== currentDay.slice(0, 4) &&
+                      `, ${release.date.slice(0, 4)}`}
+                  </time>
                   {release.confidence === 'rumored' ? (
                     <span className="release-status release-unconfirmed">
                       {releaseLabels.unconfirmed}
@@ -85,12 +90,7 @@ const MovieInfo = memo(function MovieInfo({
                     <span className="release-status">
                       {release.date <= currentDay ? releaseLabels.available : releaseLabels.soon}
                     </span>
-                  )}{' '}
-                  <time className="release-date" dateTime={release.date}>
-                    {shortDate(release.date)}
-                    {release.date.slice(0, 4) !== currentDay.slice(0, 4) &&
-                      `, ${release.date.slice(0, 4)}`}
-                  </time>
+                  )}
                 </span>
                 <span className="release-kind">{release.platform || release.kind}</span>
               </>

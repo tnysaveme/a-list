@@ -532,6 +532,23 @@
   font-weight: inherit;
   color: inherit;
 }
+@media (max-width: 39.99rem) {
+  .film-release {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-xs);
+  }
+  .film-release-date {
+    min-width: 0;
+    text-align: start;
+  }
+  .film-release-date > time {
+    max-width: none;
+  }
+  .film-release-checked {
+    max-width: none;
+    margin-inline-start: 0;
+  }
+}
 .film-release-description .film-release-conflict {
   max-width: 28rem;
   margin-top: var(--space-xs);
