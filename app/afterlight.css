@@ -2414,3 +2414,48 @@ html[data-motion-input='keyboard'] .dialog::backdrop {
     background: var(--color-hover);
   }
 }
+
+@media (max-width: 39.99rem) {
+  .selection-button > span {
+    display: inline;
+  }
+  .collection-actions {
+    flex-wrap: wrap;
+  }
+  .movie-dialog .film-details .film-library-actions {
+    display: none;
+  }
+  .dialog-mobile-actions > .film-library-actions {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    gap: var(--space-xs);
+  }
+  .dialog-mobile-actions > .film-library-actions .film-control {
+    flex: 1;
+    min-width: 0;
+    white-space: normal;
+    padding: var(--space-xs);
+    font-size: var(--text-xs);
+    line-height: 1.35;
+  }
+  .dialog-mobile-actions:has(.film-library-actions) {
+    gap: var(--space-xs);
+  }
+  .dialog-mobile-actions:has(.film-library-actions) > .button {
+    min-width: var(--space-control);
+    padding-inline: var(--space-xs);
+  }
+}
+@media (max-width: 39.99rem) {
+  .selection-button {
+    width: auto;
+    padding-inline: var(--space-sm);
+    gap: var(--space-xs);
+  }
+}
+/* Native dialogs already clip their sheet edge; Vaul's extension would cover
+   scrolled desktop controls below the first viewport. */
+.dialog[data-vaul-drawer]::after {
+  display: none;
+}

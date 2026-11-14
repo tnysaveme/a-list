@@ -2,6 +2,7 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { useExitContent, useExitPresence } from '../hooks/use-exit-presence';
 import { Drawer } from 'vaul';
+import { useDialogHistory } from '../hooks/use-dialog-history';
 
 const modalLocks = new Set<HTMLDialogElement>();
 let previousOverflow = '';
@@ -15,7 +16,8 @@ export function Dialog({
   labelledBy,
   busy = false,
   className = '',
-  swipeToClose = false,
+  swipeToClose = true,
+  mobileActions,
 }: {
   children: ReactNode;
   open?: boolean;
@@ -26,9 +28,12 @@ export function Dialog({
   busy?: boolean;
   className?: string;
   swipeToClose?: boolean;
+  mobileActions?: ReactNode;
 }) {
+  useDialogHistory(open, onClose, busy);
   const { ref, mounted } = useExitPresence<HTMLDialogElement>(open, onAfterClose);
   const content = useExitContent(children, open);
+  const actions = useExitContent(mobileActions, open);
   const backdropPress = useRef(false);
   useLayoutEffect(() => {
     const dialog = ref.current;
@@ -86,6 +91,7 @@ export function Dialog({
       {swipeToClose && <Drawer.Handle className="dialog-drag-handle" preventCycle />}
       <div className="dialog-inner">{content}</div>
       <div className="dialog-mobile-actions">
+        {actions}
         <button className="button subtle" disabled={busy || !open} onClick={onClose}>
           Done
         </button>

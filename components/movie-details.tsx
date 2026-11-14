@@ -45,6 +45,7 @@ export type MovieDetailsProps = {
   onClose: () => void;
   onWatched?: () => void;
   watching?: boolean;
+  actionsInFooter?: boolean;
 };
 
 export function MovieDetails({
@@ -62,6 +63,7 @@ export function MovieDetails({
   onClose,
   onWatched,
   watching = false,
+  actionsInFooter = false,
 }: MovieDetailsProps) {
   const id = useId();
   const [expanded, setExpanded] = useState(false);
@@ -155,50 +157,21 @@ export function MovieDetails({
         </div>
       </header>
       <section className="film-library" aria-label="Your library">
-        <div className="film-library-actions">
-          {saved ? (
-            <button
-              className="film-control film-saved"
-              disabled={busy}
-              aria-busy={pending}
-              data-state={pending ? 'loading' : 'success'}
-              onClick={onRemove}
-            >
-              <MembershipIcon saved pending={pending} optimistic={saving} size={16} />
-              {saving ? 'Saving…' : pending ? 'Removing…' : 'Remove from Library'}
-              {!pending && <Trash2 size={14} aria-hidden="true" />}
-            </button>
-          ) : (
-            <button
-              className="film-control film-save"
-              disabled={!ready || busy || series}
-              aria-describedby={series ? `${id}-movie-only` : undefined}
-              aria-busy={pending}
-              data-state={pending ? 'loading' : undefined}
-              onClick={onSave}
-            >
-              <MembershipIcon saved={false} pending={pending} size={16} />
-              {series ? 'Movies only' : pending ? 'Saving…' : 'Save to Library'}
-            </button>
-          )}
-          {saved && onWatched && (
-            <button
-              className="film-control film-watch-toggle"
-              disabled={busy}
-              aria-busy={watching}
-              onClick={onWatched}
-            >
-              {watching ? (
-                <LoaderCircle size={16} className="spin" aria-hidden="true" />
-              ) : movie.watchedAt ? (
-                <RotateCcw size={16} aria-hidden="true" />
-              ) : (
-                <CircleCheck size={16} aria-hidden="true" />
-              )}
-              {watching ? 'Updating…' : movie.watchedAt ? 'Mark as Unwatched' : 'Mark as Watched'}
-            </button>
-          )}
-        </div>
+        {!actionsInFooter && (
+          <MovieActions
+            movie={movie}
+            saved={saved}
+            ready={ready}
+            busy={busy}
+            pending={pending}
+            saving={saving}
+            onSave={onSave}
+            onRemove={onRemove}
+            onWatched={onWatched}
+            watching={watching}
+            descriptionId={`${id}-movie-only`}
+          />
+        )}
         <p className="film-library-note" id={series ? `${id}-movie-only` : undefined}>
           {series
             ? 'A-List tracks movies only. TV series are not supported.'
@@ -365,5 +338,93 @@ export function MovieDetails({
         </footer>
       )}
     </article>
+  );
+}
+
+export function MovieActions({
+  movie,
+  saved,
+  ready,
+  busy,
+  pending = busy,
+  saving = false,
+  onSave,
+  onRemove,
+  onWatched,
+  watching = false,
+  descriptionId,
+  compact = false,
+}: Pick<
+  MovieDetailsProps,
+  | 'movie'
+  | 'saved'
+  | 'ready'
+  | 'busy'
+  | 'pending'
+  | 'saving'
+  | 'onSave'
+  | 'onRemove'
+  | 'onWatched'
+  | 'watching'
+> & { descriptionId?: string; compact?: boolean }) {
+  const series = movie.mediaType === 'series';
+  return (
+    <div className="film-library-actions">
+      {saved ? (
+        <button
+          className="film-control film-saved"
+          disabled={busy}
+          aria-busy={pending}
+          aria-label={saving ? 'Saving…' : pending ? 'Removing…' : 'Remove from Library'}
+          data-state={pending ? 'loading' : 'success'}
+          onClick={onRemove}
+        >
+          <MembershipIcon saved pending={pending} optimistic={saving} size={16} />
+          {saving ? 'Saving…' : pending ? 'Removing…' : compact ? 'Remove' : 'Remove from Library'}
+          {!pending && !compact && <Trash2 size={14} aria-hidden="true" />}
+        </button>
+      ) : (
+        <button
+          className="film-control film-save"
+          disabled={!ready || busy || series}
+          aria-describedby={series ? descriptionId : undefined}
+          aria-busy={pending}
+          aria-label={series ? 'Movies only' : pending ? 'Saving…' : 'Save to Library'}
+          data-state={pending ? 'loading' : undefined}
+          onClick={onSave}
+        >
+          <MembershipIcon saved={false} pending={pending} size={16} />
+          {series ? 'Movies only' : pending ? 'Saving…' : compact ? 'Save' : 'Save to Library'}
+        </button>
+      )}
+      {saved && onWatched && (
+        <button
+          className="film-control film-watch-toggle"
+          disabled={busy}
+          aria-busy={watching}
+          aria-label={
+            watching ? 'Updating…' : movie.watchedAt ? 'Mark as Unwatched' : 'Mark as Watched'
+          }
+          onClick={onWatched}
+        >
+          {watching ? (
+            <LoaderCircle size={16} className="spin" aria-hidden="true" />
+          ) : movie.watchedAt ? (
+            <RotateCcw size={16} aria-hidden="true" />
+          ) : (
+            <CircleCheck size={16} aria-hidden="true" />
+          )}
+          {watching
+            ? 'Updating…'
+            : movie.watchedAt
+              ? compact
+                ? 'Mark Unwatched'
+                : 'Mark as Unwatched'
+              : compact
+                ? 'Mark Watched'
+                : 'Mark as Watched'}
+        </button>
+      )}
+    </div>
   );
 }

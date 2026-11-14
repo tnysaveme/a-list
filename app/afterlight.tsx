@@ -1,5 +1,13 @@
 'use client';
-import { useCallback, useEffect, useEffectEvent, useRef, useState, useMemo } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  useMemo,
+  useSyncExternalStore,
+} from 'react';
 import dynamic from 'next/dynamic';
 import {
   ArrowUpRight,
@@ -37,7 +45,7 @@ import { CollectionMotion } from '../components/collection-motion';
 import { MovieCollection } from '../components/movie-collection';
 import { LibraryWeek } from '../components/library-week';
 import { CollectionSkeleton } from '../components/collection-skeleton';
-import { MovieDetails } from '../components/movie-details';
+import { MovieDetails, MovieActions } from '../components/movie-details';
 import { AppHeader } from '../components/app-header';
 import { useLibrary } from '../hooks/use-library';
 import { useMovieCalendar } from '../hooks/use-movie-calendar';
@@ -48,6 +56,9 @@ import { CalendarSetupPrompt } from '../components/calendar-setup-prompt';
 import { AboutContent } from '../components/about-content';
 import { FeedbackSurface } from '../components/feedback-surface';
 import { releaseLabels } from '../lib/release-labels';
+import { isDialogNavigation } from '../hooks/use-dialog-history';
+import { phoneLayout, serverPhoneLayout, subscribePhoneLayout } from '../lib/phone-layout';
+import { OfflineLibrarySync } from '../components/offline-client';
 const filmFilters = [
   ['all', 'All Films'],
   ['soon', releaseLabels.soon],
@@ -63,12 +74,15 @@ export default function AList({
   initialLibrary,
   initialNavigation = null,
   initialReleaseDay = releaseDay(),
+  offlineOwner,
 }: {
   initialCatalogue: CataloguePage;
   initialLibrary: LibraryInit | null;
   initialNavigation?: CollectionNavigation | null;
   initialReleaseDay?: string;
+  offlineOwner?: string;
 }) {
+  const phone = useSyncExternalStore(subscribePhoneLayout, phoneLayout, serverPhoneLayout);
   const currentDay = useReleaseDay(initialReleaseDay);
   const refreshedDay = useRef(initialReleaseDay);
   const [view, setView] = useState<'discover' | 'library'>(
@@ -241,7 +255,8 @@ export default function AList({
   useEffect(() => {
     const controller = new AbortController();
     let cancelled = false;
-    const restore = () => {
+    const restore = (event: PopStateEvent) => {
+      if (isDialogNavigation(event)) return;
       void restoreNavigation(readNavigation(new URL(window.location.href).searchParams, 'library'));
     };
     window.addEventListener('popstate', restore);
@@ -662,6 +677,25 @@ export default function AList({
   const upcoming = nextMovie && nextDate ? { movie: nextMovie, release: nextDate } : null;
   return (
     <div className="app-shell">
+      {offlineOwner && ready && (
+        <OfflineLibrarySync
+          owner={offlineOwner}
+          revision={
+            busy
+              ? 'pending'
+              : JSON.stringify([
+                  page.total,
+                  page.watchedTotal,
+                  library.map((film) => [
+                    film.id,
+                    film.watchedAt,
+                    film.releaseCheckedAt,
+                    film.releases,
+                  ]),
+                ])
+          }
+        />
+      )}
       <a className="skip-link" href="#main">
         Skip to films
       </a>
@@ -855,7 +889,7 @@ export default function AList({
                       ) : (
                         <CheckCheck aria-hidden="true" size={16} />
                       )}
-                      <span>{selecting ? 'Cancel Selection' : 'Select Films'}</span>
+                      <span>{selecting ? 'Cancel' : 'Select'}</span>
                     </button>
                   )}
                   <div className="layout-toggle">
@@ -1163,12 +1197,31 @@ export default function AList({
         label={movie ? `${movie.title} details` : 'Film details'}
         className="movie-dialog"
         swipeToClose
+        mobileActions={
+          phone &&
+          movie && (
+            <MovieActions
+              compact
+              movie={movie}
+              saved={savedIds.has(movie.id)}
+              ready={ready}
+              busy={busy}
+              pending={pendingIds.has(movie.id)}
+              saving={pendingAction === 'add' && pendingIds.has(movie.id)}
+              watching={watchBusy && watchingMovie === movie.id}
+              onWatched={() => void changeWatched(movie)}
+              onSave={() => void save(movie)}
+              onRemove={() => void remove([movie.id])}
+            />
+          )
+        }
         onAfterClose={restoreRemovalFocus}
         onClose={() => setMovie(null)}
       >
         {movie && (
           <MovieDetails
             key={movie.id}
+            actionsInFooter={phone}
             movie={movie}
             currentDay={currentDay}
             saved={savedIds.has(movie.id)}

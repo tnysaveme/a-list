@@ -23,6 +23,7 @@ import { validMovieId } from '../../../lib/model';
 import { exportLibrary, privacyAction } from '../../../lib/privacy-api';
 import { MovieOnlyError, readLibraryState } from '../../../lib/library-mutations';
 import { checked } from '../../../lib/db-result';
+import { offlineMovies } from '../../../lib/offline-library';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -50,6 +51,18 @@ async function handle(request: Request, deadline?: { signal: AbortSignal; endsAt
     deadline?.signal.throwIfAborted();
     const ctx = await context(user.id);
     after(() => metric('api_requests'));
+    if (request.method === 'GET' && path === 'library/offline') {
+      const exported = checked(
+        await ctx.db
+          .rpc('a_list_export_library')
+          .abortSignal(deadline?.signal || AbortSignal.timeout(10000)),
+      );
+      return json({
+        owner: user.id,
+        syncedAt: new Date().toISOString(),
+        movies: offlineMovies(exported.library || []),
+      });
+    }
     if (request.method === 'GET' && path === 'revision') {
       const revision = checked(await ctx.db.rpc('a_list_collection_revision'));
       if (typeof revision !== 'string' || !/^[a-f0-9]{32}$/.test(revision))

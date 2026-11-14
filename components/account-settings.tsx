@@ -7,6 +7,8 @@ import { FeedbackSurface } from './feedback-surface';
 import { requestData, RequestError } from '../lib/client-request';
 import type { LibraryInit } from '../lib/api-contract';
 import './account-settings.css';
+import { DeviceLibrary } from './device-library';
+import { clearOfflineLibrary } from '../public/offline-store.js';
 
 export default function AccountSettings({
   open = true,
@@ -154,6 +156,7 @@ export default function AccountSettings({
         { body: { confirmation: typed }, signal: controller.signal, redirectUnauthorized: true },
       );
       if (confirm === 'delete') {
+        await clearOfflineLibrary().catch(() => {});
         window.location.replace('/login?deleted=1');
         return;
       }
@@ -321,6 +324,7 @@ export default function AccountSettings({
             Open Calendar Settings
           </button>
         )}
+        <DeviceLibrary />
         <form action="/auth/signout" method="post">
           <button className="button subtle account-signout" disabled={busy}>
             Sign Out

@@ -73,6 +73,30 @@ export function AppHeader({
   const { ref: searchPanelRef, mounted: searchMounted } =
     useExitPresence<HTMLDivElement>(searching);
   const resultsId = useId();
+  useEffect(() => {
+    if (!searching) return;
+    const panel = searchPanelRef.current;
+    const viewport = window.visualViewport;
+    if (!panel || !viewport) return;
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const room = viewport.offsetTop + viewport.height - panel.getBoundingClientRect().top - 12;
+        panel.style.setProperty('--search-visible-height', `${Math.max(80, room)}px`);
+      });
+    };
+    update();
+    viewport.addEventListener('resize', update);
+    viewport.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
+    return () => {
+      cancelAnimationFrame(frame);
+      viewport.removeEventListener('resize', update);
+      viewport.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [searching, searchPanelRef]);
   const [activeIndex, setActiveIndex] = useState(-1);
   const matches = useMemo(
     () =>
@@ -138,6 +162,10 @@ export function AppHeader({
   function selectMovie(movie: Movie) {
     // Remove the exiting Radix layer before the native dialog takes Escape handling.
     setDialogHandoff(true);
+    if (!keyboardInput) {
+      searchRef.current?.blur();
+      menuTrigger.current?.focus({ preventScroll: true });
+    }
     closeSearch();
     setActiveIndex(-1);
     onSelectMovie(movie);

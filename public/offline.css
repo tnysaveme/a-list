@@ -1,0 +1,139 @@
+:root {
+  color-scheme: light dark;
+  font:
+    100%/1.6 system-ui,
+    sans-serif;
+  background: #fff;
+  color: #242424;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 760px;
+  margin: auto;
+  padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+    max(32px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+a {
+  color: inherit;
+  text-underline-offset: 3px;
+}
+header > a {
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+h1 {
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-top: 36px;
+}
+h2 {
+  font-size: 1.125rem;
+  margin: 0;
+}
+p {
+  margin: 8px 0;
+}
+#status,
+#notice,
+article p {
+  color: #626262;
+}
+.button,
+button,
+input {
+  font: inherit;
+  min-height: 44px;
+  border-radius: 10px;
+  padding: 8px 12px;
+  border: 1px solid #b7b7b7;
+  background: transparent;
+  color: inherit;
+}
+button,
+.button {
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.button {
+  display: inline-flex;
+  align-items: center;
+  margin: 12px 0 24px;
+}
+label {
+  display: block;
+}
+input {
+  display: block;
+  width: 100%;
+  margin: 8px 0 24px;
+  font-size: 1rem;
+}
+article {
+  border-top: 1px solid #d8d8d8;
+  padding: 20px 0;
+  overflow-wrap: anywhere;
+}
+:focus-visible {
+  outline: 2px solid #2673cd;
+  outline-offset: 3px;
+}
+[hidden] {
+  display: none !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    background: #161719;
+    color: #f5f5f5;
+  }
+  #status,
+  #notice,
+  article p {
+    color: #b4b4b4;
+  }
+  article {
+    border-color: #414141;
+  }
+}
+header {
+  flex-wrap: wrap;
+}
+button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+:root[data-theme='dark'] {
+  background: #161719;
+  color: #f5f5f5;
+  color-scheme: dark;
+}
+:root[data-theme='dark'] :is(#status, #notice, article p) {
+  color: #b4b4b4;
+}
+:root[data-theme='dark'] article {
+  border-color: #414141;
+}
+:root[data-theme='light'] {
+  background: #fff;
+  color: #242424;
+  color-scheme: light;
+}
+:root[data-theme='light'] :is(#status, #notice, article p) {
+  color: #626262;
+}
+:root[data-theme='light'] article {
+  border-color: #d8d8d8;
+}

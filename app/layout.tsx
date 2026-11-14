@@ -4,6 +4,7 @@ import localFont from 'next/font/local';
 import { AppearanceSync } from '../components/appearance-sync';
 import { appearanceScript } from '../lib/appearance';
 import { PerformanceInsights } from '../components/performance-insights';
+import { OfflineLifecycle } from '../components/offline-client';
 
 const figtree = localFont({
   src: './fonts/figtree-latin.woff2',
@@ -35,6 +36,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
   themeColor: '#ffffff',
 };
 
@@ -79,6 +81,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <AppearanceSync />
+        <OfflineLifecycle />
         {children}
         <PerformanceInsights />
       </body>
