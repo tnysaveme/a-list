@@ -64,7 +64,6 @@
   opacity: 1;
   transition: none;
 }
-.movie-card-poster .poster-button:active:not(:disabled) .card-view-cue,
 .movie-card-poster.is-active .card-view-cue {
   opacity: 1;
   color: var(--color-on-dark);
@@ -98,6 +97,11 @@
   cursor: not-allowed;
 }
 @media (hover: hover) and (pointer: fine) {
+  .movie-card-poster .poster-button:active:not(:disabled) .card-view-cue {
+    opacity: 1;
+    color: var(--color-on-dark);
+    background: var(--color-artwork-scrim);
+  }
   .movie-card-poster .poster-button:hover:not(:disabled) .card-view-cue {
     opacity: 1;
   }

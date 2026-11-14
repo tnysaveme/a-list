@@ -414,3 +414,119 @@ test('enlarged text keeps navigation, search and dialog actions reachable on nar
     await expect(dialog).toHaveCount(0);
   }
 });
+
+test.describe('touch film browsing', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 375, height: 812 } });
+
+  test('pressing a poster never flashes the mouse View Film cue', async ({ page }) => {
+    await page.goto('/');
+    const poster = page.locator('.movie-card .poster-button').first();
+    await poster.scrollIntoViewIfNeeded();
+    const box = (await poster.boundingBox())!;
+    const touch = await page.context().newCDPSession(page);
+    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+    await expect(poster.locator('.card-view-cue')).toHaveCSS('opacity', '0');
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.locator('.movie-dialog')).toBeVisible();
+    await expect(page.locator('.film-preview')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Done', exact: true }).click();
+    await expect(page.locator('.movie-dialog')).toHaveCount(0);
+    await expect(poster).toBeFocused();
+    await expect(poster.locator('.card-view-cue')).toHaveCSS('opacity', '0');
+  });
+
+  test('release dates have their own reading row on phone cards and details', async ({ page }) => {
+    await page.goto('/');
+    for (const width of [320, 375, 414]) {
+      await page.setViewportSize({ width, height: 812 });
+      const card = page.locator('.movie-card').first();
+      const date = (await card.locator('.release-date').boundingBox())!;
+      const status = (await card.locator('.release-status').boundingBox())!;
+      expect(status.y).toBeGreaterThanOrEqual(date.y + date.height - 1);
+      await card.locator('.poster-button').click();
+      const dialog = page.locator('.movie-dialog');
+      await expect(dialog).toBeVisible();
+      const rows = await dialog.locator('.film-release').evaluateAll((rows) =>
+        rows.map((row) => {
+          const description = row
+            .querySelector('.film-release-description')!
+            .getBoundingClientRect();
+          const date = row.querySelector('.film-release-date')!.getBoundingClientRect();
+          const value = row.querySelector('.film-release-date > time')!;
+          return {
+            below: date.top >= description.bottom - 1,
+            aligned: Math.abs(date.left - description.left) < 1,
+            clipped: value.scrollWidth > value.clientWidth + 1,
+          };
+        }),
+      );
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) expect(row).toEqual({ below: true, aligned: true, clipped: false });
+      if (width === 375) {
+        await dialog.locator('.film-release-list').scrollIntoViewIfNeeded();
+        for (const colorScheme of ['light', 'dark'] as const) {
+          await page.emulateMedia({ colorScheme });
+          await dialog.screenshot({
+            path: test.info().outputPath(`phone-releases-${colorScheme}.png`),
+          });
+        }
+      }
+      await dialog.getByRole('button', { name: 'Done', exact: true }).click();
+      await expect(dialog).toHaveCount(0);
+    }
+  });
+
+  test('the film sheet tracks a drag, snaps back, scrolls, and swipes closed with focus restored', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const poster = page.locator('.movie-card .poster-button').first();
+    await poster.click();
+    const dialog = page.locator('.movie-dialog');
+    const handle = dialog.locator('.dialog-drag-handle');
+    await expect(handle).toBeVisible();
+    await expect(dialog.locator('.film-title')).toBeFocused();
+    const touch = await page.context().newCDPSession(page);
+    const drag = async (distance: number, duration: number) => {
+      // Vaul guards the first 500ms of an opening sheet against accidental drags.
+      await page.waitForTimeout(550);
+      const box = (await handle.boundingBox())!;
+      const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+      for (let step = 1; step <= 10; step++) {
+        await page.waitForTimeout(duration / 10);
+        await touch.send('Input.dispatchTouchEvent', {
+          type: 'touchMove',
+          touchPoints: [{ x: start.x, y: start.y + (distance * step) / 10 }],
+        });
+      }
+      const offset = await dialog.evaluate(
+        (node) => new DOMMatrix(getComputedStyle(node).transform).m42,
+      );
+      expect(offset).toBeGreaterThan(distance * 0.8);
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
+    await drag(35, 400);
+    await expect(dialog).toBeVisible();
+    await expect
+      .poll(() =>
+        dialog.evaluate((node) => Math.abs(new DOMMatrix(getComputedStyle(node).transform).m42)),
+      )
+      .toBeLessThan(1);
+    const scroll = dialog.locator('.dialog-inner');
+    await scroll.evaluate((node) => {
+      node.scrollTop = 150;
+    });
+    expect(await scroll.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+    await expect(dialog).toBeVisible();
+    for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+      await page.emulateMedia({ reducedMotion });
+      await drag(260, 180);
+      await expect(dialog).toHaveCount(0);
+      await expect(poster).toBeFocused();
+      expect(await page.evaluate(() => document.body.style.overflow)).not.toBe('clip');
+      if (reducedMotion === 'no-preference') await poster.click();
+    }
+  });
+});

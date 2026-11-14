@@ -1,6 +1,7 @@
 'use client';
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { useExitContent, useExitPresence } from '../hooks/use-exit-presence';
+import { Drawer } from 'vaul';
 
 const modalLocks = new Set<HTMLDialogElement>();
 let previousOverflow = '';
@@ -14,6 +15,7 @@ export function Dialog({
   labelledBy,
   busy = false,
   className = '',
+  swipeToClose = false,
 }: {
   children: ReactNode;
   open?: boolean;
@@ -23,6 +25,7 @@ export function Dialog({
   labelledBy?: string;
   busy?: boolean;
   className?: string;
+  swipeToClose?: boolean;
 }) {
   const { ref, mounted } = useExitPresence<HTMLDialogElement>(open, onAfterClose);
   const content = useExitContent(children, open);
@@ -54,7 +57,7 @@ export function Dialog({
     };
   }, [mounted, ref]);
   if (!mounted) return null;
-  return (
+  const dialog = (
     <dialog
       ref={ref}
       aria-label={label}
@@ -80,6 +83,7 @@ export function Dialog({
         backdropPress.current = false;
       }}
     >
+      {swipeToClose && <Drawer.Handle className="dialog-drag-handle" preventCycle />}
       <div className="dialog-inner">{content}</div>
       <div className="dialog-mobile-actions">
         <button className="button subtle" disabled={busy || !open} onClick={onClose}>
@@ -87,5 +91,34 @@ export function Dialog({
         </button>
       </div>
     </dialog>
+  );
+  if (!swipeToClose) return dialog;
+  return (
+    <Drawer.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !busy) onClose();
+      }}
+      modal={false}
+      noBodyStyles
+      handleOnly
+      dismissible={!busy}
+      repositionInputs={false}
+    >
+      <Drawer.Title className="sr-only">{label || 'Film details'}</Drawer.Title>
+      <Drawer.Content
+        asChild
+        forceMount
+        aria-describedby={undefined}
+        data-vaul-animate="false"
+        onCloseAutoFocus={(event) => event.preventDefault()}
+        onEscapeKeyDown={(event) => {
+          event.preventDefault();
+          if (!busy) onClose();
+        }}
+      >
+        {dialog}
+      </Drawer.Content>
+    </Drawer.Root>
   );
 }
