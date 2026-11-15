@@ -619,3 +619,13 @@ loss and account changes clear it. Owner/epoch checks reject late writes after a
 clear, including from another tab. Account settings provides installation help,
 a link to offline reading and a remove-copy control. Storage failures do not block
 normal online browsing. Browser keyboard and touch feel still require hardware.
+
+Pointer theme changes interpolate the visible surfaces, text, borders and native
+backdrop together over the shared 180ms medium duration and ease-out curve. Live
+paint keeps native-dialog hit targets available throughout. Poster pixels and
+geometry stay fixed. Reversals read the currently rendered colors before replacing
+the running animations; selection and persistence update immediately. Keyboard
+changes, reduced motion, initial paint, hidden tabs and browsers without Web
+Animations switch immediately. System and cross-tab changes follow the same rule
+when visible. Enabling reduced motion settles on the committed palette. Only
+visible elements animate, with no per-frame React updates or theme-variable writes.
