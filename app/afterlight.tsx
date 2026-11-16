@@ -835,7 +835,7 @@ export default function AList({
                 )}
               </LibraryWeek>
             )}
-            <section className="collection" aria-labelledby="collection-heading">
+            <section className="collection" data-view={view} aria-labelledby="collection-heading">
               <div className="section-heading">
                 <div className="collection-identity">
                   <h2 id="collection-heading" tabIndex={-1}>

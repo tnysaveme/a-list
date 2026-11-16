@@ -629,3 +629,17 @@ changes, reduced motion, initial paint, hidden tabs and browsers without Web
 Animations switch immediately. System and cross-tab changes follow the same rule
 when visible. Enabling reduced motion settles on the committed palette. Only
 visible elements animate, with no per-frame React updates or theme-variable writes.
+
+The header pill floats: it stays pinned to the top of the viewport while the
+collection scrolls beneath it, on a lightly translucent, blurred surface with a
+soft shadow. Only the pill intercepts input, so films beside it stay clickable,
+and anchored or focused content clears it through root scroll padding. Keyboard
+focus in search rings the whole pill instead of underlining the field.
+
+In Your Library every film is saved, so on hover-capable pointers the grid's
+saved badge waits for hover or keyboard focus; touch, list view and Discover keep
+it visible. From 900px, list rows read as a table: title and year on the left,
+release date, status and platform in a second column. Disclosures (Setup Help,
+Date Changes) are plain labelled rows with a trailing indicator and no native
+marker. The drag handle belongs to phone sheets only. Error and not-found pages
+use one centred column without the sign-in artwork track.
