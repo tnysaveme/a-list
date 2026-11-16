@@ -2,9 +2,13 @@
  * states: default · hover · focus · active · disabled · loading · error · success */
 .app-header {
   container: app-header / inline-size;
+  position: sticky;
+  top: 0;
+  z-index: 30;
   padding: max(var(--space-md), env(safe-area-inset-top, 0)) var(--space-md) 0;
-  background: var(--color-paper);
   color: var(--color-ink);
+  /* Only the pill floats: films stay visible and clickable beside it. */
+  pointer-events: none;
 }
 .app-header-inner {
   display: flex;
@@ -17,7 +21,18 @@
   padding: var(--space-xs);
   border: var(--rule-hair) solid var(--color-rule);
   border-radius: var(--radius-round);
-  background: var(--color-surface);
+  background: color-mix(in oklch, var(--color-surface) 94%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, var(--color-shadow) 50%, transparent),
+    0 10px 28px -14px var(--color-shadow);
+  pointer-events: auto;
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .app-header-inner {
+    background: var(--color-surface);
+  }
 }
 .app-header-brand {
   flex-shrink: 0;
@@ -102,8 +117,9 @@
   color: var(--color-muted);
   opacity: 1;
 }
-.app-header-search-field:has(input:focus-visible) {
-  box-shadow: inset 0 -2px var(--color-focus);
+.app-header-inner:has(.app-header-search-field input:focus-visible) {
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 1px var(--color-focus);
 }
 .app-header-search-accessory {
   display: none;

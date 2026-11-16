@@ -196,7 +196,7 @@ export default function AccountSettings({
         <p className="account-intro">A few simple controls for your collection and calendar.</p>
         <AppearanceSetting />
         <section className="account-section">
-          <h3>Your Library, to Keep.</h3>
+          <h3>Export Your Library</h3>
           <p>
             Download your saved films, including films waiting for a date, and your calendar
             preference as a JSON file. Your secret calendar link is excluded.
@@ -217,7 +217,7 @@ export default function AccountSettings({
           </button>
         </section>
         <section className="account-section">
-          <h3>A Fresh Calendar Link.</h3>
+          <h3>Reset Your Calendar Link</h3>
           <p>
             Anyone with your calendar link can read its events. Reset it if it has been shared
             accidentally.
@@ -233,7 +233,7 @@ export default function AccountSettings({
           </button>
         </section>
         <section className="account-section">
-          <h3>Close Your Account.</h3>
+          <h3>Delete Your Account</h3>
           <p>
             Delete your sign-in account, saved films and calendar settings. Your shared movie
             catalogue stays available to your friends.

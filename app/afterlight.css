@@ -12,7 +12,8 @@ body {
   font-family: var(--font-body);
 }
 html {
-  scroll-padding-top: var(--space-lg);
+  /* Anchored and focused content clears the floating header. */
+  scroll-padding-top: calc(var(--space-3xl) + var(--space-xl));
   scrollbar-gutter: stable;
 }
 body {
@@ -1423,11 +1424,41 @@ input[type='checkbox'] {
   line-height: 1.65;
 }
 .calendar-help > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
   cursor: pointer;
   min-height: var(--space-control);
-  align-content: center;
+  list-style: none;
   font-size: var(--text-sm);
   font-weight: 500;
+}
+.calendar-help > summary::-webkit-details-marker {
+  display: none;
+}
+.calendar-help > summary::after {
+  content: '';
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  margin-inline-end: var(--space-2xs);
+  border-inline-end: 1.5px solid var(--color-muted);
+  border-block-end: 1.5px solid var(--color-muted);
+  rotate: 45deg;
+  translate: 0 -2px;
+  transition:
+    rotate var(--dur-medium) var(--ease-out),
+    translate var(--dur-medium) var(--ease-out);
+}
+.calendar-help[open] > summary::after {
+  rotate: 225deg;
+  translate: 0 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .calendar-help > summary::after {
+    transition: none;
+  }
 }
 .subscription-notice {
   display: flex;
@@ -1446,9 +1477,7 @@ input[type='checkbox'] {
   margin-top: var(--space-2xs);
 }
 .tracked-list {
-  border-top: var(--rule-hair) solid var(--color-rule);
   margin-top: var(--space-lg);
-  padding-top: var(--space-lg);
 }
 .tracked-list h3 {
   font-size: var(--text-sm);
@@ -1699,8 +1728,39 @@ input[type='checkbox'] {
   .movie-list .movie-card {
     grid-template-columns: var(--space-page) minmax(0, 1fr);
   }
+  /* Wide rows read as a table: identity on the left, release details in a second column. */
   .movie-list .movie-info {
-    gap: var(--space-2xs);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-content: center;
+    align-items: center;
+    gap: var(--space-2xs) var(--space-xl);
+  }
+  /* The metadata keeps its own box, sharing the row's tracks beside the title. */
+  .movie-list .movie-meta {
+    grid-column: 1 / -1;
+    grid-row: 1 / span 3;
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-template-rows: subgrid;
+    align-items: center;
+    margin: 0;
+  }
+  .movie-list .movie-info h3 {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .movie-list .movie-meta > span {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .movie-list .movie-meta > .movie-watched {
+    grid-row: 3;
+  }
+  .movie-list .movie-meta > .release-line,
+  .movie-list .movie-meta:not(:has(.release-line)) > .movie-watched {
+    grid-column: 2;
+    grid-row: 1 / -1;
   }
 }
 @media (min-width: 70rem) {
@@ -1964,9 +2024,25 @@ select:disabled {
   margin-top: var(--space-xs);
 }
 
-.app-error-shell {
+.login-shell.app-error-shell {
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   justify-items: center;
+}
+.login-shell.app-error-shell > .login-panel {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+  width: 100%;
+  max-width: 440px;
+  padding: var(--space-xl) var(--space-lg);
+}
+.login-shell.app-error-shell > .login-panel > p:not([class]) {
+  margin-top: var(--space-md);
+  font-size: var(--text-sm);
+}
+.login-shell.app-error-shell > .login-panel > .button {
+  margin-top: var(--space-lg);
 }
 
 .button[data-state='success'] {
@@ -2180,7 +2256,8 @@ html[data-motion-input='keyboard'] .film-read-more svg {
 .dialog-mobile-actions {
   display: none;
 }
-.dialog-drag-handle {
+.dialog-drag-handle,
+.dialog-drag-handle[data-vaul-handle] {
   display: none;
 }
 /* Native dialog owns modality/focus; Vaul supplies only the handle gesture. */

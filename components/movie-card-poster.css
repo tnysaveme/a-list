@@ -108,6 +108,16 @@
   .movie-card-poster .save-button:not(.is-saved):not(:disabled) {
     opacity: 0;
   }
+  /* Every film in Your Library is saved, so its badge waits for hover or focus. */
+  .collection[data-view='library']
+    .movie-grid:not(.movie-list)
+    .save-button.is-saved:not([aria-busy='true'], :focus-visible) {
+    opacity: 0;
+  }
+  .collection[data-view='library']
+    .movie-grid:not(.movie-list)
+    .movie-card-poster:is(:hover, :focus-within, .is-hover)
+    .save-button.is-saved,
   .movie-card-poster:hover .save-button:not(:disabled),
   .movie-card-poster:focus-within .save-button:not(:disabled),
   .movie-card-poster.is-hover .save-button:not(:disabled),

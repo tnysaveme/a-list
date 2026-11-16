@@ -6,7 +6,7 @@ import {
   CalendarDays,
   Check,
   CircleHelp,
-  ExternalLink,
+  Copy,
   LoaderCircle,
   X,
 } from 'lucide-react';
@@ -120,7 +120,7 @@ export function CalendarSettings({
           onClick={() => void copyFeed()}
         >
           <span className="copy-feed-icon" data-copied={copied} aria-hidden="true">
-            <ExternalLink size={15} className="copy-link-icon" />
+            <Copy size={15} className="copy-link-icon" />
             <Check size={15} className="copy-check-icon" />
           </span>
           <span className="copy-feed-label">
