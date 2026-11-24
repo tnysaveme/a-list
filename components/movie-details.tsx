@@ -21,14 +21,7 @@ import { releaseLabels } from '../lib/release-labels';
 import { FilmPoster } from './film-poster';
 import './movie-details.css';
 import { releaseStatusNotice } from '../lib/release-status';
-
-const fullDate = (date: string) =>
-  new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
+import { fullDate } from '../lib/date-format';
 
 export type MovieDetailsProps = {
   currentDay?: string;

@@ -3,7 +3,6 @@ node_modules
 dist
 outputs
 work
-.sites-runtime
 lib/catalogue.json
 package-lock.json
 .hallmark

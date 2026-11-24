@@ -14,7 +14,7 @@ export function assertListingSource(movie: Movie): void {
     throw new Error('Film source identity mismatch');
 }
 
-const object = (value: unknown): value is Record<string, unknown> =>
+export const object = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 const imdbUrl = (value: unknown, allowHttp = false): string | undefined => {
   if (typeof value !== 'string') return;

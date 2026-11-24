@@ -4,7 +4,7 @@
 
 Production is Next.js on Vercel with Supabase/Postgres. Use Node 24 and the committed npm lockfile. `db/schema.ts` contains TypeScript row contracts, not a Drizzle schema. The authoritative database history is `supabase/migrations/`.
 
-`vite.config.ts`, `worker/`, `.openai/`, connector-preview helpers and the SQLite files in `drizzle/` are retained Sites/Vinext/Cloudflare scaffolding. They are not the supported production runtime and are not evidence that an alternate deployment works. The unusable root SQLite config was quarantined as `drizzle/historical/drizzle.config.ts.disabled`; do not apply those SQLite snapshots to Supabase. Do not remove retained preview files without checking the workflow that owns them.
+The original Sites/Vinext/Cloudflare scaffolding (`vite.config.ts`, `worker/`, `.openai/`, connector-preview helpers and the SQLite `drizzle/` snapshots) was removed on November 24, 2026. Its toolchain was no longer installed, so it could not run.
 
 ## Configuration
 

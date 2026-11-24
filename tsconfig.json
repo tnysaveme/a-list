@@ -35,20 +35,5 @@
     ".next-e2e/types/**/*.ts",
     ".next-e2e/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "examples",
-    "dist",
-    ".vinext",
-    ".wrangler",
-    ".sites-runtime",
-    "outputs",
-    "work",
-    "scripts",
-    "worker",
-    "vite.config.ts",
-    "drizzle.config.ts",
-    "app/chatgpt-auth.ts",
-    "lib/connector*"
-  ]
+  "exclude": ["node_modules", "dist", "outputs", "work", "scripts"]
 }
