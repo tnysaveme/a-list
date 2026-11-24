@@ -55,7 +55,6 @@ Compared local source hashes against the current production source tree. Existin
 
 The connector cannot access this team scope, so release inspection uses the existing authenticated CLI and explicit project/team selectors. Stage with production configuration and no domain assignment; verify; promote that same build. Final deployment/endpoint observations are appended after verification.
 
-
 ## Final production checks
 
 - Live: [A-List](https://a-list-nine.vercel.app), Production / READY, `dpl_3926ecaJ4JH477g9G36Wq7K25pJi`. Unique build: https://a-list-n2ervlzqg-terence-yebuahs-projects.vercel.app. Reviewed working-tree base: `c1de7fc`; Next.js 16.4.3 / Node 24; remote build 1m 52s.

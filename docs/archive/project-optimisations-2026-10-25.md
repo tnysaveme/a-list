@@ -13,10 +13,10 @@ The six audit items were addressed sequentially in the existing working tree. At
 
 Using the bundled 366-film snapshot with compact JSON and Node's default gzip:
 
-| Payload | JSON bytes | Gzip bytes |
-| --- | ---: | ---: |
-| Full catalogue | 170,750 | 16,443 |
-| First page of 25 cards | 12,331 | 1,410 |
+| Payload                | JSON bytes | Gzip bytes |
+| ---------------------- | ---------: | ---------: |
+| Full catalogue         |    170,750 |     16,443 |
+| First page of 25 cards |     12,331 |      1,410 |
 
 This is approximately a 93% raw-payload reduction and a 91% gzip reduction on this fixture. Personal membership fields and live catalogue contents change the actual response size. No production load test was run.
 

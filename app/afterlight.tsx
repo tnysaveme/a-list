@@ -59,6 +59,7 @@ import { releaseLabels } from '../lib/release-labels';
 import { isDialogNavigation } from '../hooks/use-dialog-history';
 import { phoneLayout, serverPhoneLayout, subscribePhoneLayout } from '../lib/phone-layout';
 import { OfflineLibrarySync } from '../components/offline-client';
+import { dayOfMonth, monthName } from '../lib/date-format';
 const filmFilters = [
   ['all', 'All Films'],
   ['soon', releaseLabels.soon],
@@ -796,16 +797,8 @@ export default function AList({
                 {upcoming && (
                   <aside className="next-up">
                     <span className="next-up-date">
-                      <span>
-                        {new Date(`${upcoming.release.date}T12:00:00Z`).toLocaleDateString(
-                          'en-US',
-                          {
-                            month: 'short',
-                            timeZone: 'UTC',
-                          },
-                        )}
-                      </span>
-                      <strong>{upcoming.release.date.slice(-2)}</strong>
+                      <span>{monthName(upcoming.release.date)}</span>
+                      <strong>{dayOfMonth(upcoming.release.date)}</strong>
                     </span>
                     <div>
                       <p>

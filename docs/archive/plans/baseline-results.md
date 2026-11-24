@@ -18,13 +18,13 @@ The new regression holds membership confirmation and then holds the ancillary li
 
 The same five-second workload was sampled before and after the collection extraction: **100 synthetic card records**, opening details and its repeated 1.5-second pending polling, **4× CPU slowdown**. The synthetic init payload expands only the presentation workload; the other tests verify real fixture API/data behavior. `requestAnimationFrame` samples callback gaps and a PerformanceObserver records tasks over the browser's long-task threshold.
 
-| Local sample | Before collection isolation | After collection isolation |
-|---|---:|---:|
-| Observed frame intervals | 293 | 298 |
-| Median frame gap | 16.7ms | 16.7ms |
-| 95th-percentile frame gap | 16.8ms | 16.8ms |
-| Largest frame gap | 133.2ms | 66.6ms |
-| Observed long tasks | One at 77ms | None |
+| Local sample              | Before collection isolation | After collection isolation |
+| ------------------------- | --------------------------: | -------------------------: |
+| Observed frame intervals  |                         293 |                        298 |
+| Median frame gap          |                      16.7ms |                     16.7ms |
+| 95th-percentile frame gap |                      16.8ms |                     16.8ms |
+| Largest frame gap         |                     133.2ms |                     66.6ms |
+| Observed long tasks       |                 One at 77ms |                       None |
 
 This is one sample per revision, so scheduler/cache noise can affect the peaks. It supports the targeted collection boundary and shared date formatter; it does not establish a reliable percentage improvement or prove that every frame now meets 16.7ms. The remaining 66.6ms peak must not be described as perfect 60fps. No broad virtualization or per-card memoization was added.
 

@@ -12,7 +12,9 @@
 
 ```css
 button:active:not(:disabled),
-a.button:active:not(.disabled) { transform: translateY(1px); }
+a.button:active:not(.disabled) {
+  transform: translateY(1px);
+}
 ```
 
 Only `.button` (`:209-211`), header controls (`components/app-header.css:41`) and film controls (`components/movie-details.css:28`) transition transforms. Filters, layout toggles and poster buttons snap. The poster contains the image (`components/movie-card-poster.tsx:42-75`), so the entire artwork nudges despite its stationary-artwork contract.

@@ -1,12 +1,6 @@
 import { availableRelease, displayRelease, type Movie } from './model';
 import { releaseLabels } from './release-labels';
-
-const dateFormat = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric',
-  timeZone: 'UTC',
-});
+import { mediumDate } from './date-format';
 
 export function searchMatches(
   catalogue: Movie[],
@@ -30,7 +24,7 @@ export function searchReleaseSummary(movie: Movie, today: string): string {
   const available = availableRelease(movie, today);
   const release = displayRelease(movie, today);
   if (!release) return releaseLabels.unknown;
-  const date = dateFormat.format(new Date(`${release.date}T12:00:00Z`));
+  const date = mediumDate(release.date);
   const window =
     release.platform ||
     (release.kind === 'Subscription'

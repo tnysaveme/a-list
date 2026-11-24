@@ -11,8 +11,12 @@
 `app/afterlight.css:917-922` only animates dialog entry. `components/dialog.tsx:23-37` and parent conditionals in `app/afterlight.tsx:673-708` remove the element on close. `components/account-settings.tsx:28-38,109-120` implements a separate native dialog lifecycle. Changing only CSS cannot create an exit after unmount.
 
 ```css
-.dialog[open] { animation: dialog-in var(--dur-medium) var(--ease-out); }
-.dialog::backdrop { background: var(--color-overlay); }
+.dialog[open] {
+  animation: dialog-in var(--dur-medium) var(--ease-out);
+}
+.dialog::backdrop {
+  background: var(--color-overlay);
+}
 ```
 
 ```tsx

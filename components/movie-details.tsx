@@ -172,7 +172,7 @@ export function MovieDetails({
               ? 'Your calendar feed will update when the save completes.'
               : saved
                 ? movie.watchedAt
-                  ? `Saved to Library · Watched ${new Date(movie.watchedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}. Kept out of your calendar feed.`
+                  ? `Saved to Library · Watched ${fullDate(movie.watchedAt)}. Kept out of your calendar feed.`
                   : 'Saved to Library · To Watch · Included in your calendar feed.'
                 : 'Save this film to follow its home-release dates in your calendar.'}
         </p>

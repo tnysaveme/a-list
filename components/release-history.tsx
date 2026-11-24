@@ -2,13 +2,7 @@
 import { useEffect, useState } from 'react';
 import { getApi } from '../lib/client-api';
 import type { ReleaseHistoryEntry } from '../lib/release-history';
-const dates = (value: string) =>
-  new Date(value.length === 10 ? `${value}T12:00:00Z` : value).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
+import { mediumDate } from '../lib/date-format';
 export function ReleaseHistory({ movieId, version }: { movieId: string; version: string }) {
   const [open, setOpen] = useState(false),
     [loaded, setLoaded] = useState<{ version: string; entries: ReleaseHistoryEntry[] } | null>(
@@ -73,8 +67,8 @@ export function ReleaseHistory({ movieId, version }: { movieId: string; version:
                         : 'Digital rental'}
                   </strong>
                   <p>
-                    {entry.previous ? dates(entry.previous.date) : 'First listed'}{' '}
-                    {entry.current ? <>→ {dates(entry.current.date)}</> : '→ Withdrawn'}
+                    {entry.previous ? mediumDate(entry.previous.date) : 'First listed'}{' '}
+                    {entry.current ? <>→ {mediumDate(entry.current.date)}</> : '→ Withdrawn'}
                   </p>
                   <small>
                     {entry.current?.platform ? `${entry.current.platform} · ` : ''}
@@ -91,7 +85,7 @@ export function ReleaseHistory({ movieId, version }: { movieId: string; version:
                     ) : (
                       entry.current?.sourceName || entry.previous?.sourceName
                     )}{' '}
-                    · <time dateTime={entry.changedAt}>{dates(entry.changedAt)}</time>
+                    · <time dateTime={entry.changedAt}>{mediumDate(entry.changedAt)}</time>
                     {entry.reason === 'confidence_changed'
                       ? ' · Confirmation updated'
                       : entry.reason === 'source_changed'

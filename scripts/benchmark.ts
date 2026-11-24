@@ -81,7 +81,7 @@ const report = {
 };
 await mkdir('docs/measurements', { recursive: true });
 await writeFile(
-  'docs/measurements/implementation-2026-10-26.json',
+  `docs/measurements/implementation-${new Date().toISOString().slice(0, 10)}.json`,
   JSON.stringify(report, null, 2) + '\n',
 );
 console.log(JSON.stringify(report, null, 2));

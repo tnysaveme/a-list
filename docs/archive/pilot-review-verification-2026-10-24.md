@@ -2,18 +2,18 @@
 
 All ten pending films were reviewed and approved under the owner's explicit instruction. Each decision rechecked the native source page ID and canonical URL, article subject, production year, director, shared cast, synopsis, and current report. Reasons identify the review as an owner-authorized agent action. Ten distinct immutable audit records were verified.
 
-| Film | Source page | IMDb identity | Canonical catalogue ID |
-| --- | --- | --- | --- |
-| Ice Cream Man | 23764 | tt36893729 | 12723 |
-| Tony | 24531 | tt33095251 | 12802 |
-| The Uprising | 28223 | tt36983905 | 12753 |
-| Resident Evil | 28225 | tt35538033 | 12644 |
-| Verity | 28251 | tt32261958 | 12309 |
-| Misty Green | 32981 | tt34385184 | tt34385184 |
-| Avedon | 33996 | tt41593493 | tt41593493 |
-| Daniel and the Fiery Furnace | 38292 | tt37542993 | 12908 |
-| April X | 38313 | tt30850718 | tt30850718 |
-| If I Go Will They Miss Me | 38409 | tt39151344 | tt39151344 |
+| Film                         | Source page | IMDb identity | Canonical catalogue ID |
+| ---------------------------- | ----------- | ------------- | ---------------------- |
+| Ice Cream Man                | 23764       | tt36893729    | 12723                  |
+| Tony                         | 24531       | tt33095251    | 12802                  |
+| The Uprising                 | 28223       | tt36983905    | 12753                  |
+| Resident Evil                | 28225       | tt35538033    | 12644                  |
+| Verity                       | 28251       | tt32261958    | 12309                  |
+| Misty Green                  | 32981       | tt34385184    | tt34385184             |
+| Avedon                       | 33996       | tt41593493    | tt41593493             |
+| Daniel and the Fiery Furnace | 38292       | tt37542993    | 12908                  |
+| April X                      | 38313       | tt30850718    | tt30850718             |
+| If I Go Will They Miss Me    | 38409       | tt39151344    | tt39151344             |
 
 Six existing native IDs were preserved after checking explicit IMDb identifiers on their native detail pages. Four films absent from the main source's exact searches were published to Discover using IMDb IDs: Misty Green, Avedon, April X, and If I Go Will They Miss Me. The known-film control search correctly resolved The Isolate Thief to native ID 12877; unknown markup is treated as failure rather than proof of absence.
 
@@ -31,11 +31,11 @@ The database change is `20261024233601_review_evidence_without_window_change`. T
 
 The real signed-in browser completed Discover → Avedon details → save → calendar download → remove → calendar download.
 
-| State | Saved films | Calendar events |
-| --- | ---: | ---: |
-| Original | 4 | 3 |
-| Avedon saved | 5 | 4 |
-| Test save removed | 4 | 3 |
+| State             | Saved films | Calendar events |
+| ----------------- | ----------: | --------------: |
+| Original          |           4 |               3 |
+| Avedon saved      |           5 |               4 |
+| Test save removed |           4 |               3 |
 
 The downloaded calendar contained `movie-tt41593493-subscription@afterlight`, November 11, 2026, and a 13:00 UTC display reminder. Every original event UID was preserved. After removal, the downloaded calendar contained exactly the original three UIDs and no test-film event. The original database membership, saved timestamps, and tracking values were compared with the baseline and matched exactly. No calendar preference was changed.
 

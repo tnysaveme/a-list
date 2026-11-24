@@ -1,4 +1,5 @@
 import type { Movie } from './model';
+import { mediumDate } from './date-format';
 /** Snapshot metadata must not overwrite newer evidence or invent personal membership. */
 export function fallbackMovies(snapshot: Movie[], known: ReadonlyMap<string, Movie>): Movie[] {
   return snapshot.map((movie) => {
@@ -17,5 +18,5 @@ export function catalogueFreshness(page: {
   if (!page.checkedAt) return 'Listings have not been verified yet';
   const stamp = new Date(page.checkedAt);
   if (!Number.isFinite(stamp.getTime())) return 'Listings have not been verified yet';
-  return `Listings checked ${stamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}${page.stale ? ' · awaiting refresh' : ''}`;
+  return `Listings checked ${mediumDate(page.checkedAt)}${page.stale ? ' · awaiting refresh' : ''}`;
 }
