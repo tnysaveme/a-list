@@ -13,13 +13,7 @@ import {
 import type { useMovieCalendar } from '../hooks/use-movie-calendar';
 import type { LibraryPage } from '../lib/pagination';
 import { calendarRelease, type Movie } from '../lib/model';
-const fullDate = (date: string) =>
-  new Date(date + 'T12:00:00Z').toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
+import { fullDate } from '../lib/date-format';
 export function CalendarSettings({
   state,
   currentDay = releaseDay(),

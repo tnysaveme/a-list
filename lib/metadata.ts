@@ -1,12 +1,15 @@
 import type { Movie } from './model';
 import { text, fetchSource, parseSynopsis, parseSearchResults, dateFromText } from './sources';
 import { filmIndex, imdbId, verifiedIdentityId, titleKey } from './film-identity';
-import { assertListingSource, listingImdbId, listingSubjectMatches } from './source-identity';
+import {
+  assertListingSource,
+  listingImdbId,
+  listingSubjectMatches,
+  object,
+} from './source-identity';
 import { runtimeMinutes, type FilmFacts } from './release-evidence';
 export { imdbId } from './film-identity';
 const BASE = 'https://v3-cinemeta.strem.io';
-const object = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);
 export function parseMetadata(value: unknown, checkedAt = new Date().toISOString()): Movie | null {
   if (
     !object(value) ||

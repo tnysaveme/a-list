@@ -5,7 +5,7 @@ import { detailRefreshDue, synopsisRefreshDue } from './detail-refresh';
 import { versionedCache } from './versioned-cache';
 import { movieCard } from './catalogue-view';
 import { sharedSearch } from './shared-search';
-import { getDb } from '../db';
+import { createClient as getDb } from './supabase/server';
 import type { AccountRow, LibraryRow } from '../db/schema';
 import snapshot from './catalogue.json';
 import { releaseCheckDue, sanitizeMovie, type Movie } from './model';

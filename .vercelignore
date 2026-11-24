@@ -8,15 +8,11 @@ outputs/
 work/
 coverage/
 *.tsbuildinfo
-.vinext/
-.wrangler/
-.sites-runtime/
 .hallmark/
 .impeccable/
 
 # Local credentials, project links and tool state stay on this machine.
 .env*
-.dev.vars*
 *.pem
 *.key
 .vercel/
