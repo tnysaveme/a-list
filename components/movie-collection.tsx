@@ -6,14 +6,7 @@ import type { Movie } from '../lib/model';
 import { releaseForView } from '../lib/catalogue-view';
 import { releaseLabels } from '../lib/release-labels';
 import { MovieCardPoster } from './movie-card-poster';
-
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  timeZone: 'UTC',
-});
-const watchedDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
-const shortDate = (date: string) => dateFormatter.format(new Date(`${date}T12:00:00Z`));
+import { mediumDate, shortDateInYear } from '../lib/date-format';
 
 type Props = {
   movies: Movie[];
@@ -63,10 +56,7 @@ const MovieInfo = memo(function MovieInfo({
             {filter === 'watched' && (
               <>
                 {' '}
-                ·{' '}
-                <time dateTime={movie.watchedAt}>
-                  {watchedDate.format(new Date(movie.watchedAt))}
-                </time>
+                · <time dateTime={movie.watchedAt}>{mediumDate(movie.watchedAt)}</time>
               </>
             )}
           </span>
@@ -78,9 +68,7 @@ const MovieInfo = memo(function MovieInfo({
                 <span className="release-confidence" aria-hidden="true" />
                 <span className="release-timing">
                   <time className="release-date" dateTime={release.date}>
-                    {shortDate(release.date)}
-                    {release.date.slice(0, 4) !== currentDay.slice(0, 4) &&
-                      `, ${release.date.slice(0, 4)}`}
+                    {shortDateInYear(release.date, currentDay)}
                   </time>
                   {release.confidence === 'rumored' ? (
                     <span className="release-status release-unconfirmed">
@@ -183,12 +171,7 @@ const MovieCard = memo(function MovieCard({
               <CalendarDays size={18} aria-hidden="true" />
               <div>
                 <strong>
-                  {release
-                    ? shortDate(release.date) +
-                      (release.date.slice(0, 4) !== currentDay.slice(0, 4)
-                        ? `, ${release.date.slice(0, 4)}`
-                        : '')
-                    : releaseLabels.unknown}
+                  {release ? shortDateInYear(release.date, currentDay) : releaseLabels.unknown}
                 </strong>
                 <span>
                   {release

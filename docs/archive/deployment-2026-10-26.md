@@ -35,4 +35,4 @@ The public login screenshot is in ignored `outputs/review/production-login-2026-
 
 The existing ten-minute QStash schedule was not changed. Health transitions remain structured logs only. No production rows were exported. The new GitHub health workflow remains local until the working tree is committed and pushed to the default branch; a Vercel CLI deployment does not activate a GitHub workflow.
 
-Real signed-in/device acceptance, calendar-client refresh behaviour and production cold-query/concurrency measurements remain acceptance checks. The [operations runbook](operations.md) describes rollback: retain the additive database migration if rolling back the application.
+Real signed-in/device acceptance, calendar-client refresh behaviour and production cold-query/concurrency measurements remain acceptance checks. The [operations runbook](../operations.md) describes rollback: retain the additive database migration if rolling back the application.

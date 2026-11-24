@@ -21,9 +21,7 @@ Each parent render repeats release/date work and creates new callbacks. This is 
 Poster sizes at `app/afterlight.tsx:501-505` also differ from CSS geometry:
 
 ```tsx
-layout === 'list'
-  ? '80px'
-  : '(max-width: 620px) 45vw, (max-width: 1000px) 25vw, 220px'
+layout === 'list' ? '80px' : '(max-width: 620px) 45vw, (max-width: 1000px) 25vw, 220px';
 ```
 
 CSS uses two, three, four and five columns, with 40rem and 56rem breakpoints (`app/afterlight.css:1410-1422,1462-1465`) plus the later desktop breakpoint around `:1497`.

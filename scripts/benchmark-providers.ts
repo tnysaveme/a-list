@@ -39,7 +39,7 @@ const summary = Object.fromEntries(
 );
 await mkdir('docs/measurements', { recursive: true });
 await writeFile(
-  'docs/measurements/providers-2026-10-26.json',
+  `docs/measurements/providers-${new Date().toISOString().slice(0, 10)}.json`,
   JSON.stringify(
     {
       measuredAt: new Date().toISOString(),

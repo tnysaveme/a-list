@@ -97,7 +97,7 @@ A future recovery exercise should restore the chosen provider backup into a disp
 
 ## Performance evidence
 
-`npm run benchmark` writes local CPU, payload, rebuild-coalescing and controlled-delay measurements to `docs/measurements/implementation-2026-10-26.json`. `scripts/benchmark-providers.ts` performs eight read-only provider searches using fixed public titles and records first/repeated source latency separately. It does not measure Redis hits, production API latency or user concurrency.
+`npm run benchmark` writes local CPU, payload, rebuild-coalescing and controlled-delay measurements to `docs/measurements/implementation-<date>.json` (earlier runs are in `docs/archive/measurements/`). `scripts/benchmark-providers.ts` performs eight read-only provider searches using fixed public titles and records first/repeated source latency separately. It does not measure Redis hits, production API latency or user concurrency.
 
 The present catalogue needs no database pagination rewrite based on the CPU results alone. Hydration batch counts in the report are estimates from the 200-ID batch size, not measured production query latency. Cold database costs and multi-instance request p50/p95 remain post-deployment measurements; existing structured API duration logs provide a starting point. Keep the 1.5-second provider-wait budget verified by the slow-source browser test.
 

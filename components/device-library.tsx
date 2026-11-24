@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { clearOfflineLibrary, readOfflineLibrary } from '../public/offline-store.js';
+import { localDateTime } from '../lib/date-format';
 
 export function DeviceLibrary() {
   const [summary, setSummary] = useState('Checking this device…');
@@ -16,7 +17,7 @@ export function DeviceLibrary() {
           setAvailable(ready);
           setSummary(
             ready
-              ? `${snapshot.movies.length} saved films · Last synced ${new Date(snapshot.syncedAt).toLocaleString()}`
+              ? `${snapshot.movies.length} saved films · Last synced ${localDateTime(snapshot.syncedAt)}`
               : 'No offline copy is stored yet. Keep A-List open while connected to sync your library.',
           );
         })

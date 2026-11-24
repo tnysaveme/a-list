@@ -4,14 +4,7 @@ import { useId, useState, type ReactNode } from 'react';
 import type { Movie } from '../lib/model';
 import type { LibraryPage } from '../lib/pagination';
 import { FilmPoster } from './film-poster';
-
-const dateLabel = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  timeZone: 'UTC',
-});
-const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' });
-const month = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' });
+import { dayOfMonth, monthName, shortDate, weekdayName } from '../lib/date-format';
 
 export function LibraryWeek({
   entries = [],
@@ -60,18 +53,18 @@ export function LibraryWeek({
           <>
             <ul id={listId} className="week-releases">
               {visible.map(({ movie, release }) => {
-                const date = new Date(`${release.date}T12:00:00Z`);
+                const date = release.date;
                 return (
                   <li key={movie.id}>
                     <button className="week-release" onClick={() => onOpen(movie)}>
                       <time
                         className="week-date"
                         dateTime={release.date}
-                        aria-label={`${release.date === currentDay ? 'Today, ' : `${weekday.format(date)}, `}${dateLabel.format(date)}`}
+                        aria-label={`${date === currentDay ? 'Today' : weekdayName(date)}, ${shortDate(date)}`}
                       >
-                        <span>{release.date === currentDay ? 'Today' : weekday.format(date)}</span>
-                        <strong>{date.getUTCDate()}</strong>
-                        <span>{month.format(date)}</span>
+                        <span>{date === currentDay ? 'Today' : weekdayName(date)}</span>
+                        <strong>{dayOfMonth(date)}</strong>
+                        <span>{monthName(date)}</span>
                       </time>
                       <span className="week-artwork" aria-hidden="true">
                         <Film size={20} />

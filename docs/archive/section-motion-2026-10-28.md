@@ -33,7 +33,6 @@ Rollback release: `dpl_42VLsvPpPV5chiUTbYkjbmVLpowy`, https://a-list-kh6slq4ca-t
 
 The release is built from the reviewed working tree based on `c1de7fc`; no commit or push was performed. Final deployment identifiers and endpoint verification are recorded below.
 
-
 - Live URL: https://a-list-nine.vercel.app
 - Production deployment: `dpl_5S2XUQVDroz44PPsgCCNjn4JJZp6` / READY.
 - Build URL: https://a-list-hl0f1uks0-terence-yebuahs-projects.vercel.app.
